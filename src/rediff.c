@@ -1,6 +1,6 @@
 /*
  * rediff - fix offset and counts of a hand-edited diff
- * Copyright (C) 2001, 2002 Tim Waugh <twaugh@redhat.com>
+ * Copyright (C) 2001, 2002, 2004 Tim Waugh <twaugh@redhat.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1039,7 +1039,8 @@ int main (int argc, char *argv[])
 		syntax (1);
 
 	if (argc - optind == 1) {
-		char *p = xmalloc (PATH_MAX);
+		char *p = xmalloc (strlen (argv[0]) +
+				   strlen ("recountdiff") + 1);
 		char *f;
 		char **const new_argv = xmalloc (sizeof (char *) * argc);
 		memcpy (new_argv, argv, sizeof (char *) * argc);

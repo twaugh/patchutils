@@ -1,3 +1,8 @@
+2004-11-29  Tim Waugh  <twaugh@redhat.com>
+
+	* src/rediff.c (main): Applied patch from Juan M. Bello
+	Rivas <jmbr@openwall.com>.
+
 2004-11-22  Tim Waugh  <twaugh@redhat.com>
 
 	* splitdiff.in: Applied patch from Martin Schulze <joey@infodrom.org>
