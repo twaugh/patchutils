@@ -203,7 +203,7 @@ static void display_filename (unsigned long linenum, char status,
 	if (numbering)
 		printf ("%lu\t", linenum);
 	if (number_files)
-		printf ("File #%-2lu\t", filecount);
+		printf ("File #%-3lu\t", filecount);
 	if (show_status)
 		printf ("%c ", status);
 	if (prefix_to_add)

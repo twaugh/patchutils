@@ -2,6 +2,11 @@
 
 	* configure.in: Version 0.2.30 (stable).
 
+2004-07-15  Tim Waugh  <twaugh@redhat.com>
+
+	* src/filterdiff.c (display_filename): Better padding for file
+	number.
+
 2004-07-07  Tim Waugh  <twaugh@redhat.com>
 
 	* src/diff.c (read_timezone): New function.
