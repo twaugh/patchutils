@@ -1,3 +1,8 @@
+2004-11-22  Tim Waugh  <twaugh@redhat.com>
+
+	* splitdiff.in: Applied patch from Martin Schulze <joey@infodrom.org>
+	to use %03d when generating output filenames (Debian bug #282017).
+
 2004-07-15  Tim Waugh  <twaugh@redhat.com>
 
 	* configure.in: Version 0.2.30 (stable).

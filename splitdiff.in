@@ -45,7 +45,7 @@ sub process {
 	$out = $_[2];
 	$out =~ s,/,_,g;
     } else {
-	$out = $ARGV[0].'.part'.$part;
+	$out = sprintf ("%s.part%03d", $ARGV[0], $part);
     }
     if ($written{$_[2]}) { $mode = '>>' } else { $mode = '>' }
     $written{$_[2]} = $_[2];
