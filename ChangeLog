@@ -1,3 +1,8 @@
+2004-07-03  Tim Waugh  <twaugh@redhat.com>
+
+	* src/filterdiff.c (hunk_matches): Don't call file_matches()
+	unnecessarily.
+
 2004-07-02  Tim Waugh  <twaugh@redhat.com>
 
 	* configure.in: Version 0.2.30pre4 (pre-test).

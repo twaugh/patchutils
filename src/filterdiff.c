@@ -255,7 +255,7 @@ hunk_matches (unsigned long orig_offset, unsigned long orig_count,
 	if (lines && !l)
 		return 0;
 
-	return file_matches ();
+	return 1;
 }
 
 static int
