@@ -991,6 +991,20 @@ FILE *convert_to_unified (FILE *f, const char *mode, int seekable)
 	return do_convert (f, mode, seekable, do_convert_to_unified);
 }
 
+static int
+read_timezone (const char *tz)
+{
+	int zone = -1;
+	char *endptr;
+
+	tz += strspn (tz, " ");
+	zone = strtol (tz, &endptr, 10);
+	if (tz == endptr)
+		zone = -1;
+
+	return zone;
+}
+
 int
 read_timestamp (const char *timestamp, struct tm *result, long *zone)
 {
@@ -1009,22 +1023,19 @@ read_timestamp (const char *timestamp, struct tm *result, long *zone)
 	end = strptime (timestamp, "%Y-%m-%d %H:%M:%S", result);
 	if (end) {
 		/* Skip nanoseconds. */
-		char *endptr;
 		if (*end == '.') {
 			end++;
 			end += strspn (end, "0123456789");
 		}
 
-		end += strspn (end, " ");
-		*zone = strtol (end, &endptr, 10);
-		if (end == endptr)
-			*zone = -1;
+		*zone = read_timezone (end);
 	} else {
 		/* If that fails try a traditional format */
-		if (strptime (timestamp, "%a %b %e %T %Y", result))
-			*zone = -1;
-		else if (strptime (timestamp, "%b %Y %H:%M:%S", result))
-			*zone = -1;
+		if ((end = strptime (timestamp, "%a %b %e %T %Y", result)))
+			*zone = read_timezone (end);
+		else if ((end = strptime (timestamp, "%b %Y %H:%M:%S",
+					  result)))
+			*zone = read_timezone (end);
 		else
 			return 1;
 	}
