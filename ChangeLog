@@ -1,6 +1,7 @@
 2005-02-26  Tim Waugh  <twaugh@redhat.com>
 
-	* src/diff.c (read_atatline): Require decimal for offsets.
+	* src/diff.c (read_atatline): Require decimal for offsets.  Reported
+	by Robert Collins <robertc@robertcollins.net>.
 
 2004-11-29  Tim Waugh  <twaugh@redhat.com>
 
