@@ -1,0 +1,38 @@
+#!/bin/sh
+
+# This is a lsdiff(1) testcase.
+# Test: -nv output format, unified input
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > diff
+--- file1
++++ file1
+@@ -0,0 +1 @@
++a
+@@ -60 +60 @@
+-a
++b
+--- orig/file2
++++ file2
+@@ -0,0 +1 @@
++a
+--- file3
++++ file3.orig
+@@ -0,0 +1 @@
++a
+EOF
+
+${LSDIFF} -nv diff 2>errors >index || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - index || exit 1
+1	file1
+	3	Hunk #1
+	5	Hunk #2
+8	file2
+	10	Hunk #1
+12	file3
+	14	Hunk #1
+EOF

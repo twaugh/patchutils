@@ -1,0 +1,32 @@
+#!/bin/sh
+
+# This is a rediff(1) testcase.
+# Test: Remove all original lines in a hunk.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << "EOF" > patch.orig
+--- file
++++ file
+@@ -3,3 +3,4 @@
+ 1
+ 2
+ 3
++4.5
+EOF
+
+cat << "EOF" > patch.mod
+--- file
++++ file
+@@ -3,3 +3,4 @@
++4.5
+EOF
+
+${REDIFF} patch.orig patch.mod > patch-rediffed || exit 1
+cmp - patch-rediffed << "EOF" || exit 1
+--- file
++++ file
+@@ -6,0 +6 @@
++4.5
+EOF

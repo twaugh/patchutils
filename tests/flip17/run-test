@@ -1,0 +1,54 @@
+#!/bin/sh
+
+# This is a flipdiff(1) testcase.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > patch1
+--- file.orig
++++ file
+@@ -0,0 +1,3 @@
++Added new code.
++Seems to work.
++
+EOF
+
+cat << EOF > patch2
+--- file.orig
++++ file
+@@ -5,7 +5,7 @@
+ Changed this.
+ 
+ Changed that.
+-Borke it.
++Broke it.
+ 
+ Fixed it again.
+ Fixed it.
+EOF
+
+${FLIPDIFF} patch1 patch2 > patch-flipped || exit 1
+sed -e "s/$(/bin/echo -ne '\t').*$//" patch-flipped > patch-cmp
+cmp - patch-cmp << EOF || exit 1
+--- file.orig
++++ file
+@@ -2,7 +2,7 @@
+ Changed this.
+ 
+ Changed that.
+-Borke it.
++Broke it.
+ 
+ Fixed it again.
+ Fixed it.
+
+=== 8< === cut here === 8< ===
+
+--- file.orig
++++ file
+@@ -0,0 +1,3 @@
++Added new code.
++Seems to work.
++
+EOF

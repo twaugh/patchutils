@@ -1,0 +1,25 @@
+#!/bin/sh
+
+# This is a lsdiff(1) testcase.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+echo 'a' > file1.orig
+echo 'b' > file1
+cp file1.orig file2.orig
+cp file1 file2
+cp file1.orig file3.orig
+cp file1 file3
+diff -c file1.orig file1 > diff
+diff -c file2.orig file2 >> diff
+diff -c file3.orig file3 >> diff
+
+${LSDIFF} diff 2>errors >index || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - index || exit 1
+file1
+file2
+file3
+EOF

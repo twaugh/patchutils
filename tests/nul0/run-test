@@ -1,0 +1,16 @@
+#!/bin/sh
+
+# This is a filterdiff(1) testcase.
+# Test: Handle embedded nul characters.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+echo -e "abc\0" > file1
+echo abc > file2
+
+${DIFF} -au file1 file2 > diff
+${FILTERDIFF} diff 2>errors >filtered || exit 1
+[ -s errors ] && exit 1
+
+cmp diff filtered || exit 1

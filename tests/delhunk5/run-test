@@ -1,0 +1,36 @@
+#!/bin/sh
+
+# This is a rediff(1) testcase.
+# Test: Remove one hunk and edit the offset banner of the next.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > original-patch
+--- file.orig
++++ file
+@@ -10 +10 @@
+-a
++b
+@@ -20 +20 @@
+-a
++b
+EOF
+
+cat << EOF > edited-patch
+--- file.orig
++++ file
+@@ -25,1 +20,1 @@
+-a
++b
+EOF
+
+${REDIFF} original-patch edited-patch 2>errors >rediffed-patch || exit 1
+[ -s errors ] && exit 1
+cat << EOF | cmp - rediffed-patch || exit 1
+--- file.orig
++++ file
+@@ -25 +25 @@
+-a
++b
+EOF

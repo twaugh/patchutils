@@ -1,0 +1,76 @@
+#!/bin/sh
+
+# This is a rediff(1) testcase.
+# Test: Pass through extra stuff.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > original-patch
+This is the patch I want to apply:
+
+--- file.orig
++++ file
+@@ -6,7 +6,7
+ blah
+ blah
+ blah
+-not
++important
+ blah
+ blah
+ blah
+
+Oh, and this one:
+
+--- unchanged.orig
++++ unchanged
+@@ -37,6 +37,7 @@
+ blah
+ blah
+ blah
++blah
+ blah
+ blah
+ blah
+
+Okay?
+
+Hope so.
+EOF
+sed -e 's/-not$/+very/' original-patch > edited-patch
+
+${REDIFF} original-patch edited-patch 2>errors >rediffed-patch || exit 1
+[ -s errors ] && exit 1
+cat << EOF | cmp - rediffed-patch || exit 1
+This is the patch I want to apply:
+
+--- file.orig
++++ file
+@@ -6,6 +6,8 @@
+ blah
+ blah
+ blah
++very
++important
+ blah
+ blah
+ blah
+
+Oh, and this one:
+
+--- unchanged.orig
++++ unchanged
+@@ -37,6 +37,7 @@
+ blah
+ blah
+ blah
++blah
+ blah
+ blah
+ blah
+
+Okay?
+
+Hope so.
+EOF

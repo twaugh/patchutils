@@ -1,0 +1,28 @@
+#!/bin/sh
+
+. ${top_srcdir-.}/tests/common.sh
+
+mkdir dir
+cat << EOF > dir/file.orig
+a
+EOF
+cat << EOF > dir/file
+1
+2
+3
+EOF
+cat << EOF > dir/xyzzy.orig
+a
+b
+c
+EOF
+cat << EOF > dir/xyzzy
+a
+b
+d
+EOF
+gendiff dir .orig > patch1
+
+${INTERDIFF} patch1 patch1 2>errors > patch1-2 || exit 1
+[ -s errors ] && exit 1
+exit 0

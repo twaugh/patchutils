@@ -1,0 +1,28 @@
+#!/bin/sh
+
+# This is a filterdiff(1) testcase.
+# Test: Use -p in filter mode.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > diff
+--- a/not-this/file1
++++ b/not-this/file1
+@@ -0,0 +1 @@
++a
+--- a/file1
++++ b/file1
+@@ -0,0 +1 @@
++a
+EOF
+
+${FILTERDIFF} -p1 -i file1 diff 2>errors >filtered || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - filtered || exit 1
+--- a/file1
++++ b/file1
+@@ -0,0 +1 @@
++a
+EOF

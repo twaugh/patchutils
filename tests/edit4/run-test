@@ -1,0 +1,55 @@
+#!/bin/sh
+
+# This is a rediff(1) testcase.
+# Test: Change a ' ' to a '-' in the second of two hunks.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > file.orig
+a
+b
+c
+d
+e
+f
+g
+h
+i
+j
+k
+l
+m
+EOF
+cat << EOF > file
+b
+c
+d
+e
+f
+g
+h
+i
+j
+k
+l
+EOF
+
+${DIFF} -u file.orig file > original-patch
+sed -e 's/^ l$/-l/' original-patch > edited-patch
+
+${REDIFF} original-patch edited-patch 2>errors >rediffed-patch || exit 1
+[ -s errors ] && exit 1
+${PATCH} file.orig < rediffed-patch || exit 1
+cat << EOF | cmp - file.orig || exit 1
+b
+c
+d
+e
+f
+g
+h
+i
+j
+k
+EOF

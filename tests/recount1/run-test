@@ -1,0 +1,13 @@
+#!/bin/sh
+
+# This is a recountdiff(1) testcase.
+# Test: Make no change.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+echo a > a.orig
+echo A > a
+${DIFF} -u a.orig a > patch1
+${RECOUNTDIFF} patch1 > patch1-recounted || exit 1
+cmp patch1 patch1-recounted || exit 1

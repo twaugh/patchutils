@@ -1,0 +1,49 @@
+#!/bin/sh
+
+# This is a filterdiff(1) testcase.
+# Test: Context format, --hunks but no -i or -x
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > patch
+*** a.orig
+--- a
+***************
+*** 1 ****
+! a
+--- 1 ----
+! b
+*** b.orig
+--- b
+***************
+*** 2 ****
+! a
+--- 2,3 ----
+! b
++ c
+*** 50 ****
+! a
+--- 51 ----
+! b
+*** c.orig
+--- c
+***************
+*** 3 ****
+! a
+--- 3 ----
+! b
+EOF
+
+${FILTERDIFF} --hunks=2 <patch >selected 2>errors || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - selected || exit 1
+*** b.orig
+--- b
+***************
+*** 50 ****
+! a
+--- 50 ----
+! b
+EOF

@@ -1,0 +1,48 @@
+#!/bin/sh
+
+# This is a filterdiff(1) testcase.
+# Test: Convert context to unified.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+mkdir dir.orig dir
+cat <<EOF > dir.orig/a
+a
+b
+c
+EOF
+cat <<EOF > dir.orig/b
+b
+c
+d
+EOF
+cat <<EOF > dir/a
+a
+B
+c
+EOF
+cat <<EOF > dir/b
+b
+C
+d
+EOF
+${DIFF} -rc dir.orig dir > cdiff
+
+${FILTERDIFF} --format=unified cdiff 2>errors > diff || exit 1
+[ -s errors ] && exit 1
+
+cd dir.orig
+${PATCH} -p1 -i ../diff 2>errors || exit 1
+[ -s errors ] && exit 1
+
+cmp a - <<EOF || exit 1
+a
+B
+c
+EOF
+cmp b - <<EOF || exit 1
+b
+C
+d
+EOF

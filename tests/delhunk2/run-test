@@ -1,0 +1,48 @@
+#!/bin/sh
+
+# This is a rediff(1) testcase.
+# Test: Remove a hunk.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > edited-patch
+--- file.orig
++++ file
+@@ -6,7 +6,7 @@
+ blah
+ blah
+ blah
+-not
++important
+ blah
+ blah
+ blah
+EOF
+
+cat edited-patch - << EOF > original-patch
+@@ -37,6 +37,7 @@
+ blah
+ blah
+ blah
++blah
+ blah
+ blah
+ blah
+EOF
+
+${REDIFF} original-patch edited-patch 2>errors >rediffed-patch || exit 1
+[ -s errors ] && exit 1
+cat << EOF | cmp - rediffed-patch || exit 1
+--- file.orig
++++ file
+@@ -6,7 +6,7 @@
+ blah
+ blah
+ blah
+-not
++important
+ blah
+ blah
+ blah
+EOF

@@ -1,0 +1,29 @@
+#!/bin/sh
+
+# This is a grepdiff(1) testcase.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > diff
+--- file1
++++ file1
+@@ -0,0 +1 @@
+++a
+--- orig/file2
++++ file2
+@@ -0,0 +1 @@
++a
+--- file3
++++ file3.orig
+@@ -0,0 +1 @@
++b
+EOF
+
+${GREPDIFF} -nv 'b' diff 2>errors >index || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - index || exit 1
+9	file3
+	11	Hunk #1
+EOF

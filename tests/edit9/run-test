@@ -1,0 +1,35 @@
+#!/bin/sh
+
+# This is a rediff(1) testcase.
+# Test: Remove an added line 1.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > original-patch
+--- file.orig
++++ file
+@@ -1,5 +1,6 @@
++Remove this line!
+ blah
+-blah
++blah
+ blah
+ blah
+ blah
+EOF
+sed -e '/^+R/d' original-patch > edited-patch
+
+${REDIFF} original-patch edited-patch 2>errors >rediffed-patch || exit 1
+[ -s errors ] && exit 1
+cat << EOF | cmp - rediffed-patch || exit 1
+--- file.orig
++++ file
+@@ -1,5 +1,5 @@
+ blah
+-blah
++blah
+ blah
+ blah
+ blah
+EOF

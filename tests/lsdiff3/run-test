@@ -1,0 +1,59 @@
+#!/bin/sh
+
+# This is a lsdiff(1) testcase.
+# Test: See if -s works across locales.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > diff1
+--- file1	Mon Dec 17 15:53:01 2001
++++ file1	Thu Jan  1 01:00:00 1970
+@@ -1 +0,0 @@
+-removed
+EOF
+cat << EOF > diff2
+--- file2	Mon Dec 17 15:53:01 2001
++++ file2	Wed Dec 31 19:00:00 1969
+@@ -1 +0,0 @@
+-removed
+EOF
+cat << EOF > diff3
+--- file3	2002-10-07 08:31:24.000000000 +0100
++++ file3	1970-01-01 01:00:00.000000000 +0100
+@@ -1 +0,0 @@
+-removed
+EOF
+cat << EOF > diff4
+--- file4	2002-10-07 08:31:24.000000000 +0100
++++ file4	1969-12-31 23:45:00.000000000 -0015
+@@ -1 +0,0 @@
+-removed
+EOF
+cat << EOF > diff5
+--- file5	2002-10-07 08:31:24.000000000 +0100
++++ file5	1970-01-01 00:00:00.000000000 +0100
+@@ -1 +0,0 @@
+-not removed --- this is a red herring
+EOF
+${LSDIFF} -sh diff1 diff2 diff3 diff4 diff5 2>errors >index || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - index || exit 1
+- file1
+- file2
+- file3
+- file4
+! file5
+EOF
+
+${LSDIFF} -sH diff1 diff2 diff3 diff4 diff5 2>errors >index || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - index || exit 1
+diff1:- file1
+diff2:- file2
+diff3:- file3
+diff4:- file4
+diff5:! file5
+EOF

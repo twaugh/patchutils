@@ -1,0 +1,42 @@
+#!/bin/sh
+
+# This is a grepdiff(1) testcase.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > diff
+--- foo	2004-03-30 15:55:52.037395000 -0600
++++ bar	2004-03-26 17:04:42.486526100 -0600
+@@ -90,13 +90,13 @@
+ 
+ 
+ 
+-a
++
+ 
+ 
+ 
+ 
+ 
+-b
++
+ 
+ 
+ 
+@@ -110,10 +110,6 @@
+ 
+ 
+ 
+-
+-
+-
+-
+ 
+ 
+ 
+EOF
+
+${GREPDIFF} --output-matching=file . diff 2>errors >matched || exit 1
+[ -s errors ] && exit 1
+cmp diff matched || exit 1

@@ -1,0 +1,107 @@
+#!/bin/sh
+
+. ${top_srcdir-.}/tests/common.sh
+
+mkdir orig new1 new2
+cat << EOF > orig/pmac_support.c
+a1
+b1
+c1
+d1
+stuff
+d1
+c1
+b1
+a1
+
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+EOF
+cat << EOF > new1/pmac_support.c
+a1
+b1
+c1
+d1
+insert above stuff
+stuff
+d1
+c1
+b1
+a1
+
+pad
+pad
+pad
+pad
+large amount of stuff
+large amount of stuff
+large amount of stuff
+large amount of stuff
+large amount of stuff
+large amount of stuff
+large amount of stuff
+large amount of stuff
+large amount of stuff
+large amount of stuff
+large amount of stuff
+large amount of stuff
+large amount of stuff
+large amount of stuff
+large amount of stuff
+large amount of stuff
+large amount of stuff
+pad
+pad
+pad
+EOF
+cat << EOF > new2/pmac_support.c
+a1
+b1
+c1
+d1
+insert above stuff
+large amount of stuff
+large amount of stuff
+large amount of stuff
+large amount of stuff
+large amount of stuff
+large amount of stuff
+large amount of stuff
+large amount of stuff
+large amount of stuff
+large amount of stuff
+large amount of stuff
+large amount of stuff
+large amount of stuff
+large amount of stuff
+large amount of stuff
+large amount of stuff
+large amount of stuff
+stuff
+d1
+c1
+b1
+a1
+
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+EOF
+
+${DIFF} -ur orig new1 > patch1
+${DIFF} -ur orig new2 > patch2
+${INTERDIFF} patch1 patch2 2>errors > patch1-2 || exit 1
+[ -s errors ] && exit 1
+cd new1
+${PATCH} < ../patch1-2 || exit 1
+cd ..
+diff -ur new1 new2 || exit 1

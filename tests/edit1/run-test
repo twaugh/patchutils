@@ -1,0 +1,23 @@
+#!/bin/sh
+
+# This is a rediff(1) testcase.
+# Test: Change the content of an added line.  No offsets need changing.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > file.orig
+a
+EOF
+cat << EOF > file
+b
+EOF
+
+${DIFF} -u file.orig file > original-patch
+sed -e 's/^+b$/+c/' original-patch > edited-patch
+
+${REDIFF} original-patch edited-patch 2>errors >rediffed-patch || exit 1
+[ -s errors ] && exit 1
+
+# The rediffed patch should be the same.
+cmp edited-patch rediffed-patch || exit 1

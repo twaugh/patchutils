@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# This is a combinediff(1) testcase.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > patch1
+--- file.orig
++++ file
+@@ -1 +1 @@
+-a
++b
+--- otherfile.orig
++++ otherfile
+@@ -1,2 +1 @@
+-a
+-b
++A
+@@ -3 +2,2 @@
+-c
++B
++C
+EOF
+cat << EOF > patch2
+--- file.orig
++++ file
+@@ -1 +1 @@
+-b
++c
+EOF
+
+${COMBINEDIFF} patch1 patch2 2>errors >patches || exit 1
+[ -s errors ] && exit 1
+
+echo a > file
+(echo a; echo b; echo c) > otherfile
+${PATCH} < patches || exit 1
+echo c > c
+cmp file c || exit 1
+(echo A; echo B; echo C) > abc
+cmp otherfile abc || exit 1

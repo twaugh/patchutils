@@ -1,0 +1,98 @@
+#!/bin/sh
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > patch1
+--- linux.vanilla/arch/i386/kernel/dmi_scan.c	Thu Oct 25 16:26:33 2001
++++ linux.ac/arch/i386/kernel/dmi_scan.c	Fri Oct 26 19:39:16 2001
+@@ -380,12 +380,11 @@
+ 		pm_kbd_request_override = pckbd_pm_resume;
+ 		printk(KERN_INFO "%s machine detected. Mousepad Resume Bug workaround enabled.\n", d->ident);
+ 	}
+-#endif	
++#endif
+ 	return 0;
+ }
+ 
+ 
+-
+ /*
+  *	Process the DMI blacklists
+  */
+@@ -400,7 +399,6 @@
+ blah
+ blah
+ blah
+-blah
+ blah
+ blah
+ blah
+EOF
+cat << EOF > patch2
+--- linux.vanilla/arch/i386/kernel/dmi_scan.c	Thu Oct 25 16:26:33 2001
++++ linux.ac/arch/i386/kernel/dmi_scan.c	Fri Nov  2 14:43:41 2001
+@@ -380,11 +380,26 @@
+ 		pm_kbd_request_override = pckbd_pm_resume;
+ 		printk(KERN_INFO "%s machine detected. Mousepad Resume Bug workaround enabled.\n", d->ident);
+ 	}
+-#endif	
++#endif
+ 	return 0;
+ }
+ 
+ 
++/*
++ * Dell Inspiron 8000 APM BIOS fails to correctly save and restore the
++ * config space of some PCI devices.
++ */
++
++static __init int broken_apm_pci_restore(struct dmi_blacklist *d)
++{
++#ifdef CONFIG_PCI
++	extern int pci_bridge_force_restore;
++
++	printk(KERN_WARNING "%s detected. Forcing restore of PCI configuration space on APM resume.\n", d->ident);
++	pci_bridge_force_restore = 1;
++#endif
++	return 0;
++}
+ 
+ /*
+  *	Process the DMI blacklists
+@@ -400,7 +415,6 @@
+ blah
+ blah
+ blah
+-blah
+ blah
+ blah
+ blah
+EOF
+
+${INTERDIFF} -q patch1 patch2 2>errors > patch1-2 || exit 1
+[ -s errors ] && exit 1
+cmp patch1-2 - << EOF || exit 1
+--- linux.ac/arch/i386/kernel/dmi_scan.c	Fri Oct 26 19:39:16 2001
++++ linux.ac/arch/i386/kernel/dmi_scan.c	Fri Nov  2 14:43:41 2001
+@@ -387,4 +387,20 @@
+ 
+ /*
++ * Dell Inspiron 8000 APM BIOS fails to correctly save and restore the
++ * config space of some PCI devices.
++ */
++
++static __init int broken_apm_pci_restore(struct dmi_blacklist *d)
++{
++#ifdef CONFIG_PCI
++	extern int pci_bridge_force_restore;
++
++	printk(KERN_WARNING "%s detected. Forcing restore of PCI configuration space on APM resume.\n", d->ident);
++	pci_bridge_force_restore = 1;
++#endif
++	return 0;
++}
++
++/*
+  *	Process the DMI blacklists
+  */
+EOF

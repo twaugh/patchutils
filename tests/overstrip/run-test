@@ -1,0 +1,25 @@
+#!/bin/sh
+
+# This is a filterdiff(1) testcase.
+# Test: --strip behaves when stripping more pathname components than there are.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > diff
+--- file
++++ dir/file
+@@ -1 +1 @@
+-a
++A
+EOF
+${FILTERDIFF} --strip=2 diff 2>errors >diff-stripped || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - diff-stripped || exit 1
+--- file
++++ file
+@@ -1 +1 @@
+-a
++A
+EOF

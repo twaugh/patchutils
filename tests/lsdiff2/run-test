@@ -1,0 +1,28 @@
+#!/bin/sh
+
+# This is a lsdiff(1) testcase.
+# Test: See if -s works.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+mkdir dir dir.orig
+echo a > dir.orig/a
+echo A > dir/a
+${DIFF} -uN dir.orig dir > diff
+rm dir/a
+${DIFF} -uN dir.orig dir >> diff
+mv dir.orig/a dir
+${DIFF} -uN dir.orig dir >> diff
+cat diff diff > diff2
+${LSDIFF} -s --strip=1 diff2 2>errors >index || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - index || exit 1
+! a
+- a
++ a
+! a
+- a
++ a
+EOF

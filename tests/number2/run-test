@@ -1,0 +1,63 @@
+#!/bin/sh
+
+# This is a filterdiff(1) testcase.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > diff
+*** file1.orig
+--- file1
+***************
+*** 1 ****
+! A
+--- 1,2 ----
+! a
+! b
+*** 10 ****
+! C
+--- 11,12 ----
+! c
+! d
+EOF
+
+${FILTERDIFF} --as-numbered-lines=after --hunks=100 diff \
+	2>>errors >no-match || exit 1
+${FILTERDIFF} --as-numbered-lines=before diff \
+	2>errors >file-before || exit 1
+${FILTERDIFF} --as-numbered-lines=before --hunks=2 diff \
+	2>>errors >hunk-before || exit 1
+${FILTERDIFF} --as-numbered-lines=after diff \
+	2>>errors >file-after || exit 1
+${FILTERDIFF} --as-numbered-lines=after --hunks=2 diff \
+	2>>errors >hunk-after || exit 1
+[ -s errors ] && exit 1
+[ -s no-match ] && exit 1
+
+cat << EOF | cmp - file-before || exit 1
+*** file1.orig
+1	:A
+...
+10	:C
+EOF
+
+cat << EOF | cmp - hunk-before || exit 1
+*** file1.orig
+10	:C
+EOF
+
+cat << EOF | cmp - file-after || exit 1
+--- file1
+1	:a
+2	:b
+...
+11	:c
+12	:d
+EOF
+
+cat << EOF | cmp - hunk-after || exit 1
+--- file1
+10	:c
+11	:d
+EOF
+

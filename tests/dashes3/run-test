@@ -1,0 +1,28 @@
+#!/bin/sh
+
+. ${top_srcdir-.}/tests/common.sh
+
+mkdir dir
+cat << EOF > dir/file.orig
+-- 
+EOF
+cat << EOF > new1
+-- 
+EOF
+cat << EOF > new2
+b
+EOF
+
+cp new1 dir/file
+${DIFF} -u dir/file.orig dir/file > patch1
+mkdir dir.modified
+mv dir/file.orig dir/file
+cp new2 dir.modified/file
+cp new1 dir.modified/xxx
+${DIFF} -urN dir dir.modified > patch2
+${INTERDIFF} patch1 patch2 2>errors > patch1-2 || exit 1
+[ -s errors ] && exit 1
+cd dir
+${PATCH} < ../patch1-2 || exit 1
+cd ..
+${DIFF} -urN dir dir.modified || exit 1

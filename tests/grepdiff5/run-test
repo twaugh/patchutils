@@ -1,0 +1,60 @@
+#!/bin/sh
+
+# This is a grepdiff(1) testcase.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > diff
+--- file1
++++ file1
+@@ -1 +1,2 @@
+-A
++a
++b
+@@ -10 +11,2 @@
+-C
++c
++d
+EOF
+
+${GREPDIFF} --output-matching=hunk --as-numbered-lines=after 'cow' diff \
+	2>>errors >no-match || exit 1
+${GREPDIFF} --output-matching=file --as-numbered-lines=before 'c' diff \
+	2>errors >file-before || exit 1
+${GREPDIFF} --output-matching=hunk --as-numbered-lines=before 'c' diff \
+	2>>errors >hunk-before || exit 1
+${GREPDIFF} --output-matching=file --as-numbered-lines=after 'c' diff \
+	2>>errors >file-after || exit 1
+${GREPDIFF} --output-matching=hunk --as-numbered-lines=after 'c' diff \
+	2>>errors >hunk-after || exit 1
+[ -s errors ] && exit 1
+[ -s no-match ] && exit 1
+
+cat << EOF | cmp - file-before || exit 1
+--- file1
+1	:A
+...
+10	:C
+EOF
+
+cat << EOF | cmp - hunk-before || exit 1
+--- file1
+10	:C
+EOF
+
+cat << EOF | cmp - file-after || exit 1
++++ file1
+1	:a
+2	:b
+...
+11	:c
+12	:d
+EOF
+
+cat << EOF | cmp - hunk-after || exit 1
++++ file1
+10	:c
+11	:d
+EOF
+

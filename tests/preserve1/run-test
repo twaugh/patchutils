@@ -1,0 +1,34 @@
+#!/bin/sh
+
+# This is a filterdiff(1) testcase.
+# Test: Preserve text after '@@' in unified input.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > diff
+--- file.orig
++++ file
+@@ -0,0 +1 @@ line 1
++a
+@@ -5 +6 @@ line 6
+-a
++b
+@@ -9 +10 @@ line 10
+-a
++b
+EOF
+
+${FILTERDIFF} -#2,3 diff 2>errors >filtered || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - filtered || exit 1
+--- file.orig
++++ file
+@@ -5 +5 @@ line 6
+-a
++b
+@@ -9 +9 @@ line 10
+-a
++b
+EOF

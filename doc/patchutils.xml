@@ -1,0 +1,2297 @@
+<?xml version='1.0'?> <!-- -*- xml -*- -->
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN"
+ "http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd">
+<book>
+  <bookinfo>
+    <title>Patchutils</title>
+    <author>
+      <firstname>Tim</firstname>
+      <surname>Waugh</surname>
+      <affiliation>
+	<address><email>twaugh@redhat.com</email></address>
+      </affiliation>
+    </author>
+  </bookinfo>
+
+  <reference>
+    <title>Man pages</title>
+
+    <refentry id="interdiff">
+      <refentryinfo>
+	<productname>patchutils</productname>
+	<date>14 May 2004</date>
+	<author>
+	  <firstname>Tim</firstname>
+	  <surname>Waugh</surname>
+	  <affiliation>
+	    <address><email>twaugh@redhat.com</email></address>
+	  </affiliation>
+	</author>
+	<editor>
+	  <firstname>Michael K.</firstname>
+	  <surname>Johnson</surname>
+	  <affiliation>
+	    <address><email>johnsonm@redhat.com</email></address>
+	  </affiliation>
+	</editor>
+      </refentryinfo>
+
+      <refmeta>
+	<refentrytitle>interdiff</refentrytitle>
+	<manvolnum>1</manvolnum>
+      </refmeta>
+
+      <refnamediv>
+	<refname>interdiff</refname>
+	<refpurpose>show differences between two diff files</refpurpose>
+      </refnamediv>
+
+      <refsynopsisdiv>
+	<cmdsynopsis>
+	  <command>interdiff</command>
+	  <arg choice="opt">-p <replaceable>n</replaceable></arg>
+	  <arg choice="opt">-U <replaceable>n</replaceable></arg>
+	  <arg choice="opt">-d <replaceable>PAT</replaceable></arg>
+	  <arg choice="opt">-Bbiqwz</arg>
+	  <group choice="opt">
+	    <arg>--interpolate</arg>
+	    <arg>--combine</arg>
+	    <arg>--flip</arg>
+	  </group>
+	  <arg choice="opt">--no-revert-omitted</arg>
+	  <arg choice="plain"><replaceable>diff1</replaceable></arg>
+	  <arg choice="plain"><replaceable>diff2</replaceable></arg>
+	</cmdsynopsis>
+
+	<cmdsynopsis>
+	  <command>interdiff</command>
+	  <group choice="req">
+	    <arg>--help</arg>
+	    <arg>--version</arg>
+	  </group>
+	</cmdsynopsis>
+      </refsynopsisdiv>
+
+      <refsect1>
+	<title>Description</title>
+
+	<para><command>interdiff</command> creates a unified format
+          diff that expresses the difference between two diffs.  The
+          diffs must both be relative to the same files.  For best
+          results, the diffs must have at least three lines of
+          context.</para>
+
+	<para>To reverse a patch, use <filename>/dev/null</filename>
+	  for <replaceable>diff2</replaceable>.</para>
+
+	<para>To reduce the amount of context in a patch, use:
+
+<screen><![CDATA[interdiff -U1 /dev/null patchfile]]></screen></para>
+
+	<para>Since <command>interdiff</command> doesn't have the
+	  advantage of being able to look at the files that are to be
+	  modified, it has stricter requirements on the input format
+	  than <citerefentry>
+	    <refentrytitle>patch</refentrytitle>
+	    <manvolnum>1</manvolnum>
+	  </citerefentry> does.  The output of GNU diff will be okay,
+	  even with extensions, but if you intend to use a hand-edited
+	  patch it might be wise to clean up the offsets and counts
+	  using <citerefentry>
+	    <refentrytitle>recountdiff</refentrytitle>
+	    <manvolnum>1</manvolnum>
+	  </citerefentry> first.</para>
+
+	<para>Note, however, that the two patches must both be
+	  relative to the versions of the same original set of
+	  files.</para>
+
+	<para>The diffs may be in context format.  The output,
+	  however, will be in unified format.</para>
+      </refsect1>
+
+      <refsect1>
+	<title>Options</title>
+
+	<variablelist>
+	  <varlistentry>
+	    <term><option>-h</option></term>
+	    <listitem>
+	      <para>Ignored, for compatibility with older versions of
+                interdiff.  This option will go away soon.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-p</option> <replaceable>n</replaceable></term>
+	    <listitem>
+	      <para>When comparing filenames, ignore the first
+                <replaceable>n</replaceable> pathname components from
+                both patches. (This is similar to the
+                <option>-p</option> option to GNU <citerefentry>
+		  <refentrytitle>patch</refentrytitle>
+		  <manvolnum>1</manvolnum>
+		</citerefentry>.)</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-q</option></term>
+	    <listitem>
+	      <para>Quieter output.  Don't emit rationale lines at the
+	       beginning of each patch.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-U</option> <replaceable>n</replaceable></term>
+	    <listitem>
+	      <para>Attempt to display <replaceable>n</replaceable>
+                lines of context (requires at least
+                <replaceable>n</replaceable> lines of context in both
+                input files). (This is similar to the
+                <option>-U</option> option to GNU
+                <citerefentry>
+		  <refentrytitle>diff</refentrytitle>
+		  <manvolnum>1</manvolnum>
+		</citerefentry>.)</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-d</option> <replaceable>pattern</replaceable></term>
+	    <listitem>
+	      <para>Don't display any context on files that match the
+                shell wildcard <replaceable>pattern</replaceable>.
+                This option can be given multiple times.</para>
+
+	      <para>Note that the interpretation of the shell wildcard
+	        pattern does not count slash characters or periods as
+	        special (in other words, no flags are given to
+	        <function>fnmatch</function>).  This is so that
+	        <quote>*/basename</quote>-type patterns can be given
+	        without limiting the number of pathname
+	        components.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-i</option></term>
+	    <listitem>
+	      <para>Consider upper- and lower-case to be the same.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-w</option></term>
+	    <listitem>
+	      <para>Ignore whitespace changes in patches.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-b</option></term>
+	    <listitem>
+	      <para>Ignore changes in the amount of whitespace.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-B</option></term>
+	    <listitem>
+	      <para>Ignore changes whose lines are all blank.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-z</option></term>
+	    <listitem>
+	      <para>Decompress files with extensions .gz and .bz2.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--interpolate</option></term>
+	    <listitem>
+	      <para>Run as <quote>interdiff</quote>.  This is the
+ 	        default.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--combine</option></term>
+	    <listitem>
+	      <para>Run as <quote>combinediff</quote>.  See
+	      <citerefentry>
+		  <refentrytitle>combinediff</refentrytitle>
+		  <manvolnum>1</manvolnum> </citerefentry> for more
+		  information about how the behaviour is altered in
+		  this mode.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--no-revert-omitted</option></term>
+	    <listitem>
+	      <para>(For interpolation mode only)  When a file is
+	        changed by the first patch but not by the second,
+	        don't revert that change.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--help</option></term>
+	    <listitem>
+	      <para>Display a short usage message.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--version</option></term>
+	    <listitem>
+	      <para>Display the version number of interdiff.</para>
+	    </listitem>
+	  </varlistentry>
+	</variablelist>
+      </refsect1>
+
+      <refsect1>
+	<title>Examples</title>
+
+	<para>Basic usage:
+
+<screen><![CDATA[interdiff -z 3.2pre1.patch.gz 3.2pre2.patch.gz]]></screen></para>
+	<para>Reversing a patch:
+
+<screen><![CDATA[interdiff patch /dev/null]]></screen></para>
+
+	<para>Reversing part of a patch (and ignoring the
+	  rest):
+
+<screen><![CDATA[filterdiff -i file.c patchfile | \
+  interdiff /dev/stdin /dev/null]]></screen></para>
+
+      </refsect1>
+
+      <refsect1>
+	<title>Bugs</title>
+
+	<para>There are currently no known bugs in interdiff; but
+          there are some caveats.  If you find a bug, please report it
+          (along with a minimal test case) to Tim Waugh
+          <email>twaugh@redhat.com</email>.</para>
+
+	<para>There are some sets of patches in which there is just
+	  not enough information to produce a proper interdiff.  In
+	  this case, the strategy employed is to revert the original
+	  patch and apply the new patch.  This, unfortunately, means
+	  that interdiffs are not guaranteed to be reversible.</para>
+
+      </refsect1>
+
+      <refsect1>
+	<title>See also</title>
+
+	<para><citerefentry>
+	    <refentrytitle>combinediff</refentrytitle>
+	    <manvolnum>1</manvolnum>
+	  </citerefentry></para>
+      </refsect1>
+    </refentry>
+
+    <refentry id="combinediff">
+      <refentryinfo>
+	<productname>patchutils</productname>
+	<date>7 Jul 2003</date>
+      </refentryinfo>
+
+      <refmeta>
+	<refentrytitle>combinediff</refentrytitle>
+	<manvolnum>1</manvolnum>
+      </refmeta>
+
+      <refnamediv>
+	<refname>combinediff</refname>
+	<refpurpose>create a cumulative unified patch from two incremental
+	  patches</refpurpose>
+      </refnamediv>
+
+      <refsynopsisdiv>
+	<cmdsynopsis>
+	  <command>combinediff</command>
+	  <arg choice="opt">-p <replaceable>n</replaceable></arg>
+	  <arg choice="opt">-U <replaceable>n</replaceable></arg>
+	  <arg choice="opt">-d <replaceable>PAT</replaceable></arg>
+	  <arg choice="opt">-Bbiqwz</arg>
+	  <group choice="opt">
+	    <arg>--interpolate</arg>
+	    <arg>--combine</arg>
+	  </group>
+	  <arg choice="plain"><replaceable>diff1</replaceable></arg>
+	  <arg choice="plain"><replaceable>diff2</replaceable></arg>
+	</cmdsynopsis>
+
+	<cmdsynopsis>
+	  <command>combinediff</command>
+	  <group choice="req">
+	    <arg>--help</arg>
+	    <arg>--version</arg>
+	  </group>
+	</cmdsynopsis>
+      </refsynopsisdiv>
+
+      <refsect1>
+	<title>Description</title>
+
+	<para>combinediff creates a unified diff that expresses the
+          sum of two diffs.  The diff files must be listed in the
+          order that they are to be applied.  For best results, the
+          diffs must have at least three lines of context.</para>
+
+	<para>Since <command>combinediff</command> doesn't have the
+	  advantage of being able to look at the files that are to be
+	  modified, it has stricter requirements on the input format
+	  than <citerefentry>
+	    <refentrytitle>patch</refentrytitle>
+	    <manvolnum>1</manvolnum>
+	  </citerefentry> does.  The output of GNU diff will be okay,
+	  even with extensions, but if you intend to use a hand-edited
+	  patch it might be wise to clean up the offsets and counts
+	  using <citerefentry>
+	    <refentrytitle>recountdiff</refentrytitle>
+	    <manvolnum>1</manvolnum>
+	  </citerefentry> first.</para>
+
+	<para>Note, however, that the two patches must be in strict
+	incremental order.  In other words, the second patch must be
+	relative to the state of the original set of files after the
+	first patch was applied.</para>
+
+	<para>The diffs may be in context format.  The output,
+	  however, will be in unified format.</para>
+      </refsect1>
+
+      <refsect1>
+	<title>Options</title>
+
+	<variablelist>
+	  <varlistentry>
+	    <term><option>-p</option> <replaceable>n</replaceable></term>
+	    <listitem>
+	      <para>When comparing filenames, ignore the first
+                <replaceable>n</replaceable> pathname components from
+                both patches. (This is similar to the
+                <option>-p</option> option to GNU <citerefentry>
+		  <refentrytitle>patch</refentrytitle>
+		  <manvolnum>1</manvolnum>
+		</citerefentry>.)</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-q</option></term>
+	    <listitem>
+	      <para>Quieter output.  Don't emit rationale lines at the
+	       beginning of each patch.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-U</option> <replaceable>n</replaceable></term>
+	    <listitem>
+	      <para>Attempt to display <replaceable>n</replaceable>
+                lines of context (requires at least
+                <replaceable>n</replaceable> lines of context in both
+                input files). (This is similar to the
+                <option>-U</option> option to GNU
+                <citerefentry>
+		  <refentrytitle>diff</refentrytitle>
+		  <manvolnum>1</manvolnum>
+		</citerefentry>.)</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-d</option> <replaceable>pattern</replaceable></term>
+	    <listitem>
+	      <para>Don't display any context on files that match the
+                shell wildcard <replaceable>pattern</replaceable>.
+                This option can be given multiple times.</para>
+
+	      <para>Note that the interpretation of the shell wildcard
+	        pattern does not count slash characters or periods as
+	        special (in other words, no flags are given to
+	        <function>fnmatch</function>).  This is so that
+	        <quote>*/basename</quote>-type patterns can be given
+	        without limiting the number of pathname
+	        components.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-i</option></term>
+	    <listitem>
+	      <para>Consider upper- and lower-case to be the same.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-w</option></term>
+	    <listitem>
+	      <para>Ignore whitespace changes in patches.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-b</option></term>
+	    <listitem>
+	      <para>Ignore changes in the amount of whitespace.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-B</option></term>
+	    <listitem>
+	      <para>Ignore changes whose lines are all blank.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-z</option></term>
+	    <listitem>
+	      <para>Decompress files with extensions .gz and .bz2.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--interpolate</option></term>
+	    <listitem>
+	      <para>Run as <quote>interdiff</quote>.  See
+	      <citerefentry>
+		  <refentrytitle>interdiff</refentrytitle>
+		  <manvolnum>1</manvolnum> </citerefentry> for more
+		  information about how the behaviour is altered in
+		  this mode.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--combine</option></term>
+	    <listitem>
+	      <para>Run as <quote>combinediff</quote>.  This is the
+ 	        default.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--help</option></term>
+	    <listitem>
+	      <para>Display a short usage message.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--version</option></term>
+	    <listitem>
+	      <para>Display the version number of combinediff.</para>
+	    </listitem>
+	  </varlistentry>
+	</variablelist>
+      </refsect1>
+
+      <refsect1>
+	<title>Bugs</title>
+
+	<para>The <option>-U</option> option is a bit erratic: it can
+          control the amount of context displayed for files that are
+          modified in both patches, but not for files that only appear
+          in one patch (which appear with the same amount of context
+          in the output as in the input).</para>
+      </refsect1>
+
+      <refsect1>
+	<title>See also</title>
+
+	<para><citerefentry>
+	    <refentrytitle>interdiff</refentrytitle>
+	    <manvolnum>1</manvolnum>
+	  </citerefentry></para>
+      </refsect1>
+    </refentry>
+
+    <refentry id="filterdiff">
+      <refentryinfo>
+	<productname>patchutils</productname>
+	<date>7 May 2004</date>
+      </refentryinfo>
+
+      <refmeta>
+	<refentrytitle>filterdiff</refentrytitle>
+	<manvolnum>1</manvolnum>
+      </refmeta>
+
+      <refnamediv>
+	<refname>filterdiff</refname>
+	<refpurpose>extract or exclude diffs from a diff file</refpurpose>
+      </refnamediv>
+
+      <refsynopsisdiv>
+	<cmdsynopsis>
+	  <command>filterdiff</command>
+	  <arg choice="opt">-i <replaceable>PATTERN</replaceable></arg>
+	  <arg choice="opt">-p <replaceable>n</replaceable></arg>
+	  <arg choice="opt">--strip=<replaceable>n</replaceable></arg>
+	  <arg choice="opt">--addprefix=<replaceable>PREFIX</replaceable></arg>
+	  <arg choice="opt">-x <replaceable>PATTERN</replaceable></arg>
+	  <arg choice="opt">--verbose</arg>
+	  <arg choice="opt">-v</arg>
+	  <arg choice="opt">-z</arg>
+	  <group choice="opt">
+	    <arg>-# <replaceable>RANGE</replaceable></arg>
+	    <arg>--hunks=<replaceable>RANGE</replaceable></arg>
+	  </group>
+	  <arg choice="opt">--lines=<replaceable>RANGE</replaceable></arg>
+	  <arg choice="opt">--files=<replaceable>RANGE</replaceable></arg>
+	  <arg choice="opt">--annotate</arg>
+	  <arg choice="opt">--format=<replaceable>FORMAT</replaceable></arg>
+	  <arg choice="opt">--as-numbered-lines=<replaceable>WHEN</replaceable></arg>
+	  <arg choice="opt">--remove-timestamps</arg>
+	  <arg choice="opt" rep="repeat"><replaceable>file</replaceable></arg>
+	</cmdsynopsis>
+
+	<cmdsynopsis>
+	  <command>filterdiff</command>
+	  <group choice="req">
+	    <arg>--help</arg>
+	    <arg>--version</arg>
+	    <arg>--list</arg>
+	    <arg>--grep ...</arg>
+	  </group>
+	</cmdsynopsis>
+      </refsynopsisdiv>
+
+      <refsect1>
+	<title>Description</title>
+
+	<para>You can use filterdiff to obtain a patch that applies to
+          files matching the shell wildcard
+          <replaceable>PATTERN</replaceable> from a larger collection
+          of patches.  For example, to see the patches in
+          <filename>patch-2.4.3.gz</filename> that apply to all files
+          called <filename>lp.c</filename>:
+
+	<screen>filterdiff -z -i '*/lp.c' patch-2.4.3.gz</screen></para>
+
+	<para>If neither <option>-i</option> nor <option>-x</option>
+	options are given, <option>-i '*'</option> is assumed.  This
+	way <command>filterdiff</command> can be used to clean up an
+	existing diff file, removing redundant lines from the
+	beginning (eg. the text from the mail body) or between the
+	chunks (eg. in CVS diffs). To extract pure patch data, use a
+	command like this:
+
+	<screen>filterdiff message-with-diff-in-the-body > patch</screen></para>
+
+	<para>Note that the interpretation of the shell wildcard
+	  pattern does not count slash characters or periods as
+	  special (in other words, no flags are given to
+	  <function>fnmatch</function>).  This is so that
+	  <quote>*/basename</quote>-type patterns can be given without
+	  limiting the number of pathname components.</para>
+
+	<para>You can use both unified and context format diffs with
+	  this program.</para>
+
+      </refsect1>
+
+      <refsect1>
+	<title>Options</title>
+
+	<variablelist>
+	  <varlistentry>
+	    <term><option>-i</option> <replaceable>PATTERN</replaceable></term>
+	    <listitem>
+	      <para>Include only files matching
+	        <replaceable>PATTERN</replaceable>.  All other lines
+	        in the input are suppressed.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-x</option> <replaceable>PATTERN</replaceable></term>
+	    <listitem>
+	      <para>Exclude files matching
+	        <replaceable>PATTERN</replaceable>.  All other lines
+	        in the input are displayed.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-p</option> <replaceable>n</replaceable></term>
+	    <listitem>
+	      <para>When matching, ignore the first
+	        <replaceable>n</replaceable> components of the
+	        pathname.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-#</option> <replaceable>RANGE</replaceable> |
+	    <option>--hunks</option>=<replaceable>RANGE</replaceable></term>
+	    <listitem>
+	      <para>Only include hunks within the specified
+	        <replaceable>RANGE</replaceable>.  Hunks are numbered
+	        from 1, and the range is a comma-separated list of
+	        numbers or <quote>first-last</quote> spans; either the
+	        first or the last in the span may be omitted to
+	        indicate no limit in that direction.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--lines</option>=<replaceable>RANGE</replaceable></term>
+	    <listitem>
+	      <para>Only include hunks that contain lines from the
+	        original file that lie within the specified
+	        <replaceable>RANGE</replaceable>.  Lines are numbered
+	        from 1, and the range is a comma-separated list of
+	        numbers or <quote>first-last</quote> spans; either the
+	        first or the last in the span may be omitted to
+	        indicate no limit in that direction.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--files</option>=<replaceable>RANGE</replaceable></term>
+	    <listitem>
+	      <para>Only include files indicated by the specified
+	        <replaceable>RANGE</replaceable>.  Files are numbered
+	        from 1 in the order they appear in the patch input,
+	        and the range is a comma-separated list of numbers or
+	        <quote>first-last</quote> spans; either the first or
+	        the last in the span may be omitted to indicate no
+	        limit in that direction.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--annotate</option></term>
+
+	    <listitem>
+	      <para>Annotate each hunk with the filename and hunk
+	        number.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--format</option>=unified|context</term>
+
+	    <listitem>
+	      <para>Use specified output format.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--strip</option>=<replaceable>n</replaceable></term>
+	    <listitem>
+	      <para>Remove the first <replaceable>n</replaceable>
+	        components of pathnames in the output.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--addprefix</option>=<replaceable>PREFIX</replaceable></term>
+	    <listitem>
+	      <para>Prefix pathnames in the output by
+	        <replaceable>PREFIX</replaceable>.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--as-numbered-lines</option>=before|after</term>
+	    <listitem>
+	      <para>Instead of a patch fragment, display the lines of
+	        the selected hunks with the line number of the file
+	        before (or after) the patch is applied, followed by a
+	        <keycode>TAB</keycode> character and a colon, at the
+	        beginning of each line.  Each hunk except the first
+	        will have a line consisting of <quote>...</quote>
+	        before it.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--remove-timestamps</option></term>
+
+	    <listitem>
+	      <para>Do not include file timestamps in the
+	        output.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-v</option>, <option>--verbose</option></term>
+	    <listitem>
+	      <para>Always show non-diff lines in the output.  By
+	        default, non-diff lines are only shown when excluding
+	        a filename pattern.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-z</option></term>
+	    <listitem>
+	      <para>Decompress files with extensions .gz and .bz2.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--help</option></term>
+	    <listitem>
+	      <para>Display a short usage message.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--version</option></term>
+	    <listitem>
+	      <para>Display the version number of filterdiff.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--list</option></term>
+	    <listitem>
+	      <para>Behave like <citerefentry>
+		  <refentrytitle>lsdiff</refentrytitle>
+		  <manvolnum>1</manvolnum>
+		</citerefentry> instead.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--grep</option></term>
+	    <listitem>
+	      <para>Behave like <citerefentry>
+		  <refentrytitle>grepdiff</refentrytitle>
+		  <manvolnum>1</manvolnum>
+		</citerefentry> instead.</para>
+	    </listitem>
+	  </varlistentry>
+	</variablelist>
+      </refsect1>
+
+      <refsect1>
+	<title>Examples</title>
+
+	<para>To see all patch hunks that affect the first five lines
+	  of a C file:
+
+<screen><![CDATA[filterdiff -i '*.c' --lines=-5 < patch]]></screen></para>
+
+	<para>To see the first hunk of each file patch, use:
+
+<screen><![CDATA[filterdiff -#1 patchfile]]></screen></para>
+
+	<para>To see patches modifying a ChangeLog file in a
+	  subdirectory, use:
+
+<screen><![CDATA[filterdiff -p1 Changelog]]></screen></para>
+
+	<para>To see the complete patches for each patch that modifies
+	  line 1 of the original file, use:
+
+<screen><![CDATA[filterdiff --lines=1 patchfile | lsdiff | \
+  xargs -rn1 filterdiff patchfile -i]]></screen></para>
+
+	<para>To see all but the first hunk of a particular patch, you
+	  might use:
+
+<screen><![CDATA[filterdiff -p1 -i file.c -#2- foo-patch]]></screen></para>
+
+	<para>If you have a very specific list of hunks in a patch
+	  that you want to see, list them:
+
+<screen><![CDATA[filterdiff -#1,2,5-8,10,12,27-]]></screen></para>
+
+	<para>To see the lines of the files that would be patched as
+	  they will appear after the patch is applied, use:
+
+<screen><![CDATA[filterdiff --as-numbered-lines=after patch.file]]></screen></para>
+
+	<para>You can see the same context before the patch is applied
+	  with:
+
+<screen><![CDATA[filterdiff --as-numbered-lines=before
+patch.file]]></screen></para>
+
+	<para>Filterdiff can also be used to convert between unified
+	  and context format diffs:
+
+<screen><![CDATA[filterdiff -v --format=unified context.diff]]></screen></para>
+      </refsect1>
+
+      <refsect1>
+	<title>See also</title>
+
+	<para><citerefentry>
+	    <refentrytitle>lsdiff</refentrytitle>
+	    <manvolnum>1</manvolnum>
+	  </citerefentry>, <citerefentry>
+	    <refentrytitle>grepdiff</refentrytitle>
+	    <manvolnum>1</manvolnum>
+	  </citerefentry></para>
+      </refsect1>
+    </refentry>
+
+    <refentry id="fixcvsdiff">
+      <refentryinfo>
+	<productname>patchutils</productname>
+	<date>7 Dec 2001</date>
+	<authorgroup>
+	  <author>
+	    <firstname>Amir</firstname>
+	    <surname>Karger</surname>
+	    <affiliation>
+	      <address><email>karger@post.harvard.edu</email></address>
+	    </affiliation>
+	  </author>
+
+	  <author>
+	    <firstname>John</firstname>
+	    <surname>Levon</surname>
+	    <affiliation>
+	      <address><email>moz@compsoc.man.ac.uk</email></address>
+	    </affiliation>
+	  </author>
+	</authorgroup>
+
+	<editor>
+	  <firstname>John</firstname>
+	  <surname>Levon</surname>
+	  <affiliation>
+	    <address><email>moz@compsoc.man.ac.uk</email></address>
+	  </affiliation>
+	</editor>
+      </refentryinfo>
+
+      <refmeta>
+	<refentrytitle>fixcvsdiff</refentrytitle>
+	<manvolnum>1</manvolnum>
+      </refmeta>
+
+      <refnamediv>
+	<refname>fixcvsdiff</refname>
+	<refpurpose>fix problematic diff files</refpurpose>
+      </refnamediv>
+
+      <refsynopsisdiv>
+	<cmdsynopsis>
+	  <command>fixcvsdiff</command>
+	  <arg choice="opt">-p</arg>
+	  <arg choice="opt">-b</arg>
+	  <arg choice="opt" rep="repeat"><replaceable>file</replaceable></arg>
+	</cmdsynopsis>
+      </refsynopsisdiv>
+
+      <refsect1>
+	<title>Description</title>
+
+	<para>fixcvsdiff modifies diff files created from the
+          <command>cvs diff</command> command, where files have been
+          added or removed. CVS tends to create diff files that
+          <citerefentry>
+	    <refentrytitle>patch</refentrytitle>
+	    <manvolnum>1</manvolnum>
+	  </citerefentry>mis-interprets. The diff file must retain the
+          lines beginning with <quote>Index:</quote> in order for the
+          correction to work.</para>
+      </refsect1>
+
+      <refsect1>
+	<title>Options</title>
+
+	<variablelist>
+	  <varlistentry>
+	    <term><option>-b</option></term>
+	    <listitem>
+	      <para>Keep a .bak backup file.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-p</option></term>
+	    <listitem>
+	      <para>Print out the <command>cvs add</command> and
+                <command>cvs remove</command> commands that must be
+                made after applying the diff, but before running
+                <command>cvs commit</command>.</para>
+	    </listitem>
+	  </varlistentry>
+	</variablelist>
+      </refsect1>
+
+      <refsect1>
+	<title>See also</title>
+
+	<para><citerefentry>
+	    <refentrytitle>diff</refentrytitle>
+	    <manvolnum>1</manvolnum>
+	  </citerefentry>, <citerefentry>
+	    <refentrytitle>patch</refentrytitle>
+	    <manvolnum>1</manvolnum>
+	  </citerefentry>, <citerefentry>
+	    <refentrytitle>cvs</refentrytitle>
+	    <manvolnum>1</manvolnum>
+	  </citerefentry></para>
+      </refsect1>
+    </refentry>
+
+    <refentry id="lsdiff">
+      <refentryinfo>
+	<productname>patchutils</productname>
+	<date>7 May 2004</date>
+      </refentryinfo>
+
+      <refmeta>
+	<refentrytitle>lsdiff</refentrytitle>
+	<manvolnum>1</manvolnum>
+      </refmeta>
+
+      <refnamediv>
+	<refname>lsdiff</refname>
+	<refpurpose>show which files are modified by a patch</refpurpose>
+      </refnamediv>
+
+      <refsynopsisdiv>
+	<cmdsynopsis>
+	  <command>lsdiff</command>
+	  <arg choice="opt">-n</arg>
+	  <arg choice="opt">-p <replaceable>n</replaceable></arg>
+	  <arg choice="opt">--strip=<replaceable>n</replaceable></arg>
+	  <arg choice="opt">--addprefix=<replaceable>PREFIX</replaceable></arg>
+	  <arg choice="opt">-s</arg>
+	  <arg choice="opt">-E</arg>
+	  <arg choice="opt">-i <replaceable>PATTERN</replaceable></arg>
+	  <arg choice="opt">-x <replaceable>PATTERN</replaceable></arg>
+	  <group choice="opt">
+	    <arg>-# <replaceable>RANGE</replaceable></arg>
+	    <arg>--hunks=<replaceable>RANGE</replaceable></arg>
+	  </group>
+	  <arg choice="opt">--lines=<replaceable>RANGE</replaceable></arg>
+	  <arg choice="opt">--files=<replaceable>RANGE</replaceable></arg>
+	  <group choice="opt">
+	    <arg>-H</arg>
+	    <arg>--with-filename</arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-h</arg>
+	    <arg>--no-filename</arg>
+	  </group>
+	  <arg choice="opt" rep="repeat">-v</arg>
+	  <arg choice="opt" rep="repeat"><replaceable>file</replaceable></arg>
+	</cmdsynopsis>
+
+	<cmdsynopsis>
+	  <command>lsdiff</command>
+	  <group choice="req">
+	    <arg>--help</arg>
+	    <arg>--version</arg>
+	    <arg>--filter ...</arg>
+	    <arg>--grep ...</arg>
+	  </group>
+	</cmdsynopsis>
+      </refsynopsisdiv>
+
+      <refsect1>
+	<title>Description</title>
+
+	<para>List the files modified by a patch.</para>
+
+	<para>You can use both unified and context format diffs with
+	  this program.</para>
+
+      </refsect1>
+
+      <refsect1>
+	<title>Options</title>
+
+	<variablelist>
+	  <varlistentry>
+	    <term><option>-n</option></term>
+	    <listitem>
+	      <para>Display the line number that each patch begins at.
+	        If verbose output is requested (using
+	        <option>-nv</option>), each hunk of each patch is
+	        listed as well.</para>
+
+	      <para>For each file that is modified, a line is
+	        generated containing the line number of the beginning
+	        of the patch, followed by a <keycode>Tab</keycode>
+	        character, followed by the name of the file that is
+	        modified.  If <option>-v</option> is given once,
+	        following each of these lines will be one line for
+	        each hunk, consisting of a <keycode>Tab</keycode>
+	        character, the line number that the hunk begins at,
+	        another <keycode>Tab</keycode> character, the string
+	        <quote>Hunk #</quote>, and the hunk number (starting
+	        at 1).</para>
+
+	      <para>If the <option>-v</option> is given twice in
+	        conjunction with <option>-n</option>
+	        (i.e. <option>-nvv</option>), the format is slightly
+	        different: file numbers are listed, beginning at 1,
+	        before each filename; and hunk-level descriptive text
+	        is shown after each hunk number.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-#</option> <replaceable>RANGE</replaceable> |
+	    <option>--hunks</option>=<replaceable>RANGE</replaceable></term>
+	    <listitem>
+	      <para>Only list hunks within the specified
+	        <replaceable>RANGE</replaceable>.  Hunks are numbered
+	        from 1, and the range is a comma-separated list of
+	        numbers or <quote>first-last</quote> spans; either the
+	        first or the last in the span may be omitted to
+	        indicate no limit in that direction.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--lines</option>=<replaceable>RANGE</replaceable></term>
+	    <listitem>
+	      <para>Only list hunks that contain lines from the
+	        original file that lie within the specified
+	        <replaceable>RANGE</replaceable>.  Lines are numbered
+	        from 1, and the range is a comma-separated list of
+	        numbers or <quote>first-last</quote> spans; either the
+	        first or the last in the span may be omitted to
+	        indicate no limit in that direction.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--files</option>=<replaceable>RANGE</replaceable></term>
+	    <listitem>
+	      <para>Only list files indicated by the specified
+	        <replaceable>RANGE</replaceable>.  Files are numbered
+	        from 1 in the order they appear in the patch input,
+	        and the range is a comma-separated list of numbers or
+	        <quote>first-last</quote> spans; either the first or
+	        the last in the span may be omitted to indicate no
+	        limit in that direction.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-p</option> <replaceable>n</replaceable></term>
+	    <listitem>
+	      <para>When matching, ignore the first
+	        <replaceable>n</replaceable> components of the
+	        pathname.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--strip</option>=<replaceable>n</replaceable></term>
+	    <listitem>
+	      <para>Remove the first <replaceable>n</replaceable>
+	        components of the pathname before displaying
+	        it.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--addprefix</option>=<replaceable>PREFIX</replaceable></term>
+	    <listitem>
+	      <para>Prefix the pathname with
+	        <replaceable>PREFIX</replaceable> before displaying
+	        it.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-s</option></term>
+	    <listitem>
+	      <para>Show file additions, modifications and removals.
+	       A file addition is indicated by a <quote>+</quote>, a
+	       removal by a <quote>-</quote>, and a modification by a
+	       <quote>!</quote>.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-E</option></term>
+	    <listitem>
+	      <para>Treat empty files as absent for the purpose of
+	      displaying file additions, modifications and
+	      removals.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-i</option> <replaceable>PATTERN</replaceable></term>
+	    <listitem>
+	      <para>Include only files matching
+	        <replaceable>PATTERN</replaceable>.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-x</option> <replaceable>PATTERN</replaceable></term>
+	    <listitem>
+	      <para>Exclude files matching
+	        <replaceable>PATTERN</replaceable>.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-H</option>, <option>--with-filename</option></term>
+	    <listitem>
+	      <para>Print the name of the patch file containing each
+	        patch.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-h</option>, <option>--no-filename</option></term>
+	    <listitem>
+	      <para>Suppress the name of the patch file containing each
+	        patch.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-v</option></term>
+	    <listitem>
+	      <para>Verbose output.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--help</option></term>
+	    <listitem>
+	      <para>Display a short usage message.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--version</option></term>
+	    <listitem>
+	      <para>Display the version number of lsdiff.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--filter</option></term>
+	    <listitem>
+	      <para>Behave like <citerefentry>
+		  <refentrytitle>filterdiff</refentrytitle>
+		  <manvolnum>1</manvolnum>
+		</citerefentry> instead.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--grep</option></term>
+	    <listitem>
+	      <para>Behave like <citerefentry>
+		  <refentrytitle>grepdiff</refentrytitle>
+		  <manvolnum>1</manvolnum>
+		</citerefentry> instead.</para>
+	    </listitem>
+	  </varlistentry>
+	</variablelist>
+      </refsect1>
+
+      <refsect1>
+	<title>See also</title>
+
+	<para><citerefentry>
+	    <refentrytitle>filterdiff</refentrytitle>
+	    <manvolnum>1</manvolnum>
+	  </citerefentry>, <citerefentry>
+	    <refentrytitle>grepdiff</refentrytitle>
+	    <manvolnum>1</manvolnum>
+	  </citerefentry></para>
+      </refsect1>
+
+      <refsect1>
+	<title>Examples</title>
+
+	<para>To sort the order of touched files in a patch, you can
+	  use:
+
+<screen><![CDATA[lsdiff patch | sort -u | \
+  xargs -rn1 filterdiff patch -i]]></screen></para>
+
+	<para>To show only added files in a patch:
+
+<screen><![CDATA[lsdiff -s patch | grep '^+' | \
+  cut -c2- | xargs -rn1 filterdiff patch -i]]></screen></para>
+
+	<para>To show the headers of all file hunks:
+
+<screen><![CDATA[lsdiff -n patch | (while read n file
+  do sed -ne "$n,$(($n+1))p" patch
+done)]]></screen></para>
+      </refsect1>
+
+    </refentry>
+
+    <refentry id="splitdiff">
+      <refentryinfo>
+	<productname>patchutils</productname>
+	<date>21 Oct 2003</date>
+      </refentryinfo>
+
+      <refmeta>
+	<refentrytitle>splitdiff</refentrytitle>
+	<manvolnum>1</manvolnum>
+      </refmeta>
+
+      <refnamediv>
+	<refname>splitdiff</refname>
+	<refpurpose>separate out incremental patches</refpurpose>
+      </refnamediv>
+
+      <refsynopsisdiv>
+	<cmdsynopsis>
+	  <command>splitdiff</command>
+	  <arg choice="opt">-a</arg>
+	  <arg choice="opt">-d</arg>
+	  <arg choice="opt">-p <replaceable>n</replaceable></arg>
+	  <arg choice="opt"><replaceable>file</replaceable></arg>
+	</cmdsynopsis>
+
+	<cmdsynopsis>
+	  <command>splitdiff</command>
+	  <group choice="req">
+	    <arg>--help</arg>
+	    <arg>--version</arg>
+	  </group>
+	</cmdsynopsis>
+      </refsynopsisdiv>
+
+      <refsect1>
+	<title>Description</title>
+
+	<para>If you have a patch file composed of several incremental
+          patches, you can use splitdiff to separate them out.  You
+          may want to do this in preparation for re-combining them
+          with <citerefentry>
+          <refentrytitle>combinediff</refentrytitle>
+          <manvolnum>1</manvolnum></citerefentry>.</para>
+
+	<para>The effect of running splitdiff is to separate its input
+	  into a set of output files, with no output file patching the
+	  same file more than once.</para>
+      </refsect1>
+
+      <refsect1>
+	<title>Options</title>
+
+	<variablelist>
+	  <varlistentry>
+	    <term><option>-a</option></term>
+	    <listitem>
+	      <para>Split out every single file-level patch.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-d</option></term>
+	    <listitem>
+	      <para>Create file names such as
+	        <filename>a_b.c</filename> for a patch that modifies
+	        <filename>a/b.c</filename>.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-p</option> <replaceable>n</replaceable></term>
+	    <listitem>
+	      <para>Strip the first <replaceable>n</replaceable>
+	        components of the pathname to aid comparisons.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--help</option></term>
+	    <listitem>
+	      <para>Display a short usage message.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--version</option></term>
+	    <listitem>
+	      <para>Display the version number of splitdiff.</para>
+	    </listitem>
+	  </varlistentry>
+	</variablelist>
+      </refsect1>
+
+      <refsect1>
+	<title>See also</title>
+
+	<para><citerefentry>
+	    <refentrytitle>combinediff</refentrytitle>
+	    <manvolnum>1</manvolnum>
+	  </citerefentry>, <citerefentry>
+	    <refentrytitle>lsdiff</refentrytitle>
+	    <manvolnum>1</manvolnum>
+	  </citerefentry></para>
+      </refsect1>
+    </refentry>
+
+    <refentry id="rediff">
+      <refentryinfo>
+	<productname>patchutils</productname>
+	<date>13 May 2002</date>
+      </refentryinfo>
+
+      <refmeta>
+	<refentrytitle>rediff</refentrytitle>
+	<manvolnum>1</manvolnum>
+      </refmeta>
+
+      <refnamediv>
+	<refname>rediff</refname>
+	<refname>editdiff</refname>
+	<refpurpose>fix offsets and counts of a hand-edited diff</refpurpose>
+      </refnamediv>
+
+      <refsynopsisdiv>
+	<cmdsynopsis>
+	  <command>rediff</command>
+	  <arg choice="plain"><replaceable>ORIGINAL</replaceable></arg>
+	  <arg choice="plain"><replaceable>EDITED</replaceable></arg>
+	</cmdsynopsis>
+
+	<cmdsynopsis>
+	  <command>rediff</command>
+	  <arg choice="plain"><replaceable>EDITED</replaceable></arg>
+	</cmdsynopsis>
+
+	<cmdsynopsis>
+	  <command>rediff</command>
+	  <group choice="req">
+	    <arg>--help</arg>
+	    <arg>--version</arg>
+	  </group>
+	</cmdsynopsis>
+
+	<cmdsynopsis>
+	  <command>editdiff</command>
+	  <arg choice="plain"><replaceable>FILE</replaceable></arg>
+	</cmdsynopsis>
+
+	<cmdsynopsis>
+	  <command>editdiff</command>
+	  <group choice="req">
+	    <arg>--help</arg>
+	    <arg>--version</arg>
+	  </group>
+	</cmdsynopsis>
+      </refsynopsisdiv>
+
+      <refsect1>
+	<title>Description</title>
+
+	<para>You can use rediff to correct a hand-edited unified
+          diff.  Take a copy of the diff you want to edit, and edit it
+          without changing any offsets or counts (the lines that begin
+          <quote>@@</quote>).  Then run rediff, telling it the name of
+          the original diff file and the name of the one you have
+          edited, and it will output the edited diff file but with
+          corrected offsets and counts.</para>
+
+	<para>A small script, editdiff, is provided for editing a diff
+          file in-place.</para>
+
+	<para>The types of changes that are currently handled
+	  are:
+
+	<itemizedlist>
+	    <listitem>
+	      <para>Modifying the text of any file content line (of
+	        course).</para>
+	    </listitem>
+
+	    <listitem>
+	      <para>Adding new line insertions or deletions.</para>
+	    </listitem>
+
+	    <listitem>
+	      <para>Adding, changing or removing context lines.  Lines
+	        at the context horizon are dealt with by adjusting the
+	        offset and/or count.</para>
+	    </listitem>
+
+	    <listitem>
+	      <para>Adding a single hunk (@@-prefixed section).</para>
+	    </listitem>
+
+	    <listitem>
+	      <para>Removing multiple hunk (@@-prefixed
+	        sections).</para>
+	    </listitem>
+	  </itemizedlist></para>
+
+	<para>Alternatively, if only one argument is provided, it is
+	  taken to be the edited file and the counts and offsets are
+	  adjusted as appropriate.  Some assumptions are made when
+	  used in this mode.  See <citerefentry>
+	    <refentrytitle>recountdiff</refentrytitle>
+	    <manvolnum>1</manvolnum>
+	  </citerefentry> for more information.</para>
+      </refsect1>
+
+      <refsect1>
+	<title>Options</title>
+
+	<variablelist>
+
+	  <varlistentry>
+	    <term><option>--help</option></term>
+	    <listitem>
+	      <para>Display a short usage message.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--version</option></term>
+	    <listitem>
+	      <para>Display the version number of rediff.</para>
+	    </listitem>
+	  </varlistentry>
+	</variablelist>
+      </refsect1>
+
+      <refsect1>
+	<title>See also</title>
+
+	<para><citerefentry>
+	    <refentrytitle>interdiff</refentrytitle>
+	    <manvolnum>1</manvolnum>
+	  </citerefentry>, <citerefentry>
+	    <refentrytitle>recountdiff</refentrytitle>
+	    <manvolnum>1</manvolnum>
+	  </citerefentry></para>
+      </refsect1>
+    </refentry>
+
+    <refentry id="grepdiff">
+      <refentryinfo>
+	<productname>patchutils</productname>
+	<date>7 May 2004</date>
+      </refentryinfo>
+
+      <refmeta>
+	<refentrytitle>grepdiff</refentrytitle>
+	<manvolnum>1</manvolnum>
+      </refmeta>
+
+      <refnamediv>
+	<refname>grepdiff</refname>
+	<refpurpose>show files modified by a diff containing a
+          regex</refpurpose>
+      </refnamediv>
+
+      <refsynopsisdiv>
+	<cmdsynopsis>
+	  <command>grepdiff</command>
+	  <arg choice="opt">-n</arg>
+	  <arg choice="opt">-p <replaceable>n</replaceable></arg>
+	  <arg choice="opt">--strip=<replaceable>n</replaceable></arg>
+	  <arg choice="opt">--addprefix=<replaceable>PREFIX</replaceable></arg>
+	  <arg choice="opt">-s</arg>
+	  <arg choice="opt">-i <replaceable>PATTERN</replaceable></arg>
+	  <arg choice="opt">-x <replaceable>PATTERN</replaceable></arg>
+	  <arg choice="opt">-v</arg>
+	  <arg choice="opt">-E</arg>
+	  <group choice="opt">
+	    <arg>-H</arg>
+	    <arg>--with-filename</arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-h</arg>
+	    <arg>--no-filename</arg>
+	  </group>
+	  <arg choice="opt">--output-matching=<replaceable>WHAT</replaceable></arg>
+	  <group choice="req">
+	    <arg><replaceable>REGEX</replaceable></arg>
+	    <arg>-f <replaceable>FILE</replaceable></arg>
+	  </group>
+	  <arg choice="opt" rep="repeat"><replaceable>file</replaceable></arg>
+	</cmdsynopsis>
+
+	<cmdsynopsis>
+	  <command>grepdiff</command>
+	  <group choice="req">
+	    <arg>--help</arg>
+	    <arg>--version</arg>
+	    <arg>--list</arg>
+	    <arg>--filter ...</arg>
+	  </group>
+	</cmdsynopsis>
+      </refsynopsisdiv>
+
+      <refsect1>
+	<title>Description</title>
+
+	<para>For each file modified by a patch, if the patch hunk
+	  contains the <replaceable>REGEX</replaceable> then the
+	  file's name is printed.</para>
+
+	<para>The regular expression is treated as POSIX Basic Regular
+	  Expression syntax, unless the <option>-E</option> option is
+	  given in which case POSIX Extended Regular Expression syntax
+	  is used.</para>
+
+	<para>For example, to see the patches in
+	  <filename>my.patch</filename> which contain the regular
+	  expression <quote>pf_gfp_mask</quote>, use:
+
+<screen><![CDATA[grepdiff pf_gfp_mask my.patch | \
+  xargs -rn1 filterdiff my.patch -i]]></screen></para>
+
+	<para>You can use both unified and context format diffs with
+	  this program.</para>
+
+      </refsect1>
+
+      <refsect1>
+	<title>Options</title>
+
+	<variablelist>
+	  <varlistentry>
+	    <term><option>-n</option></term>
+	    <listitem>
+	      <para>Display the line number that each patch begins at.
+	        If verbose output is requested, each matching hunk is
+	        listed as well.</para>
+
+	      <para>For a description of the output format see
+	        <citerefentry>
+		  <refentrytitle>lsdiff</refentrytitle>
+		  <manvolnum>1</manvolnum>
+		</citerefentry>.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-p</option> <replaceable>n</replaceable></term>
+	    <listitem>
+	      <para>When matching, ignore the first
+	        <replaceable>n</replaceable> components of the
+	        pathname.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--strip</option>=<replaceable>n</replaceable></term>
+	    <listitem>
+	      <para>Remove the first <replaceable>n</replaceable>
+	        components of the pathname before displaying
+	        it.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--addprefix</option>=<replaceable>PREFIX</replaceable></term>
+	    <listitem>
+	      <para>Prefix the pathname with
+	        <replaceable>PREFIX</replaceable> before displaying
+	        it.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-s</option></term>
+	    <listitem>
+	      <para>Show file additions, modifications and removals.
+	       A file addition is indicated by a <quote>+</quote>, a
+	       removal by a <quote>-</quote>, and a modification by a
+	       <quote>!</quote>.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-i</option> <replaceable>PATTERN</replaceable></term>
+	    <listitem>
+	      <para>Include only files matching
+	        <replaceable>PATTERN</replaceable>.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-x</option> <replaceable>PATTERN</replaceable></term>
+	    <listitem>
+	      <para>Exclude files matching
+	        <replaceable>PATTERN</replaceable>.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-E</option></term>
+	    <listitem>
+	      <para>Use POSIX Extended Regular Expression
+	        syntax.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-H</option>, <option>--with-filename</option></term>
+	    <listitem>
+	      <para>Print the name of the patch file containing each
+	        match.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-h</option>, <option>--no-filename</option></term>
+	    <listitem>
+	      <para>Suppress the name of the patch file containing each
+	        match.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-f</option> <replaceable>FILE</replaceable></term>
+	    <listitem>
+	      <para>Read regular expressions from
+	        <replaceable>FILE</replaceable>, one per line.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--output-matching</option>=hunk|file</term>
+	    <listitem>
+	      <para>Display the matching hunk-level or file-level
+	       diffs.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--help</option></term>
+	    <listitem>
+	      <para>Display a short usage message.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--version</option></term>
+	    <listitem>
+	      <para>Display the version number of grepdiff.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--filter</option></term>
+	    <listitem>
+	      <para>Behave like <citerefentry>
+		  <refentrytitle>filterdiff</refentrytitle>
+		  <manvolnum>1</manvolnum>
+		</citerefentry> instead.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--list</option></term>
+	    <listitem>
+	      <para>Behave like <citerefentry>
+		  <refentrytitle>lsdiff</refentrytitle>
+		  <manvolnum>1</manvolnum>
+		</citerefentry> instead.</para>
+	    </listitem>
+	  </varlistentry>
+	</variablelist>
+      </refsect1>
+
+      <refsect1>
+	<title>See also</title>
+
+	<para><citerefentry>
+	    <refentrytitle>filterdiff</refentrytitle>
+	    <manvolnum>1</manvolnum>
+	  </citerefentry>, <citerefentry>
+	    <refentrytitle>lsdiff</refentrytitle>
+	    <manvolnum>1</manvolnum>
+	  </citerefentry></para>
+      </refsect1>
+    </refentry>
+
+    <refentry id="recountdiff">
+      <refentryinfo>
+	<productname>patchutils</productname>
+	<date>5 July 2002</date>
+      </refentryinfo>
+
+      <refmeta>
+	<refentrytitle>recountdiff</refentrytitle>
+	<manvolnum>1</manvolnum>
+      </refmeta>
+
+      <refnamediv>
+	<refname>recountdiff</refname>
+	<refpurpose>recompute patch counts and offsets</refpurpose>
+      </refnamediv>
+
+      <refsynopsisdiv>
+	<cmdsynopsis>
+	  <command>recountdiff</command>
+	  <arg choice="opt" rep="repeat"><replaceable>file</replaceable></arg>
+	</cmdsynopsis>
+
+	<cmdsynopsis>
+	  <command>recountdiff</command>
+	  <group choice="req">
+	    <arg>--help</arg>
+	    <arg>--version</arg>
+	  </group>
+	</cmdsynopsis>
+      </refsynopsisdiv>
+
+      <refsect1>
+	<title>Description</title>
+
+	<para><command>recountdiff</command> recomputes the counts and
+	  offsets in unified context diffs.  It does this in two
+	  passes: first the counts are corrected by inspection of
+	  the actual patch lines, and then the offsets are adjusted
+	  according to the computed counts.</para>
+
+	<para>The corrected diff is sent to standard output.</para>
+      </refsect1>
+
+      <refsect1>
+	<title>Options</title>
+
+	<variablelist>
+	  <varlistentry>
+	    <term><option>--help</option></term>
+	    <listitem>
+	      <para>Display a short usage message.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--version</option></term>
+	    <listitem>
+	      <para>Display the version number of recountdiff.</para>
+	    </listitem>
+	  </varlistentry>
+	</variablelist>
+      </refsect1>
+
+      <refsect1>
+	<title>Limitations</title>
+
+	<para>There are some things that cannot be dealt with.  If you
+	  have removed the first context line in a hunk, for example,
+	  there is no way for <command>recountdiff</command> to know
+	  that.  For more precise fixing up, use <citerefentry>
+	    <refentrytitle>rediff</refentrytitle>
+	    <manvolnum>1</manvolnum>
+	  </citerefentry>, which uses the original and modified
+	  diffs.</para>
+      </refsect1>
+
+      <refsect1>
+	<title>See also</title>
+
+	<para><citerefentry>
+	    <refentrytitle>rediff</refentrytitle>
+	    <manvolnum>1</manvolnum>
+	  </citerefentry></para>
+      </refsect1>
+    </refentry>
+
+    <refentry id="unwrapdiff">
+      <refentryinfo>
+	<productname>patchutils</productname>
+	<date>17 January 2003</date>
+      </refentryinfo>
+
+      <refmeta>
+	<refentrytitle>unwrapdiff</refentrytitle>
+	<manvolnum>1</manvolnum>
+      </refmeta>
+
+      <refnamediv>
+	<refname>unwrapdiff</refname>
+	<refpurpose>demangle word-wrapped patches</refpurpose>
+      </refnamediv>
+
+      <refsynopsisdiv>
+	<cmdsynopsis>
+	  <command>unwrapdiff</command>
+	  <arg choice="opt">-v</arg>
+	  <arg choice="opt" rep="repeat"><replaceable>file</replaceable></arg>
+	</cmdsynopsis>
+
+	<cmdsynopsis>
+	  <command>unwrapdiff</command>
+	  <group choice="req">
+	    <arg>--help</arg>
+	    <arg>--version</arg>
+	  </group>
+	</cmdsynopsis>
+      </refsynopsisdiv>
+
+      <refsect1>
+	<title>Description</title>
+
+	<para><command>unwrapdiff</command> demangles patches that
+	  have been word-wrapped, in an attempt to make them
+	  useful.</para>
+
+	<para>The corrected diff is sent to standard output.  Note
+	  that you will probably need to use the <option>-l</option>
+	  option when applying the patch, in order to ignore any
+	  whitespace differences there may be.</para>
+      </refsect1>
+
+      <refsect1>
+	<title>Options</title>
+
+	<variablelist>
+	  <varlistentry>
+	    <term><option>-v</option></term>
+	    <listitem>
+	      <para>Verbose operation.  A list of lines that are
+	        modified in a way that might be wrong is sent to
+	        stderr.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--help</option></term>
+	    <listitem>
+	      <para>Display a short usage message.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--version</option></term>
+	    <listitem>
+	      <para>Display the version number of unwrapdiff.</para>
+	    </listitem>
+	  </varlistentry>
+	</variablelist>
+      </refsect1>
+
+      <refsect1>
+	<title>Limitations</title>
+
+	<para>Some heuristics are used to decide whether use a space
+	  to recombine a wrapped line, or just join them
+	  together.  Currently this is done by comparing with last
+	  three characters of a line with the first two characters of
+	  its continuation, and using a space of any of them are
+	  different.</para>
+
+	<para>The patch needs to have been valid before being
+	  word-wrapped.</para>
+
+	<para>The last line of a hunk is nearly always ambiguous.  If
+ 	  the next line begins <quote>@@</quote>,
+ 	  <quote>Index:&nbsp;</quote>, <quote>diff&nbsp;</quote> or
+ 	  <quote>---&nbsp;</quote> then it is taken to be complete;
+ 	  otherwise it is unwrapped using the next line.</para>
+      </refsect1>
+    </refentry>
+
+    <refentry id="dehtmldiff">
+      <refentryinfo>
+	<productname>patchutils</productname>
+	<date>17 January 2003</date>
+      </refentryinfo>
+
+      <refmeta>
+	<refentrytitle>dehtmldiff</refentrytitle>
+	<manvolnum>1</manvolnum>
+      </refmeta>
+
+      <refnamediv>
+	<refname>dehtmldiff</refname>
+	<refpurpose>get usable diff from an HTML page</refpurpose>
+      </refnamediv>
+
+      <refsynopsisdiv>
+	<cmdsynopsis>
+	  <command>dehtmldiff</command>
+	  <arg choice="opt" rep="repeat"><replaceable>file</replaceable></arg>
+	</cmdsynopsis>
+
+	<cmdsynopsis>
+	  <command>dehtmldiff</command>
+	  <group choice="req">
+	    <arg>--help</arg>
+	    <arg>--version</arg>
+	  </group>
+	</cmdsynopsis>
+      </refsynopsisdiv>
+
+      <refsect1>
+	<title>Description</title>
+
+	<para><command>dehtmldiff</command> creates usable diff files
+	  from HTML pages.  This is useful in the scenario where a
+	  patch has been posted to a mailing list viewable via a web
+	  page.</para>
+
+	<para>The corrected diff is sent to standard output.  Note
+	  that you will probably need to use the <option>-l</option>
+	  option when applying the patch, in order to ignore any
+	  whitespace differences there may be.</para>
+      </refsect1>
+
+      <refsect1>
+	<title>Options</title>
+
+	<variablelist>
+	  <varlistentry>
+	    <term><option>--help</option></term>
+	    <listitem>
+	      <para>Display a short usage message.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--version</option></term>
+	    <listitem>
+	      <para>Display the version number of dehtmldiff.</para>
+	    </listitem>
+	  </varlistentry>
+	</variablelist>
+      </refsect1>
+
+      <refsect1>
+	<title>Limitations</title>
+
+	<para>The way this command works is fairly primitive; it boils
+	  down to some simple text replacements, followed by an
+	  <command>unwrapdiff</command> pass.  As a result, all of the
+	  limitations that apply to <command>unwrapdiff</command> also
+	  apply to <command>dehtmldiff</command>.</para>
+      </refsect1>
+    </refentry>
+
+    <refentry id="flipdiff">
+      <refentryinfo>
+	<productname>patchutils</productname>
+	<date>31 January 2003</date>
+      </refentryinfo>
+
+      <refmeta>
+	<refentrytitle>flipdiff</refentrytitle>
+	<manvolnum>1</manvolnum>
+      </refmeta>
+
+      <refnamediv>
+	<refname>flipdiff</refname>
+	<refpurpose>exchange the order of two incremental patches</refpurpose>
+      </refnamediv>
+
+      <refsynopsisdiv>
+	<cmdsynopsis>
+	  <command>flipdiff</command>
+	  <arg choice="opt">-p <replaceable>n</replaceable></arg>
+	  <arg choice="opt">-U <replaceable>n</replaceable></arg>
+	  <arg choice="opt">-Bbiwz</arg>
+	  <arg choice="opt">--in-place</arg>
+	  <arg choice="plain"><replaceable>diff1</replaceable></arg>
+	  <arg choice="plain"><replaceable>diff2</replaceable></arg>
+	</cmdsynopsis>
+
+	<cmdsynopsis>
+	  <command>flipdiff</command>
+	  <group choice="req">
+	    <arg>--help</arg>
+	    <arg>--version</arg>
+	  </group>
+	</cmdsynopsis>
+      </refsynopsisdiv>
+
+      <refsect1>
+	<title>Description</title>
+
+	<para><command>flipdiff</command> exchanges the order of two
+	  patch files that apply one after the other.  The patches
+	  must be <quote>clean</quote>: the context lines must match
+	  and there should be no mis-matched offsets.</para>
+
+	<para>The swapped patches are sent to standard output, with a
+	  marker line
+	  (<quote><literal>===&nbsp;8&lt;&nbsp;===&nbsp;cut&nbsp;here&nbsp;===&nbsp;8&lt;&nbsp;===</literal></quote>)
+	  between them, unless the <option>--in-place</option> option
+	  is passed.  In that case, the output is written back to the
+	  original input files.</para>
+      </refsect1>
+
+      <refsect1>
+	<title>Options</title>
+
+	<variablelist>
+	  <varlistentry>
+	    <term><option>-p</option> <replaceable>n</replaceable></term>
+	    <listitem>
+	      <para>When comparing filenames, ignore the first
+                <replaceable>n</replaceable> pathname components from
+                both patches. (This is similar to the
+                <option>-p</option> option to GNU <citerefentry>
+		  <refentrytitle>patch</refentrytitle>
+		  <manvolnum>1</manvolnum>
+		</citerefentry>.)</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-U</option> <replaceable>n</replaceable></term>
+	    <listitem>
+	      <para>Attempt to display <replaceable>n</replaceable>
+                lines of context (requires at least
+                <replaceable>n</replaceable> lines of context in both
+                input files). (This is similar to the
+                <option>-U</option> option to GNU
+                <citerefentry>
+		  <refentrytitle>diff</refentrytitle>
+		  <manvolnum>1</manvolnum>
+		</citerefentry>.)</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-d</option> <replaceable>pattern</replaceable></term>
+	    <listitem>
+	      <para>Don't display any context on files that match the
+                shell wildcard <replaceable>pattern</replaceable>.
+                This option can be given multiple times.</para>
+
+	      <para>Note that the interpretation of the shell wildcard
+	        pattern does not count slash characters or periods as
+	        special (in other words, no flags are given to
+	        <function>fnmatch</function>).  This is so that
+	        <quote>*/basename</quote>-type patterns can be given
+	        without limiting the number of pathname
+	        components.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-i</option></term>
+	    <listitem>
+	      <para>Consider upper- and lower-case to be the same.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-w</option></term>
+	    <listitem>
+	      <para>Ignore whitespace changes in patches.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-b</option></term>
+	    <listitem>
+	      <para>Ignore changes in the amount of whitespace.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-B</option></term>
+	    <listitem>
+	      <para>Ignore changes whose lines are all blank.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-z</option></term>
+	    <listitem>
+	      <para>Decompress files with extensions .gz and .bz2.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--in-place</option></term>
+	    <listitem>
+	      <para>Write output to the original input files.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--help</option></term>
+	    <listitem>
+	      <para>Display a short usage message.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--version</option></term>
+	    <listitem>
+	      <para>Display the version number of flipdiff.</para>
+	    </listitem>
+	  </varlistentry>
+	</variablelist>
+      </refsect1>
+
+      <refsect1>
+	<title>Limitations</title>
+
+	<para>This is only been very lightly tested, and may not even
+	  work.  Using <option>--in-place</option> is not recommended
+	  at the moment.</para>
+
+	<para>There are some cases in which it is not possible to
+	 meaningfully flip patches without understanding the semantics
+	 of the content.  This program only uses complete lines that
+	 appear at some stage during the application of the two
+	 patches, and never composes a line from parts.</para>
+
+	<para>Because of this, it is generally a good idea to read
+	 through the output to check that it makes sense.</para>
+      </refsect1>
+    </refentry>
+
+    <refentry id="espdiff">
+      <refentryinfo>
+	<productname>patchutils</productname>
+	<date>5 March 2003</date>
+	<authorgroup>
+	  <author>
+	    <firstname>Tim</firstname>
+	    <surname>Waugh</surname>
+	    <affiliation>
+	      <address><email>twaugh@redhat.com</email></address>
+	    </affiliation>
+	  </author>
+
+	  <author>
+	    <firstname>Mike</firstname>
+	    <surname>Harris</surname>
+	    <affiliation>
+	      <address><email>mharris@redhat.com</email></address>
+	    </affiliation>
+	  </author>
+	</authorgroup>
+      </refentryinfo>
+
+      <refmeta>
+	<refentrytitle>espdiff</refentrytitle>
+	<manvolnum>1</manvolnum>
+      </refmeta>
+
+      <refnamediv>
+	<refname>espdiff</refname>
+	<refpurpose>apply the appropriate transformation to a set of
+	 patches</refpurpose>
+      </refnamediv>
+
+      <refsynopsisdiv>
+	<cmdsynopsis>
+	  <command>espdiff</command>
+	  <arg choice="opt">--deep-brainwave-mode</arg>
+	  <arg choice="opt">--recurse</arg>
+	  <arg choice="opt">--compare</arg>
+	  <arg choice="opt" rep="repeat"><replaceable>file</replaceable></arg>
+	</cmdsynopsis>
+
+	<cmdsynopsis>
+	  <command>espdiff</command>
+	  <group choice="req">
+	    <arg>--help</arg>
+	    <arg>--version</arg>
+	  </group>
+	</cmdsynopsis>
+      </refsynopsisdiv>
+
+      <refsect1>
+	<title>Description</title>
+
+	<para><command>espdiff</command> applies the appropriate
+	  transformation to a patch or set of patches, depending on
+	  what you intend to accomplish.</para>
+
+	<para>The input patches must be <quote>clean</quote>: in other
+	 words they must apply without fuzz or offsets in whichever
+	 order they are meant to be applied.  The exception is if you
+	 intend <command>espdiff</command> to clean them for
+	 you (good luck).</para>
+
+	<para>You may find it useful to cross your fingers while the
+	 program performs its task, or to screw your eyes tight shut
+	 while imagining it doing the right thing.</para>
+      </refsect1>
+
+      <refsect1>
+	<title>Options</title>
+
+	<variablelist>
+	  <varlistentry>
+	    <term><option>--deep-brainwave-mode</option></term>
+	    <listitem>
+	      <para>Probes your brain deeply in a manner that takes
+	       longer, but produces better extra sensory
+	       results.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--recurse</option></term>
+	    <listitem>
+	      <para>Recurses neural pathways throughout all parts of
+               the brain, in some cases determining code changes you
+               might make far off in the future.  You may feel a
+               gentle tickling sensation when using this
+               option.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--compare</option></term>
+	    <listitem>
+	      <para>Allows the program to scan the current directory
+               examining existing patches to determine areas of code
+               you are likely to change again, and concentrating on
+               these areas more closely.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--help</option></term>
+	    <listitem>
+	      <para>Display a short usage message.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--version</option></term>
+	    <listitem>
+	      <para>Display the version number of espdiff.</para>
+	    </listitem>
+	  </varlistentry>
+	</variablelist>
+      </refsect1>
+
+      <refsect1>
+	<title>Limitations</title>
+
+	<para>Do not use this program while sleep-walking, or before
+	 your first cup of coffee.</para>
+
+	<para>There are some cases in which it is not possible to
+	 determine what the intention of the user is.  In these cases,
+	 you should construct the output you desire using an editor,
+	 and send the input files together with the desired output
+	 file to Tim Waugh <email>twaugh@redhat.com</email> asking for
+	 a new diff tool.</para>
+      </refsect1>
+    </refentry>
+  </reference>
+</book>

@@ -1,0 +1,63 @@
+#!/bin/sh
+
+# This is an interdiff(1) testcase.
+# Test: Prevent patch from checking EOF when not necessary
+#
+# I think the reason that this fails is that patch(1) assumes that
+# fewer post-context lines than pre-context lines indicates end of
+# file after the post-context.
+#
+# Possible work-around: get interdiff(1) to trim the pre-context lines
+# so that there aren't more than the post-context lines.
+#
+# IF YOU GET AN UNEXPECTED PASS (XPASS) when running this test you are
+# probably using a version of patch(1) that is missing a fix for
+# flushing stderr before exiting.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > file
+LINE 1
+line 2
+line 3
+line 4
+line 5
+if
+1
+fi
+if
+2
+fi
+A
+B
+C
+EOF
+cat << EOF > patch1
+--- file
++++ file
+@@ -1,4 +1,4 @@
+-line 1
++LINE 1
+ line 2
+ line 3
+ line 4
+EOF
+cat << EOF > patch2
+--- file
++++ file
+@@ -5,9 +5,6 @@
+ line 5
+ if
+ 1
+-fi
+-if
+-2
+ fi
+ A
+ B
+EOF
+${INTERDIFF} patch1 patch2 2>errors >patch1-2
+[ -s errors -o "$?" -gt "0" ] && { cat errors; exit 1;}
+${PATCH} file < patch1-2 >errors || { cat errors; exit 1;}
+if grep fuzz errors; then exit 1; fi

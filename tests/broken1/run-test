@@ -1,0 +1,16 @@
+#!/bin/sh
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > broken_patch
+--- file
++++ file
+@@ -1,0 +1,0 @@
+\ No newline at end of file
+EOF
+
+${INTERDIFF} broken_patch broken_patch 2>errors >output && exit 1
+[ -z errors ] && exit 1
+[ -z `cat output` ] || exit 1
+[ -f core ] && exit 1
+exit 0

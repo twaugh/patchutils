@@ -1,0 +1,40 @@
+#!/bin/sh
+
+# This is a flipdiff(1) testcase.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+# When a line is touched by both patches, the first patch after flipping
+# should get the change.  Rationale: the patches ought to be largely
+# independent, and this is the best way of preserving the intent.
+
+cat << EOF > file.orig
+int a;
+EOF
+
+cat << EOF > file
+int a, b;
+EOF
+
+${DIFF} -u file.orig file > patch1
+
+mv -f file file.orig
+cat << EOF > file
+ssize_t a, b;
+EOF
+
+${DIFF} -u file.orig file > patch2
+
+${FLIPDIFF} patch1 patch2 > patch-flipped || exit 1
+sed -e "s/$(/bin/echo -ne '\t').*$//" patch-flipped > patch-cmp
+cmp - patch-cmp << EOF || exit 1
+--- file.orig
++++ file
+@@ -1 +1 @@
+-int a;
++ssize_t a, b;
+
+=== 8< === cut here === 8< ===
+
+EOF

@@ -1,0 +1,64 @@
+#!/bin/sh
+
+# This is a lsdiff(1) testcase.
+# Test: See if lsdiff handles filenames with spaces with no tab sep.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > diff1
+--- filename.orig      Mon Dec 17 15:53:01 2001
++++ filename   Thu Jan  1 01:00:00 1970
+@@ -1 +0,0 @@
+-(tabs -> spaces)
+EOF
+
+cat << EOF > diff2
+--- file name.orig      Mon Dec 17 15:53:01 2001
++++ file name   Thu Jan  1 01:00:00 1970
+@@ -1 +0,0 @@
+-(tabs -> spaces, filename with space)
+EOF
+
+cat << EOF > diff3
+--- spamthrottle/FILES Feb 2001 20:16:31 -0000	1.1.1.1
++++ spamthrottle/FILES Dec 2002 15:35:51 -0000	1.1.1.1.2.3
+@@ -1 +0,0 @@
+-(alternate date format)
+EOF
+
+cat << EOF > diff4
+--- spam throttle/FILES Feb 2001 20:16:31 -0000	1.1.1.1
++++ spam throttle/FILES Dec 2002 15:35:51 -0000	1.1.1.1.2.3
+@@ -1 +0,0 @@
+-(alternate date format, filename with space)
+EOF
+
+cat << EOF > diff5
+--- filename Fri, Jun 13 2003 12:22:00 +0100
++++ filename Fri, Jun 13 2003 12:22:00 +0100
+@@ -1 +0,0 @@
+-(unknown date format)
+EOF
+
+${LSDIFF} -h diff1 diff2 diff3 diff4 diff5 2>errors >index || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - index || exit 1
+filename
+file name
+spamthrottle/FILES
+spam throttle/FILES
+filename
+EOF
+
+${LSDIFF} -H diff1 diff2 diff3 diff4 diff5 2>errors >index || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - index || exit 1
+diff1:filename
+diff2:file name
+diff3:spamthrottle/FILES
+diff4:spam throttle/FILES
+diff5:filename
+EOF

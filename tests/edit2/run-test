@@ -1,0 +1,29 @@
+#!/bin/sh
+
+# This is a rediff(1) testcase.
+# Test: Change a '-' to a ' ', and add a new line.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > file.orig
+a
+EOF
+cat << EOF > file
+b
+EOF
+
+${DIFF} -u file.orig file > original-patch
+sed -e 's/^-a$/ a/' original-patch > edited-patch
+cat << EOF >> edited-patch
++c
+EOF
+
+${REDIFF} original-patch edited-patch 2>errors >rediffed-patch || exit 1
+[ -s errors ] && exit 1
+${PATCH} file.orig < rediffed-patch || exit 1
+cat << EOF | cmp - file.orig || exit 1
+a
+b
+c
+EOF

@@ -1,0 +1,30 @@
+#!/bin/sh
+#
+# This is an interdiff(1) test case.
+# Test: -U0 works correctly.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+>file.orig
+cat << EOF > file
+add some stuff
+to the file
+which was empty
+EOF
+${DIFF} -u file.orig file > patch1
+cp file after-patch1
+
+cat << EOF > file
+add some lines
+to the beginning
+of the file
+add some stuff
+to the file
+which was empty
+EOF
+${DIFF} -u file.orig file > patch2
+
+${INTERDIFF} -U0 patch1 patch2 2>errors > patch1-2 || exit 1
+[ -s errors ] && exit 1
+${PATCH} after-patch1 < patch1-2 || exit 1

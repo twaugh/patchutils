@@ -1,0 +1,34 @@
+#!/bin/sh
+
+# This is a rediff(1) testcase.
+# Test: Remove two consecutive hunks.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > edited-patch
+--- file.orig
++++ file
+@@ -10 +10 @@
+-a
++b
+EOF
+
+cat edited-patch - << EOF > original-patch
+@@ -20 +20 @@
+-a
++b
+@@ -30 +30 @@
+-a
++b
+EOF
+
+${REDIFF} original-patch edited-patch 2>errors >rediffed-patch || exit 1
+[ -s errors ] && exit 1
+cat << EOF | cmp - rediffed-patch || exit 1
+--- file.orig
++++ file
+@@ -10 +10 @@
+-a
++b
+EOF

@@ -1,0 +1,66 @@
+#!/bin/sh
+
+# This is a rediff(1) testcase.
+# Test: Edit an offset only (should be minimally corrected).
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > patch
+--- file.orig
++++ file
+@@ -1,5 +1,5 @@
+ blah
+-blah
++blah
+ blah
+ blah
+ blah
+EOF
+sed -e 's/5/6/g' patch > edited1
+sed -e 's/1/2/' patch > edited2
+sed -e 's/+1/+3/' patch > edited3
+
+${REDIFF} patch edited1 2>errors >rediffed1 || exit 1
+[ -s errors ] && exit 1
+${REDIFF} patch edited2 2>errors >rediffed2 || exit 1
+[ -s errors ] && exit 1
+${REDIFF} patch edited3 2>errors >rediffed3 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - rediffed1 || exit 1
+--- file.orig
++++ file
+@@ -1,5 +1,5 @@
+ blah
+-blah
++blah
+ blah
+ blah
+ blah
+EOF
+
+cat << EOF | cmp - rediffed2 || exit 1
+--- file.orig
++++ file
+@@ -2,5 +2,5 @@
+ blah
+-blah
++blah
+ blah
+ blah
+ blah
+EOF
+
+cat << EOF | cmp - rediffed3 || exit 1
+--- file.orig
++++ file
+@@ -3,5 +3,5 @@
+ blah
+-blah
++blah
+ blah
+ blah
+ blah
+EOF
+

@@ -1,0 +1,29 @@
+#!/bin/sh
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > patch1
+--- file.orig
++++ file
+@@ -36 +36 @@
+-oldline
++newline
+EOF
+cat << EOF > patch2
+--- file.orig	Nov 27 2001
++++ file	Nov 27 2001
+@@ -36 +36 @@
+-oldline
++betterline
+EOF
+
+${INTERDIFF} -U0 patch1 patch2 2>errors > patch1-2 || exit 1
+[ -s errors ] && exit 1
+cat << EOF | cmp - patch1-2 || exit 1
+diff -U0 file file
+--- file
++++ file	Nov 27 2001
+@@ -36 +36 @@
+-newline
++betterline
+EOF

@@ -1,0 +1,20 @@
+#!/bin/sh
+
+# This is a lsdiff(1) testcase.
+# Test: See if lsdiff handles filenames with spaces.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > diff1
+--- file name.orig	Mon Dec 17 15:53:01 2001
++++ file name	Thu Jan  1 01:00:00 1970
+@@ -1 +0,0 @@
+-removed
+EOF
+${LSDIFF} diff1 2>errors >index || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - index || exit 1
+file name
+EOF

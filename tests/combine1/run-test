@@ -1,0 +1,101 @@
+#!/bin/sh
+
+# This is a combinediff(1) testcase.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > file.orig
+a
+b
+c
+d
+e
+f
+g
+h
+i
+j
+k
+l
+m
+n
+o
+p
+q
+r
+s
+t
+u
+v
+w
+x
+y
+z
+EOF
+cp file.orig file.a-z
+cat << EOF > file
+b
+c
+d
+e
+f
+g
+h
+i
+j
+k
+l
+n
+o
+p
+q
+r
+s
+t
+u
+v
+w
+x
+y
+EOF
+
+${DIFF} -u file.orig file > patch1
+mv -f file file.orig
+cat << EOF > file
+b
+c
+one
+d
+e
+f
+g
+h
+i
+j
+k
+l
+two
+n
+o
+p
+q
+r
+s
+t
+u
+v
+w
+x
+three
+y
+EOF
+${DIFF} -u file.orig file > patch2
+
+${COMBINEDIFF} patch1 patch2 2>errors >patches || exit 1
+[ -s errors ] && exit 1
+
+# There should be no fuzz.
+patch file.a-z < patches >fuzz || exit 1
+[ -s errors ] && exit 1
+exit 0

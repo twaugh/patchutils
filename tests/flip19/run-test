@@ -1,0 +1,79 @@
+#!/bin/sh
+
+# This is a flipdiff(1) testcase.
+# We must give an error in this case, or else complete it successfully.
+# An error is acceptable.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > patch1
+--- file.orig
++++ file
+@@ -5,7 +5,7 @@
+ Changed this.
+ 
+ Changed that.
+-Borke it.
++Broke it.
+ 
+ Fixed it again.
+ Fixed it.
+EOF
+
+cat << EOF > patch2
+--- file.orig
++++ file
+@@ -13,3 +13,3 @@
+ Blah
+-blah
++Blah
+ Blah
+@@ -17,6 +17,7 @@
+ Blah
+ Blah
+ Blah
++Foo
+ Blah
+ Blah
+ Blah
+EOF
+
+${FLIPDIFF} patch1 patch2 > patch-flipped 2>errors
+if [ "$?" -ne 0 ]
+then
+  [ -s errors ]
+  exit $?
+fi
+
+cmp - patch-flipped << EOF || exit 1
+--- file.orig
++++ file
+@@ -13,3 +13,3 @@
+ Blah
+-blah
++Blah
+ Blah
+@@ -17,6 +17,7 @@
+ Blah
+ Blah
+ Blah
++Foo
+ Blah
+ Blah
+ Blah
+
+=== 8< === cut here === 8< ===
+
+--- file.orig
++++ file
+@@ -5,7 +5,7 @@
+ Changed this.
+ 
+ Changed that.
+-Borke it.
++Broke it.
+ 
+ Fixed it again.
+ Fixed it.
+EOF

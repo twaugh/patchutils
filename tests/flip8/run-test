@@ -1,0 +1,162 @@
+#!/bin/sh
+
+# This is a flipdiff(1) testcase.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > file.orig
+a
+b
+c
+d
+e
+f
+g
+h
+i
+j
+k
+l
+m
+n
+o
+p
+q
+r
+s
+t
+u
+v
+w
+x
+y
+z
+EOF
+
+cat << EOF > file
+a
+b
+c
+D
+D
+D
+e
+f
+g
+h
+i
+j
+k
+L
+L
+L
+m
+n
+o
+p
+q
+r
+s
+T
+T
+T
+u
+v
+w
+x
+y
+z
+EOF
+
+${DIFF} -u file.orig file > patch1
+
+mv -f file file.orig
+cat << EOF > file
+a
+b
+c
+D
+D
+D
+e
+f
+g
+h
+i
+j
+k
+L
+L
+L
+m
+n
+o
+p
+q
+r
+s
+T
+T
+T
+u
+v
+x
+y
+z
+EOF
+
+${DIFF} -u file.orig file > patch2
+
+${FLIPDIFF} patch1 patch2 > patch-flipped || exit 1
+sed -e "s/$(/bin/echo -ne '\t').*$//" patch-flipped > patch-cmp
+cmp - patch-cmp << EOF || exit 1
+--- file.orig
++++ file
+@@ -20,7 +20,6 @@
+ t
+ u
+ v
+-w
+ x
+ y
+ z
+
+=== 8< === cut here === 8< ===
+
+--- file.orig
++++ file
+@@ -1,7 +1,9 @@
+ a
+ b
+ c
+-d
++D
++D
++D
+ e
+ f
+ g
+@@ -9,7 +11,9 @@
+ i
+ j
+ k
+-l
++L
++L
++L
+ m
+ n
+ o
+@@ -17,7 +21,9 @@
+ q
+ r
+ s
+-t
++T
++T
++T
+ u
+ v
+ x
+EOF

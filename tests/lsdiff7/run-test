@@ -1,0 +1,31 @@
+#!/bin/sh
+
+# This is a lsdiff(1) testcase.
+# Test: -n output format
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > diff
+--- file1
++++ file1
+@@ -0,0 +1 @@
++a
+--- orig/file2
++++ file2
+@@ -0,0 +1 @@
++a
+--- file3
++++ file3.orig
+@@ -0,0 +1 @@
++a
+EOF
+
+${LSDIFF} -n diff 2>errors >index || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - index || exit 1
+1	file1
+5	file2
+9	file3
+EOF

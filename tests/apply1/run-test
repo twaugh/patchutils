@@ -1,0 +1,19 @@
+#!/bin/sh
+
+. ${top_srcdir-.}/tests/common.sh
+
+mkdir dir
+cat << EOF > dir/file.orig
+a
+b
+-- 
+EOF
+cat << EOF > dir/file
+a
+b
+EOF
+
+${DIFF} -u dir/file.orig dir/file > patch1
+${INTERDIFF} patch1 patch1 2>errors > patch1-1 || exit 1
+[ -s errors ] && exit 1
+exit 0

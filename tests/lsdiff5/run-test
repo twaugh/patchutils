@@ -1,0 +1,84 @@
+#!/bin/sh
+
+# This is a lsdiff(1) testcase.
+# Test: Different context output styles.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > diff1
+*** file.orig	Wed Mar 20 10:08:24 2002
+--- file	Wed Mar 20 10:08:24 2002
+***************
+*** 1,7 ****
+  a
+  b
+  c
+! d
+  e
+  f
+  g
+--- 1,7 ----
+  a
+  b
+  c
+! D
+  e
+  f
+  g
+***************
+*** 9,15 ****
+  i
+  j
+  k
+! l
+  m
+  n
+  o
+--- 9,15 ----
+  i
+  j
+  k
+! L
+  m
+  n
+  o
+***************
+*** 21,23 ****
+--- 21,26 ----
+  u
+  v
+  w
++ x
++ y
++ z
+EOF
+
+(IFS=\
+
+ first=1
+ while read line;
+ do
+   if test "x$line" = "x***************"
+   then
+    if test $first -eq 0
+    then
+      continue
+    fi
+    first=0
+   fi
+   echo "$line"
+ done) < diff1 > diff2
+
+${LSDIFF} diff1 2>errors >index1 || exit 1
+[ -s errors ] && exit 1
+
+${LSDIFF} diff2 2>errors >index2 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - index1 || exit 1
+file
+EOF
+cat << EOF | cmp - index2 || exit 1
+file
+EOF

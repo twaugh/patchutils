@@ -1,0 +1,19 @@
+#!/bin/sh
+set -x
+set -e
+
+rm -rf linux
+tar zxf ~/download/linux-2.5.0.tar.gz
+( cd linux ; patch -sp1 < ../patch-2.5.1-pre3 )
+
+for n in 3 4 # 5 6 7 8 9 10 11 12
+do
+	../interdiff -U0 patch-2.5.1-pre$n \
+		patch-2.5.1-pre$((1+$n)) | (cd linux; patch -sp1)
+	rm -rf staging
+	mkdir staging
+	(cd staging; tar zxf ~/download/linux-2.5.0.tar.gz)
+	cat patch-2.5.1-pre$((1+$n)) | \
+		(cd staging/linux; patch -sp1)
+	diff -ur linux staging/linux
+done

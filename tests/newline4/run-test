@@ -1,0 +1,27 @@
+#!/bin/sh
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > orig
+a
+b
+EOF
+echo -n c >> orig
+cat << EOF > new
+a
+b
+c
+EOF
+
+${DIFF} -u orig new > patch
+${INTERDIFF} patch patch 2>errors > null || exit 1
+[ -s errors ] && exit 1
+[ -s null ] && echo 1
+
+${INTERDIFF} patch /dev/null 2>errors > reverse || exit 1
+[ -s errors ] && exit 1
+
+${PATCH} -i reverse new 2>errors || exit 1
+[ -s errors ] && exit 1
+
+cmp orig new || exit 1

@@ -1,0 +1,35 @@
+#!/bin/sh
+
+# This is a rediff(1) testcase.
+# Test: Make a change in the first of two files.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+mkdir dir.orig dir
+cat << EOF > dir.orig/file1
+file1
+EOF
+cat << EOF > dir.orig/file2
+file2
+EOF
+cat << EOF > dir/file1
+IFLE1
+EOF
+cat << EOF > dir/file2
+FILE2
+EOF
+
+${DIFF} -u dir.orig dir > original-patch
+sed -e 's/^+IFLE1$/+FILE1/' original-patch > edited-patch
+
+${REDIFF} original-patch edited-patch 2>errors >rediffed-patch || exit 1
+[ -s errors ] && exit 1
+cd dir.orig
+${PATCH} < ../rediffed-patch || exit 1
+cat << EOF | cmp - file1 || exit 1
+FILE1
+EOF
+cat << EOF | cmp - file2 || exit 1
+FILE2
+EOF

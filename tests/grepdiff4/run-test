@@ -1,0 +1,54 @@
+#!/bin/sh
+
+# This is a grepdiff(1) testcase.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > diff
+*** file1.orig
+--- file1
+***************
+*** 1 ****
+! A
+--- 1,2 ----
+! a
+! b
+*** 10 ****
+! C
+--- 11,12 ----
+! c
+! d
+EOF
+
+${GREPDIFF} --output-matching=file 'c' diff 2>errors >file || exit 1
+${GREPDIFF} --output-matching=hunk 'c' diff 2>errors >hunk || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - file || exit 1
+*** file1.orig
+--- file1
+***************
+*** 1 ****
+! A
+--- 1,2 ----
+! a
+! b
+***************
+*** 10 ****
+! C
+--- 11,12 ----
+! c
+! d
+EOF
+
+cat << EOF | cmp - hunk || exit 1
+*** file1.orig
+--- file1
+***************
+*** 10 ****
+! C
+--- 10,11 ----
+! c
+! d
+EOF

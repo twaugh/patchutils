@@ -1,0 +1,10 @@
+Things to do:
+
+- tidy up the code.  rediff.c has some nice routines that should be moved
+  to diff.c.  More use of assert().
+- interdiff: rewrite output_patch1_only in terms of calls to output_delta
+  with a file handle open to /dev/null.
+- Strip trailing CRs if necessary, like patch does.
+- Handle RFC934 encapsulation, like patch does.
+- Make interdiff support -I.
+- Teach rediff how to handle multiple added hunks.

@@ -1,0 +1,36 @@
+#!/bin/sh
+
+. ${top_srcdir-.}/tests/common.sh
+
+mkdir -p v2.4.0-test5/linux
+mkdir linux
+cat << EOF > v2.4.0-test5/linux/file
+a
+b
+c
+EOF
+cat << EOF > new1
+a
+b
+EOF
+cat << EOF > new2
+b
+c
+EOF
+
+cp new1 linux/file
+${DIFF} -u v2.4.0-test5/linux/file linux/file > patch1
+cp new2 linux/file
+${DIFF} -u v2.4.0-test5/linux/file linux/file > patch2
+${INTERDIFF} patch1 patch2 2>errors > patch1-2 || exit 1
+[ -s errors ] && exit 1
+mkdir test
+cp new1 test/file
+cd test
+${PATCH} < ../patch1-2 || exit 1
+cd ..
+cmp new2 test/file || exit 1
+cd test
+${PATCH} -R < ../patch1-2
+cd ..
+cmp new1 test/file || exit 1

@@ -1,0 +1,72 @@
+#!/bin/sh
+
+# This is a rediff(1) testcase.
+# Test: Add a hunk at the end of a patch but before another.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > original-patch
+--- file.orig
++++ file
+@@ -6,7 +6,7 @@
+ blah
+ blah
+ blah
+-not
++important
+ blah
+ blah
+ blah
+--- otherfile.orig
++++ otherfile
+@@ -1 +1 @@
+-a
++A
+EOF
+
+cat << EOF > edited-patch
+--- file.orig
++++ file
+@@ -6,7 +6,7 @@
+ blah
+ blah
+ blah
+-not
++important
+ blah
+ blah
+ blah
+@@ -36 +36 @@
+-old
++new
+--- otherfile.orig
++++ otherfile
+@@ -1 +1 @@
+-a
++A
+EOF
+
+${REDIFF} original-patch edited-patch 2>errors >rediffed-patch || exit 1
+[ -s errors ] && exit 1
+cat << EOF | cmp - rediffed-patch || exit 1
+--- file.orig
++++ file
+@@ -6,7 +6,7 @@
+ blah
+ blah
+ blah
+-not
++important
+ blah
+ blah
+ blah
+@@ -36 +36 @@
+-old
++new
+--- otherfile.orig
++++ otherfile
+@@ -1 +1 @@
+-a
++A
+EOF

@@ -1,0 +1,16 @@
+#!/bin/sh
+
+# This is an interdiff(1) testcase.
+# Test: Handle embedded nul characters.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+echo -e "abc\0" > file1
+echo abc > file2
+
+${DIFF} -au file1 file2 > diff
+${INTERDIFF} -q /dev/null diff 2>errors >newdiff || exit 1
+[ -s errors ] && exit 1
+
+cmp diff newdiff || exit 1

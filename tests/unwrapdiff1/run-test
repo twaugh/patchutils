@@ -1,0 +1,54 @@
+#!/bin/sh
+
+# This is an unwrapdiff(1) testcase.
+# Test: To see if it works at all.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat <<EOF > patch1
+--- file date
+wrapped
++++ file date
+wrapped
+@@ -1 +1 @@
+-long line that wraps
+because it is so long
++other line
+EOF
+
+${UNWRAPDIFF} patch1 > patch1-unwrapped || exit 1
+
+cat <<EOF | cmp - patch1-unwrapped || exit 1
+--- file date wrapped
++++ file date wrapped
+@@ -1 +1 @@
+-long line that wraps because it is so long
++other line
+EOF
+
+cat <<EOF > patch2
+--- file
++++ file
+@@ -1,3 +1,3 @@ does this work?
+ unchanged
+-these two lines are changed
+-and this one has a line of ****************
+********s
++This is changed.
++So is this one
+but this wrap is ambiguous.
+EOF
+
+${UNWRAPDIFF} patch2 > patch2-unwrapped || exit 1
+
+cat <<EOF | cmp - patch2-unwrapped || exit 1
+--- file
++++ file
+@@ -1,3 +1,3 @@ does this work?
+ unchanged
+-these two lines are changed
+-and this one has a line of ************************s
++This is changed.
++So is this one but this wrap is ambiguous.
+EOF

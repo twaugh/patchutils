@@ -1,0 +1,47 @@
+#!/bin/sh
+
+# This is a rediff(1) testcase.
+# Test: Remove an addition and check the subsequent offsets.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > original-patch
+--- file.orig
++++ file
+@@ -1,6 +1,8 @@
+ blah
+ blah
+ blah
++Remove this line!
++But not this one!
+ blah
+ blah
+ blah
+@@ -100,3 +102,4 @@
+ blah
+ blah
+ blah
+-End of file
+EOF
+sed -e '/^+R/d' original-patch > edited-patch
+
+${REDIFF} original-patch edited-patch 2>errors >rediffed-patch || exit 1
+[ -s errors ] && exit 1
+cat << EOF | cmp - rediffed-patch || exit 1
+--- file.orig
++++ file
+@@ -1,6 +1,7 @@
+ blah
+ blah
+ blah
++But not this one!
+ blah
+ blah
+ blah
+@@ -100,3 +101,4 @@
+ blah
+ blah
+ blah
+-End of file
+EOF

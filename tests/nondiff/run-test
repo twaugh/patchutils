@@ -1,0 +1,20 @@
+#!/bin/sh
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > patch1
+This is a non-diff line.
+--- file.orig
++++ file
+@@ -36 +36 @@
+-oldline
++newline
+So is this.
+EOF
+
+${FILTERDIFF} -x file patch1 2>errors > filtered || exit 1
+[ -s errors ] && exit 1
+cat << EOF | cmp - filtered || exit 1
+This is a non-diff line.
+So is this.
+EOF

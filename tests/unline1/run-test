@@ -1,0 +1,37 @@
+#!/bin/sh
+
+# This is an interdiff(1) testcase.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > patch1
+--- file.orig
++++ file
+@@ -1 +1 @@
+-a
++A
+EOF
+
+cat << EOF > patch2
+--- file.orig
++++ file
+@@ -10 +10 @@
+-a
++A
+EOF
+
+${INTERDIFF} patch1 patch2 > patch1-2 2>errors || exit 1
+[ -s errors ] && exit 1
+
+cmp - patch1-2 << EOF || exit 1
+diff -u file file
+--- file
++++ file
+@@ -1 +1 @@
+-A
++a
+@@ -10 +10 @@
+-a
++A
+EOF

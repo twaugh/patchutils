@@ -1,0 +1,54 @@
+#!/bin/sh
+
+# This is a filterdiff(1) testcase.
+# Test: Context format, to-omission check.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > patch1
+*** file.orig
+--- file
+***************
+*** 2,8 ****
+  b
+  c
+  }
+- return 0;
+  d
+  e
+  f
+--- 2,7 ----
+EOF
+
+${FILTERDIFF} <patch1 >patch1-filtered 2>errors || exit 1
+[ -s errors ] && exit 1
+cmp patch1 patch1-filtered || exit 1
+
+cat << EOF > patch2
+*** file.orig
+--- file
+***************
+*** 1,8 ****
+  a
+  b
+  c
+  }
+- return 0;
+  d
+  e
+  f
+--- 1,8 ----
+  a
+  b
+  c
++ return -ENOSYS;
+  }
+  d
+  e
+  f
+EOF
+
+${FILTERDIFF} <patch2 >patch2-filtered 2>errors || exit 1
+[ -s errors ] && exit 1
+cmp patch2 patch2-filtered || exit 1

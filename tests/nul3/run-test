@@ -1,0 +1,19 @@
+#!/bin/sh
+
+# This is an interdiff(1) testcase.
+# Test: Handle embedded nul characters (context format).
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+echo -e "abc\0" > file1
+echo abc > file2
+
+${DIFF} -ac file1 file2 > cdiff
+${INTERDIFF} -q /dev/null cdiff 2>errors >newdiff || exit 1
+[ -s errors ] && exit 1
+
+${FILTERDIFF} --format=unified cdiff 2>errors > diff || exit 1
+[ -s errors ] && exit 1
+
+cmp diff newdiff || exit 1

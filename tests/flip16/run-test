@@ -1,0 +1,583 @@
+#!/bin/sh
+
+# This is a flipdiff(1) testcase.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > file.orig
+1
+2
+3
+3a
+4
+5
+6
+7
+pad
+8
+9
+10
+11
+12
+13
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad1
+pad2
+pad3
+padx
+pda
+padx
+pad3
+pad2
+pad1
+pad
+pad
+pad
+pad
+pad
+a
+b
+c
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+A
+B
+C
+pad
+pad
+pad
+EOF
+
+cat << EOF > file
+1
+2
+3
+4
+5
+6
+7
+pad
+8
+9
+10
+11
+12
+13
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad1
+pad2
+pad3
+padx
+pady
+padx
+pad3
+pad2
+pad1
+pad
+pad
+pad
+pad
+pad
+a
+b
+c
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+A
+B
+C
+pad
+pad
+pad
+EOF
+
+${DIFF} -u file.orig file > patch1
+
+mv -f file.orig file.orig.orig
+mv -f file file.orig
+cat << EOF > file
+1
+2
+3
+4
+4a
+5
+6
+7
+pad
+8
+9
+10
+11a
+12a
+13a
+14
+15
+16
+17
+18
+19
+20
+11
+12
+13
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+pad1
+pad2
+pad3
+padx
+pady
+padx
+pad3
+pad2
+pad1
+pad
+pad
+pad
+pad
+pad
+a
+b
+c
+d
+e
+f
+g
+h
+i
+j
+k
+l
+m
+n
+o
+p
+q
+r
+s
+t
+u
+v
+w
+x
+y
+z
+pad
+pad
+pad
+pad
+pad
+pad
+pad
+A
+B
+C
+D
+E
+F
+G
+H
+I
+J
+K
+L
+M
+N
+O
+P
+Q
+R
+S
+T
+U
+V
+W
+X
+Y
+Z
+pad
+pad
+pad
+EOF
+
+${DIFF} -u file.orig file > patch2
+
+${FLIPDIFF} patch1 patch2 > patch-flipped || exit 1
+sed -e "s/$(/bin/echo -ne '\t').*$//" patch-flipped > patch-cmp
+cmp - patch-cmp << EOF || exit 1
+--- file.orig
++++ file
+@@ -3,6 +3,7 @@
+ 3
+ 3a
+ 4
++4a
+ 5
+ 6
+ 7
+@@ -10,6 +11,16 @@
+ 8
+ 9
+ 10
++11a
++12a
++13a
++14
++15
++16
++17
++18
++19
++20
+ 11
+ 12
+ 13
+@@ -116,6 +127,29 @@
+ a
+ b
+ c
++d
++e
++f
++g
++h
++i
++j
++k
++l
++m
++n
++o
++p
++q
++r
++s
++t
++u
++v
++w
++x
++y
++z
+ pad
+ pad
+ pad
+@@ -126,6 +160,29 @@
+ A
+ B
+ C
++D
++E
++F
++G
++H
++I
++J
++K
++L
++M
++N
++O
++P
++Q
++R
++S
++T
++U
++V
++W
++X
++Y
++Z
+ pad
+ pad
+ pad
+
+=== 8< === cut here === 8< ===
+
+--- file.orig
++++ file
+@@ -1,7 +1,6 @@
+ 1
+ 2
+ 3
+-3a
+ 4
+ 4a
+ 5
+@@ -114,7 +113,7 @@
+ pad2
+ pad3
+ padx
+-pda
++pady
+ padx
+ pad3
+ pad2
+EOF

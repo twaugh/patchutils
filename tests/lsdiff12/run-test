@@ -1,0 +1,16 @@
+#!/bin/sh
+
+# This is a lsdiff(1) testcase.
+# Test: See if lsdiff -s behaves as expected with regard to /dev/null
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+echo a >file1
+echo a | ${DIFF} -du file1 /dev/null | \
+  ${LSDIFF} -s 2>errors >index || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - index || exit 1
+- file1
+EOF

@@ -1,0 +1,39 @@
+#!/bin/sh
+
+# This is a lsdiff(1) testcase.
+# Test: lsdiff -H behaviour
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+mkdir dir dir.orig
+echo a > file1.orig
+echo A > file1
+${DIFF} -u file1.orig file1 > diff1
+echo a > file2.orig
+echo A > file2
+${DIFF} -u file2.orig file2 > diff2
+${LSDIFF} -H diff1 diff2 2>errors >index || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - index || exit 1
+diff1:file1
+diff2:file2
+EOF
+
+cat diff1 | ${LSDIFF} -H 2>errors >index || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - index || exit 1
+(standard input):file1
+EOF
+
+${LSDIFF} -Hnv diff1 diff2 2>errors >index || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - index || exit 1
+diff1:1	file1
+diff1-	3	Hunk #1
+diff2:5	file2
+diff2-	7	Hunk #1
+EOF

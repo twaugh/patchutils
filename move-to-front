@@ -1,0 +1,25 @@
+#!/bin/bash
+if [ "$#" -eq 0 ] || [ "x$1" == "x--help" ]
+then
+  echo "usage: move-to-front [PATCHES..] PATCH"
+  exit 0
+fi
+
+# Dry-run.
+eval "patch2=\${$#}"
+i=$(($# - 1))
+while [ $i -gt 0 ]
+do
+  eval "patch1=\${$i}"
+  flipdiff $patch1 $patch2 >/dev/null || exit $?
+  i=$(($i - 1))
+done
+
+# Do it for real.
+i=$(($# - 1))
+while [ $i -gt 0 ]
+do
+  eval "patch1=\${$i}"
+  (set -x; flipdiff --in-place $patch1 $patch2) || exit $?
+  i=$(($i - 1))
+done

@@ -1,0 +1,28 @@
+#!/bin/sh
+
+# This is a recountdiff(1) testcase.
+# Test: Avoid a bug in handling entirely-added files.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat <<"EOF" > patch
+--- file
++++ file
+@@ -0,0 +1,15 @@
++1
++2
++3
++4
+EOF
+
+${RECOUNTDIFF} patch > patch-recounted || exit 1
+cat <<"EOF" | cmp - patch-recounted || exit 1
+--- file
++++ file
+@@ -0,0 +1,4 @@
++1
++2
++3
++4
+EOF

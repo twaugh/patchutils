@@ -1,0 +1,9 @@
+Tim Waugh <twaugh@redhat.com>
+	- Maintainer, main author.
+
+Marko Kreen <marko@l-t.ee>
+	- Merged interdiff and extractdiff packages to create original
+	  patchutils package.
+
+Matthias Hanisch <matze@camline.com>
+	- Major interdiff speed-ups, combinediff implementation.
