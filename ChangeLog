@@ -1,3 +1,8 @@
+2004-07-02  Tim Waugh  <twaugh@redhat.com>
+
+	* src/filterdiff.c: New --number-files option for lsdiff/grepdiff.
+	* doc/patchutils.xml (lsdiff): Document it.
+
 2004-06-07  Tim Waugh  <twaugh@redhat.com>
 
 	* configure.in: Version 0.2.30pre3 (pre-test).

@@ -950,7 +950,7 @@ patch.file]]></screen></para>
     <refentry id="lsdiff">
       <refentryinfo>
 	<productname>patchutils</productname>
-	<date>7 May 2004</date>
+	<date>2 Jul 2004</date>
       </refentryinfo>
 
       <refmeta>
@@ -1040,9 +1040,18 @@ patch.file]]></screen></para>
 	      <para>If the <option>-v</option> is given twice in
 	        conjunction with <option>-n</option>
 	        (i.e. <option>-nvv</option>), the format is slightly
-	        different: file numbers are listed, beginning at 1,
-	        before each filename; and hunk-level descriptive text
-	        is shown after each hunk number.</para>
+	        different: hunk-level descriptive text
+	        is shown after each hunk number, and the
+	        <option>--number-files</option> option is
+	        enabled.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--number-files</option></term>
+	    <listitem>
+	      <para>File numbers are listed, beginning at 1, before
+	      each filename.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -1487,7 +1496,7 @@ done)]]></screen></para>
     <refentry id="grepdiff">
       <refentryinfo>
 	<productname>patchutils</productname>
-	<date>7 May 2004</date>
+	<date>2 Jul 2004</date>
       </refentryinfo>
 
       <refmeta>
@@ -1505,6 +1514,7 @@ done)]]></screen></para>
 	<cmdsynopsis>
 	  <command>grepdiff</command>
 	  <arg choice="opt">-n</arg>
+	  <arg choice="opt">--number-files</arg>
 	  <arg choice="opt">-p <replaceable>n</replaceable></arg>
 	  <arg choice="opt">--strip=<replaceable>n</replaceable></arg>
 	  <arg choice="opt">--addprefix=<replaceable>PREFIX</replaceable></arg>
@@ -1580,6 +1590,14 @@ done)]]></screen></para>
 		  <refentrytitle>lsdiff</refentrytitle>
 		  <manvolnum>1</manvolnum>
 		</citerefentry>.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--number-files</option></term>
+	    <listitem>
+	      <para>File numbers are listed, beginning at 1, before
+	      each filename.</para>
 	    </listitem>
 	  </varlistentry>
 

@@ -67,6 +67,7 @@ static struct range *hunks = NULL;
 static struct range *lines = NULL;
 static struct range *files = NULL;
 static enum line_numbering number_lines = None;
+static int number_files = 0;
 
 static int unzip = 0;
 static enum {
@@ -199,11 +200,10 @@ static void display_filename (unsigned long linenum, char status,
 
 	if (print_patchnames)
 		printf ("%s:", patchname);
-	if (numbering) {
+	if (numbering)
 		printf ("%lu\t", linenum);
-		if (verbose > 1)
-			printf ("File #%-2lu\t", filecount);
-	}
+	if (number_files)
+		printf ("File #%-2lu\t", filecount);
 	if (show_status)
 		printf ("%c ", status);
 	if (prefix_to_add)
@@ -1030,6 +1030,8 @@ const char * syntax_str =
 "            don't show timestamps from output (filterdiff, grepdiff)\n"
 "  -z        decompress .gz and .bz2 files\n"
 "  -n        show line numbers (lsdiff, grepdiff)\n"
+"  --number-files (lsdiff, grepdiff)\n"
+"            show file numbers (lsdiff, grepdiff)\n"
 "  -H, --with-filename (lsdiff, grepdiff)\n"
 "            show patch file names (lsdiff, grepdiff)\n"
 "  -h, --no-filename (lsdiff, grepdiff)\n"
@@ -1252,6 +1254,7 @@ int main (int argc, char *argv[])
 			{"with-filename", 0, 0, 'H'},
 			{"no-filename", 0, 0, 'h'},
 			{"empty-files-as-absent", 0, 0, 'E'},
+			{"number-files", 0, 0, 1000 + 'n'},
 			{0, 0, 0, 0}
 		};
 		char *end;
@@ -1315,11 +1318,16 @@ int main (int argc, char *argv[])
 		case 'n':
 			numbering = 1;
 			break;
+		case 1000 + 'n':
+			number_files = 1;
+			break;
 		case 's':
 			show_status = 1;
 			break;
 		case 'v':
 			verbose++;
+			if (numbering && verbose > 1)
+				number_files = 1;
 			break;
 		case '#':
 			if (hunks)
