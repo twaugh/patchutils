@@ -1054,7 +1054,7 @@ const char * syntax_str =
 NORETURN
 static void syntax (int err)
 {
-	char *s = strdup (syntax_str);
+	char *s = xstrdup (syntax_str);
 	const char *usage = "usage: %s [OPTION]... [files ...]\n";
 	char *p, *next;
 	if (mode == mode_grep)

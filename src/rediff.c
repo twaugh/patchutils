@@ -1052,7 +1052,7 @@ int main (int argc, char *argv[])
 		else f++;
 		strcpy (f, "recountdiff");
 		execvp (new_argv[0], new_argv);
-		p = strdup (new_argv[0]);
+		p = xstrdup (new_argv[0]);
 		f = strstr (p, "src/");
 		if (f) {
 			while (*(f + 4)) {
