@@ -8,3 +8,4 @@ Things to do:
 - Handle RFC934 encapsulation, like patch does.
 - Make interdiff support -I.
 - Teach rediff how to handle multiple added hunks.
+- Add an option to make splitdiff separate out each hunk.
