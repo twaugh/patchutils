@@ -903,7 +903,7 @@ patch.file]]></screen></para>
           <citerefentry>
 	    <refentrytitle>patch</refentrytitle>
 	    <manvolnum>1</manvolnum>
-	  </citerefentry>mis-interprets. The diff file must retain the
+	  </citerefentry> mis-interprets. The diff file must retain the
           lines beginning with <quote>Index:</quote> in order for the
           correction to work.</para>
       </refsect1>
