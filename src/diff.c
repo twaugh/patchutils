@@ -1,6 +1,6 @@
 /*
  * diff.c - diff specific util functions
- * Copyright (C) 2001, 2002, 2003, 2004 Tim Waugh <twaugh@redhat.com>
+ * Copyright (C) 2001, 2002, 2003, 2004, 2005 Tim Waugh <twaugh@redhat.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -183,7 +183,7 @@ int read_atatline (const char *atatline,
 		if (!p)
 			return 1;
 		p++;
-		res = strtoul (p, &endptr, 0);
+		res = strtoul (p, &endptr, 10);
 		if (p == endptr)
 			return 1;
 		*orig_offset = res;
@@ -197,7 +197,7 @@ int read_atatline (const char *atatline,
 		if (!p)
 			return 1;
 		p++;
-		res = strtoul (p, &endptr, 0);
+		res = strtoul (p, &endptr, 10);
 		if (p == endptr)
 			return 1;
 		*new_offset = res;
