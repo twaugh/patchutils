@@ -1,6 +1,12 @@
 Patchutils news
 ---------------
 
+0.2.30 (stable)
+
+	Some minor parsing bugs were fixed, the documentation was
+	clarified, and a new option was added to lsdiff/filterdiff for
+	selecting patches based on the order in which they appear.
+
 0.2.29 (stable)
 
 	Several small bugs were fixed.

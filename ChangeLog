@@ -1,3 +1,7 @@
+2004-07-15  Tim Waugh  <twaugh@redhat.com>
+
+	* configure.in: Version 0.2.30 (stable).
+
 2004-07-07  Tim Waugh  <twaugh@redhat.com>
 
 	* src/diff.c (read_timezone): New function.
@@ -13,16 +17,8 @@
 
 2004-07-02  Tim Waugh  <twaugh@redhat.com>
 
-	* configure.in: Version 0.2.30pre4 (pre-test).
-
-2004-07-02  Tim Waugh  <twaugh@redhat.com>
-
 	* src/filterdiff.c: New --number-files option for lsdiff/grepdiff.
 	* doc/patchutils.xml (lsdiff): Document it.
-
-2004-06-07  Tim Waugh  <twaugh@redhat.com>
-
-	* configure.in: Version 0.2.30pre3 (pre-test).
 
 2004-05-19  Tim Waugh  <twaugh@redhat.com>
 
@@ -43,10 +39,6 @@
 
 2004-05-06  Tim Waugh  <twaugh@redhat.com>
 
-	* configure.in: Version 0.2.30pre2 (pre-test).
-
-2004-05-06  Tim Waugh  <twaugh@redhat.com>
-
 	* doc/patchutils.xml: Include --hunks/--lines/--files in lsdiff man
 	page.
 
@@ -60,10 +52,6 @@
 	available on Cygwin set-ups.
 	* tests/flip*/run-test: Use /bin/echo instead of the shell builtin.
 	Patch from Max Bowsher <maxb@ukf.net>.
-
-2004-04-16  Tim Waugh  <twaugh@redhat.com>
-
-	* configure.in: Version 0.2.30pre1 (pre-test).
 
 2004-04-16  Tim Waugh  <twaugh@redhat.com>
 
