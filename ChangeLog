@@ -1,5 +1,7 @@
 2004-07-03  Tim Waugh  <twaugh@redhat.com>
 
+	* src/filterdiff.c (syntax): Explain --number-files a bit more.
+
 	* src/filterdiff.c (hunk_matches): Don't call file_matches()
 	unnecessarily.
 

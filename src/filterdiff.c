@@ -1031,7 +1031,7 @@ const char * syntax_str =
 "  -z        decompress .gz and .bz2 files\n"
 "  -n        show line numbers (lsdiff, grepdiff)\n"
 "  --number-files (lsdiff, grepdiff)\n"
-"            show file numbers (lsdiff, grepdiff)\n"
+"            show file numbers, for use with filterdiff's --files option (lsdiff, grepdiff)\n"
 "  -H, --with-filename (lsdiff, grepdiff)\n"
 "            show patch file names (lsdiff, grepdiff)\n"
 "  -h, --no-filename (lsdiff, grepdiff)\n"
