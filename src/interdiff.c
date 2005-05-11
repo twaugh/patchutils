@@ -2,7 +2,7 @@
  * interdiff - create incremental patch between two against a common source
  * combinediff - create cumulative patch from two incremental patches
  * flipdiff - exchange the order of two incremental patches
- * Copyright (C) 2000, 2001, 2002, 2003, 2004 Tim Waugh <twaugh@redhat.com>
+ * Copyright (C) 2000, 2001, 2002, 2003, 2004, 2005 Tim Waugh <twaugh@redhat.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -438,7 +438,7 @@ create_orig (FILE *f, struct lines_info *file,
 static void
 construct_unline (struct lines_info *file_info)
 {
-	unsigned char *un;
+	char *un;
 	struct lines *at;
 	size_t i;
 

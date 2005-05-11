@@ -1,5 +1,7 @@
 2005-05-11  Tim Waugh  <twaugh@redhat.com>
 
+	* src/interdiff.c (construct_unline): Fixed compiler warning.
+
 	* splitdiff.in: Applied Debian patch to prevent warnings from
 	splitdiff (Debian bug #306869).
 
