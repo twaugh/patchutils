@@ -1,0 +1,42 @@
+#!/bin/sh
+
+# This is a rediff(1) testcase.
+# Test: Remove one file completely.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > original-patch
+diff -ur 1/a 2/a
+--- 1/a 2005-04-22 12:45:33.000000000 +0200
++++ 2/a 2005-04-22 12:45:48.000000000 +0200
+@@ -1 +1 @@
+-a
++c
+diff -ur 1/b 2/b
+--- 1/b 2005-04-22 12:45:36.000000000 +0200
++++ 2/b 2005-04-22 12:45:49.000000000 +0200
+@@ -1 +1 @@
+-b
++d
+EOF
+
+cat << EOF > edited-patch
+diff -ur 1/b 2/b
+--- 1/b 2005-04-22 12:45:36.000000000 +0200
++++ 2/b 2005-04-22 12:45:49.000000000 +0200
+@@ -1 +1 @@
+-b
++d
+EOF
+
+${REDIFF} original-patch edited-patch 2>errors >rediffed-patch || exit 1
+[ -s errors ] && exit 1
+cat << EOF | cmp - rediffed-patch || exit 1
+diff -ur 1/b 2/b
+--- 1/b 2005-04-22 12:45:36.000000000 +0200
++++ 2/b 2005-04-22 12:45:49.000000000 +0200
+@@ -1 +1 @@
+-b
++d
+EOF

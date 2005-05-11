@@ -1,5 +1,8 @@
 2005-05-11  Tim Waugh  <twaugh@redhat.com>
 
+	* tests/delhunk6/run-test: New failing rediff test.
+	* Makefile.am: Run it.
+
 	* src/interdiff.c (construct_unline): Fixed compiler warning.
 
 	* splitdiff.in: Applied Debian patch to prevent warnings from
