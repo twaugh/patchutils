@@ -1,3 +1,8 @@
+2005-05-11  Tim Waugh  <twaugh@redhat.com>
+
+	* splitdiff.in: Applied Debian patch to prevent warnings from
+	splitdiff (Debian bug #306869).
+
 2005-03-21  Tim Waugh  <twaugh@redhat.com>
 
 	* doc/patchutils.xml: Fixed missing space (debian bug #299310).

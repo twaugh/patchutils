@@ -64,7 +64,7 @@ if($#ARGV != 0) {
     die "usage: splitdiff DIFF\n";
 }
 $getlist = 'lsdiff -n ';
-$getlist .= '-p'.$opts{p}.' ' if ($opts{p});
+$getlist .= '--strip='.$opts{p}.' ' if ($opts{p});
 $getlist .= $ARGV[0]; # Yuck.  How do you do this properly in perl?
 open(LIST, '-|', $getlist) or die "Can't run lsdiff";
 @list = <LIST>;
