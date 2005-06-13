@@ -1,6 +1,10 @@
 Patchutils news
 ---------------
 
+0.2.31 (stable)
+
+	Several small bugs were fixed.
+
 0.2.30 (stable)
 
 	Some minor parsing bugs were fixed, the documentation was
