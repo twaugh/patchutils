@@ -4,18 +4,20 @@
 <book>
   <bookinfo>
     <title>Patchutils</title>
-    <author>
-      <firstname>Tim</firstname>
-      <surname>Waugh</surname>
-      <affiliation>
-	<address><email>twaugh@redhat.com</email></address>
-      </affiliation>
-    </author>
   </bookinfo>
 
   <reference>
-    <title>Man pages</title>
+    <referenceinfo>
+      <author>
+	<firstname>Tim</firstname>
+	<surname>Waugh</surname>
+	<affiliation>
+	  <address><email>twaugh@redhat.com</email></address>
+	</affiliation>
+      </author>
+    </referenceinfo>
 
+    <title>Man pages</title>
     <refentry id="interdiff">
       <refentryinfo>
 	<productname>patchutils</productname>
