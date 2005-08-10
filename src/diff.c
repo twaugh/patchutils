@@ -67,16 +67,20 @@ char *best_name (int n, char **names)
 {
         int *pathname_components;
         int *basename_length;
+	int *is_dev_null;
         int best_pn, best_bn, best_n, best = 0; /* shut gcc up */
         int i;
 
         pathname_components = xmalloc (sizeof (int *) * n);
         basename_length = xmalloc (sizeof (int *) * n);
+        is_dev_null = xmalloc (sizeof (int *) * n);
 
         best_pn = -1;
         for (i = 0; i < n; i++) {
-		if (!strcmp (names[i], "/dev/null"))
+		is_dev_null[i] = !strcmp (names[i], "/dev/null");
+		if (is_dev_null[i])
 			continue;
+
                 pathname_components[i] = num_pathname_components (names[i]);
                 if ((best_pn == -1) ||
                     (pathname_components[i] < best_pn))
@@ -87,7 +91,7 @@ char *best_name (int n, char **names)
         for (i = 0; i < n; i++) {
                 char *p;
 
-		if (!strcmp (names[i], "/dev/null"))
+		if (is_dev_null[i])
 			continue;
 
                 if (pathname_components[i] != best_pn)
@@ -109,6 +113,9 @@ char *best_name (int n, char **names)
 	for (i = 0; i < n; i++) {
 		int len;
 
+		if (is_dev_null[i])
+			continue;
+
                 if (basename_length[i] != best_bn)
                         continue;
 
@@ -122,6 +129,7 @@ char *best_name (int n, char **names)
 
         free (pathname_components);
         free (basename_length);
+        free (is_dev_null);
         return names[best];
 }
 

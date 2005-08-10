@@ -1,3 +1,7 @@
+2005-08-10  Tim Waugh  <twaugh@redhat.com>
+
+	* src/diff.c (best_name): Prevent use of uninitialised variable.
+
 2005-07-22  Tim Waugh  <twaugh@redhat.com>
 
 	* doc/patchutils.xml: Use referenceinfo for including author section.
