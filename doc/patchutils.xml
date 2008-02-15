@@ -1005,6 +1005,7 @@ patch.file]]></screen></para>
 	  <arg choice="opt">-E</arg>
 	  <arg choice="opt">-i <replaceable>PATTERN</replaceable></arg>
 	  <arg choice="opt">-x <replaceable>PATTERN</replaceable></arg>
+	  <arg choice="opt">-z</arg>
 	  <group choice="opt">
 	    <arg>-# <replaceable>RANGE</replaceable></arg>
 	    <arg>--hunks=<replaceable>RANGE</replaceable></arg>
@@ -1184,6 +1185,14 @@ patch.file]]></screen></para>
 	    <listitem>
 	      <para>Exclude files matching
 	        <replaceable>PATTERN</replaceable>.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-z</option></term>
+	    <listitem>
+	      <para>Decompress files with extensions .gz and .bz2.
+              </para>
 	    </listitem>
 	  </varlistentry>
 
