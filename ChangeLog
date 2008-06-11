@@ -1,5 +1,22 @@
 2008-06-11  Tim Waugh  <twaugh@redhat.com>
 
+	* src/util.c (patlist_add_file): New function.
+	* src/filterdiff.c (main): Use it, for new options -X and -I.
+	(syntax_str): Updated.
+	Original patch from Serj Kalichev.
+
+	* doc/patchutils.xml: Updated.
+
+	* tests/select2/run-test: Test -I (context format).
+	* tests/select1/run-test: Test -I (unified format).
+	* tests/select10/run-test: New test.  Test -x and -X for unified
+	format.
+	* tests/select11/run-test: New test.  Test -x and -X for context
+	format.
+	* Makefile.am (TESTS): Run new tests.
+
+2008-06-11  Tim Waugh  <twaugh@redhat.com>
+
 	* src/filterdiff.c (print_patchnames): Initial value is -1.
 	(main): Initialise print_patchnames: if -H is allowed, and
 	multiple input files are given, set it to 1; otherwise set it to

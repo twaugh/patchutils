@@ -21,7 +21,7 @@
     <refentry id="interdiff">
       <refentryinfo>
 	<productname>patchutils</productname>
-	<date>14 May 2004</date>
+	<date>11 June 2008</date>
 	<author>
 	  <firstname>Tim</firstname>
 	  <surname>Waugh</surname>
@@ -541,10 +541,12 @@
 	<cmdsynopsis>
 	  <command>filterdiff</command>
 	  <arg choice="opt">-i <replaceable>PATTERN</replaceable></arg>
+	  <arg choice="opt">-I <replaceable>FILE</replaceable></arg>
 	  <arg choice="opt">-p <replaceable>n</replaceable></arg>
 	  <arg choice="opt">--strip=<replaceable>n</replaceable></arg>
 	  <arg choice="opt">--addprefix=<replaceable>PREFIX</replaceable></arg>
 	  <arg choice="opt">-x <replaceable>PATTERN</replaceable></arg>
+	  <arg choice="opt">-X <replaceable>FILE</replaceable></arg>
 	  <arg choice="opt">--verbose</arg>
 	  <arg choice="opt">-v</arg>
 	  <arg choice="opt">-z</arg>
@@ -620,11 +622,29 @@
 	  </varlistentry>
 
 	  <varlistentry>
+	    <term><option>-I</option> <replaceable>FILE</replaceable></term>
+	    <listitem>
+	      <para>Include only files matching any pattern listed in
+	        <replaceable>FILE</replaceable>, one pattern per line.
+		All other lines in the input are suppressed.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
 	    <term><option>-x</option> <replaceable>PATTERN</replaceable></term>
 	    <listitem>
 	      <para>Exclude files matching
 	        <replaceable>PATTERN</replaceable>.  All other lines
 	        in the input are displayed.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-X</option> <replaceable>FILE</replaceable></term>
+	    <listitem>
+	      <para>Exclude files matching any pattern listed in
+	        <replaceable>FILE</replaceable>, one pattern per line.
+	        All other lines in the input are displayed.</para>
 	    </listitem>
 	  </varlistentry>
 

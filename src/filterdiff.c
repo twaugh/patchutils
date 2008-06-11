@@ -1012,7 +1012,9 @@ static int filterdiff (FILE *f, const char *patchname)
 const char * syntax_str =
 "Options:\n"
 "  -x PAT    exclude files matching PAT\n"
+"  -X FILE   exclude files that match any pattern in FILE\n"
 "  -i PAT    include only files matching PAT\n"
+"  -I FILE   include only files that match any pattern in FILE\n"
 "  --hunks=H, -# H\n"
 "            include only hunks in range H\n"
 "  --lines=L include only hunks with (original) lines in range L\n"
@@ -1308,8 +1310,14 @@ int main (int argc, char *argv[])
 		case 'x':
 			patlist_add (&pat_exclude, optarg);
 			break;
+		case 'X':
+			patlist_add_file (&pat_exclude, optarg);
+			break;
 		case 'i':
 			patlist_add (&pat_include, optarg);
+			break;
+		case 'I':
+			patlist_add_file (&pat_include, optarg);
 			break;
 		case 'z':
 			unzip = 1;

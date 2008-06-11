@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # This is a filterdiff(1) testcase.
-# Test: Context format, filename pattern but no selector
+# Test: Context format, filename exclude pattern but no selector
 
 
 . ${top_srcdir-.}/tests/common.sh
@@ -30,12 +30,19 @@ cat << EOF > patch
 ! b
 EOF
 
-${FILTERDIFF} -i b <patch >selected 2>errors || exit 1
+${FILTERDIFF} -x b <patch >selected 2>errors || exit 1
 [ -s errors ] && exit 1
 
 cat << EOF | cmp - selected || exit 1
-*** b.orig
---- b
+*** a.orig
+--- a
+***************
+*** 1 ****
+! a
+--- 1 ----
+! b
+*** c.orig
+--- c
 ***************
 *** 1 ****
 ! a
@@ -48,11 +55,10 @@ no
 match
 EOF
 
-${FILTERDIFF} -I patterns <patch >selected 2>errors || exit 1
+${FILTERDIFF} -X patterns <patch >selected 2>errors || exit 1
 [ -s errors ] && exit 1
 
-cat << EOF | cmp - selected || exit 1
-EOF
+cmp patch selected || exit 1
 
 cat << EOF > patterns
 not-a
@@ -60,12 +66,19 @@ b
 not-c
 EOF
 
-${FILTERDIFF} -I patterns <patch >selected 2>errors || exit 1
+${FILTERDIFF} -X patterns <patch >selected 2>errors || exit 1
 [ -s errors ] && exit 1
 
 cat << EOF | cmp - selected || exit 1
-*** b.orig
---- b
+*** a.orig
+--- a
+***************
+*** 1 ****
+! a
+--- 1 ----
+! b
+*** c.orig
+--- c
 ***************
 *** 1 ****
 ! a

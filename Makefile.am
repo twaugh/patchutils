@@ -156,6 +156,8 @@ TESTS = tests/newline1/run-test \
 	tests/select7/run-test \
 	tests/select8/run-test \
 	tests/select9/run-test \
+	tests/select10/run-test \
+	tests/select11/run-test \
 	tests/preserve1/run-test \
 	tests/rediff1/run-test \
 	tests/recount1/run-test \

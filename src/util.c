@@ -34,6 +34,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <limits.h>
 #ifdef HAVE_UNISTD_H
 # include <unistd.h>
 #endif /* HAVE_UNISTD_H */
@@ -107,6 +108,28 @@ void patlist_add(struct patlist **dst, const char *s)
 	item->pattern = xstrdup (s);
 	item->next = *dst;
 	*dst = item;
+}
+
+void patlist_add_file(struct patlist **dst, const char *fn)
+{
+	FILE *fd;
+	char buf[PATH_MAX];
+	size_t len;
+	
+	fd = fopen (fn, "r");
+	if (NULL == fd)
+		return;
+
+	while (fgets (buf, sizeof(buf), fd)) {
+		len = strlen(buf);
+		if (len <= 1) /* only '\n' presents */
+			continue;
+		/* Remove '\n' from pattern */
+		if ('\n' == buf[len - 1])
+			buf[len - 1] = '\0';
+		patlist_add (dst, buf);
+	} 
+	fclose (fd);
 }
 
 int patlist_match(struct patlist *list, const char *s)
