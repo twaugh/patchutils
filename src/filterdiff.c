@@ -2,7 +2,7 @@
  * filterdiff - extract (or exclude) a diff from a diff file
  * lsdiff - show which files are modified by a patch
  * grepdiff - show files modified by a patch containing a regexp
- * Copyright (C) 2001, 2002, 2003, 2004 Tim Waugh <twaugh@redhat.com>
+ * Copyright (C) 2001, 2002, 2003, 2004, 2008 Tim Waugh <twaugh@redhat.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -86,7 +86,7 @@ static int show_status = 0;
 static int verbose = 0;
 static int removing_timestamp = 0;
 static int egrepping = 0;
-static int print_patchnames = 0;
+static int print_patchnames = -1;
 static int empty_files_as_absent = 0;
 static unsigned long filecount=0;
 
@@ -1229,7 +1229,6 @@ int main (int argc, char *argv[])
 	FILE *f = stdin;
 	char format = '\0';
 	int regex_file_specified = 0;
-	int h_specified = 0;
 
 	setlocale (LC_TIME, "C");
 	determine_mode_from_name (argv[0]);
@@ -1340,10 +1339,9 @@ int main (int argc, char *argv[])
 			else syntax (1);
 			break;
 		case 'h':
-			if (mode == mode_list || mode == mode_grep) {
+			if (mode == mode_list || mode == mode_grep)
 				print_patchnames = 0;
-				h_specified = 1;
-			} else syntax (1);
+			else syntax (1);
 			break;
 		case 1000 + ':':
 			if (lines)
@@ -1432,22 +1430,19 @@ int main (int argc, char *argv[])
 		}
 	}
 
-	if (print_patchnames &&
-	    (number_lines != None ||
-	     output_matching != output_none))
-		error (EXIT_FAILURE, 0, "-H is inappropriate in this context");
-
-	if ((mode == mode_list || mode == mode_grep) &&
-	    optind + 1 < argc &&
-	    number_lines == None &&
-	    output_matching == output_none &&
-	    !h_specified && !print_patchnames) {
-		error (0, 0,
-		       "multiple input files: assuming -h for compatibility");
-		error (0, 0,
-		       "a future version will assume -H");
+	if (number_lines != None ||
+	    output_matching != output_none) {
+		if (print_patchnames == 1)
+			error (EXIT_FAILURE, 0,
+			       "-H is inappropriate in this context");
+	} else if (print_patchnames == -1) {
+		if ((mode == mode_list || mode == mode_grep) &&
+		    optind + 1 < argc)
+			print_patchnames = 1;
+		else
+			print_patchnames = 0;
 	}
-	
+
 	if (optind == argc) {
 		f = convert_format (stdin, format);
 		filterdiff (f, "(standard input)");

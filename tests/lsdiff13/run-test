@@ -21,6 +21,14 @@ diff1:file1
 diff2:file2
 EOF
 
+${LSDIFF} diff1 diff2 2>errors >index || exit 1
+[ -s errors ] && exit 1
+
+cat <<EOF | cmp - index || exit 1
+diff1:file1
+diff2:file2
+EOF
+
 cat diff1 | ${LSDIFF} -H 2>errors >index || exit 1
 [ -s errors ] && exit 1
 
@@ -28,9 +36,24 @@ cat << EOF | cmp - index || exit 1
 (standard input):file1
 EOF
 
+cat diff1 | ${LSDIFF} 2>errors >index || exit 1
+[ -s errors ] && exit 1
+cat << EOF | cmp - index || exit 1
+file1
+EOF
+
 ${LSDIFF} -Hnv diff1 diff2 2>errors >index || exit 1
 [ -s errors ] && exit 1
 
+cat << EOF | cmp - index || exit 1
+diff1:1	file1
+diff1-	3	Hunk #1
+diff2:5	file2
+diff2-	7	Hunk #1
+EOF
+
+${LSDIFF} -nv diff1 diff2 2>errors >index || exit 1
+[ -s errors ] && exit 1
 cat << EOF | cmp - index || exit 1
 diff1:1	file1
 diff1-	3	Hunk #1

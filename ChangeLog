@@ -1,3 +1,13 @@
+2008-06-11  Tim Waugh  <twaugh@redhat.com>
+
+	* src/filterdiff.c (print_patchnames): Initial value is -1.
+	(main): Initialise print_patchnames: if -H is allowed, and
+	multiple input files are given, set it to 1; otherwise set it to
+	0.
+
+	* tests/lsdiff13/run-test: Verify that -H is the default when
+	multiple files are given.
+
 2005-08-10  Tim Waugh  <twaugh@redhat.com>
 
 	* src/diff.c (best_name): Prevent use of uninitialised variable.
