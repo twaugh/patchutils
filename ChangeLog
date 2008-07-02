@@ -1,5 +1,18 @@
 2008-07-02  Tim Waugh  <twaugh@redhat.com>
 
+	* src/filterdiff.c (clean_comments): New global.
+	(filterdiff): Use it in determining whether to show non-diff
+	lines.
+	(syntax_str): Updated.
+	(main): New option --clean.
+
+	* doc/patchutils.xml: Updated.
+
+	* tests/clean1/run-test: New test case.
+	* Makefile.am (TESTS): Run it.
+
+2008-07-02  Tim Waugh  <twaugh@redhat.com>
+
 	* Makefile.am: Add TESTS and XFAIL_TESTS to EXTRA_DIST,
 	instead of listing each test twice.
 

@@ -77,6 +77,7 @@ static enum {
 } mode;
 static regex_t *regex = NULL;
 static size_t num_regex = 0;
+static int clean_comments = 0;
 static int numbering = 0;
 static int annotating = 0;
 static int ignore_components = 0;
@@ -902,8 +903,9 @@ static int filterdiff (FILE *f, const char *patchname)
 			}
 
 			/* Show non-diff lines if excluding, or if
-			 * in verbose mode. */
-			if (mode == mode_filter && (pat_exclude || verbose))
+			 * in verbose mode, and if --clean isn't specified. */
+			if (mode == mode_filter && (pat_exclude || verbose)
+				&& !clean_comments)
 				fputs (line, stdout);
 
 			if (getline (&line, &linelen, f) == -1)
@@ -920,8 +922,9 @@ static int filterdiff (FILE *f, const char *patchname)
 
 		if (getline (&line, &linelen, f) == -1) {
 			/* Show non-diff lines if excluding, or if
-			 * in verbose mode. */
-			if (mode == mode_filter && (pat_exclude || verbose))
+			 * in verbose mode, and if --clean isn't specified. */
+			if (mode == mode_filter && (pat_exclude || verbose)
+				&& !clean_comments)
 				fputs (header[0], stdout);
 			free (names[0]);
 			goto eof;
@@ -930,8 +933,9 @@ static int filterdiff (FILE *f, const char *patchname)
 
 		if (strncmp (line, is_context ? "--- " : "+++ ", 4)) {
 			/* Show non-diff lines if excluding, or if
-			 * in verbose mode. */
-			if (mode == mode_filter && (pat_exclude || verbose))
+			 * in verbose mode, and if --clean isn't specified. */
+			if (mode == mode_filter && (pat_exclude || verbose)
+				&& !clean_comments)
 				fputs (header[0], stdout);
 			free (names[0]);
 			free (header[0]);
@@ -1030,6 +1034,8 @@ const char * syntax_str =
 "            show matching hunks or file-level diffs (grepdiff)\n"
 "  --remove-timestamps (filterdiff, grepdiff)\n"
 "            don't show timestamps from output (filterdiff, grepdiff)\n"
+"  --clean (filterdiff)\n"
+"            remove all comments (non-diff lines) from output (filterdiff)\n"
 "  -z        decompress .gz and .bz2 files\n"
 "  -n        show line numbers (lsdiff, grepdiff)\n"
 "  --number-files (lsdiff, grepdiff)\n"
@@ -1256,6 +1262,7 @@ int main (int argc, char *argv[])
 			{"no-filename", 0, 0, 'h'},
 			{"empty-files-as-absent", 0, 0, 'E'},
 			{"number-files", 0, 0, 1000 + 'n'},
+			{"clean", 0, 0, 1000 + 'c'},
 			{0, 0, 0, 0}
 		};
 		char *end;
@@ -1390,6 +1397,9 @@ int main (int argc, char *argv[])
 		case 1000 + 'r':
 			removing_timestamp = 1;
 			break;
+		case 1000 + 'c':
+			clean_comments = 1;
+			break;
 		default:
 			syntax(1);
 		}
@@ -1419,6 +1429,11 @@ int main (int argc, char *argv[])
 	    number_lines != None)
 		error (EXIT_FAILURE, 0, "--as-numbered-lines is "
 		       "inappropriate in this context");
+
+	if (mode == mode_filter &&
+	    verbose && clean_comments)
+		error (EXIT_FAILURE, 0, "can't use --verbose and "
+		       "--clean options simultaneously");
 
 	if (mode == mode_grep && !regex_file_specified) {
 		int err;

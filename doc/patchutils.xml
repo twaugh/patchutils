@@ -549,6 +549,7 @@
 	  <arg choice="opt">-X <replaceable>FILE</replaceable></arg>
 	  <arg choice="opt">--verbose</arg>
 	  <arg choice="opt">-v</arg>
+	  <arg choice="opt">--clean</arg>
 	  <arg choice="opt">-z</arg>
 	  <group choice="opt">
 	    <arg>-# <replaceable>RANGE</replaceable></arg>
@@ -757,6 +758,14 @@
 	      <para>Always show non-diff lines in the output.  By
 	        default, non-diff lines are only shown when excluding
 	        a filename pattern.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--clean</option></term>
+	    <listitem>
+	      <para>Always remove all non-diff lines from the
+	        output. Even when excluding a filename pattern.</para>
 	    </listitem>
 	  </varlistentry>
 

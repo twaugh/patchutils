@@ -1,0 +1,34 @@
+#!/bin/sh
+
+# This is a filterdiff(1) testcase.
+# Test: Use --clean in filter mode.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > diff
+non-diff line
+--- a/file1
++++ b/file1
+@@ -0,0 +1 @@
++a
+EOF
+
+${FILTERDIFF} --clean diff 2>errors >filtered || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - filtered || exit 1
+--- a/file1
++++ b/file1
+@@ -0,0 +1 @@
++a
+EOF
+
+${FILTERDIFF} --clean -x file1 diff 2>errors >filtered || exit 1
+[ -s errors ] && exit 1
+cat << EOF | cmp - filtered || exit 1
+--- a/file1
++++ b/file1
+@@ -0,0 +1 @@
++a
+EOF

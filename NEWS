@@ -5,4 +5,4 @@ Patchutils news
 
 	The lsdiff -H option is now the default, and new options have
 	been added to filterdiff for reading inclusion/exclusion
-	patterns from files.
+	patterns from files, and for removing non-diff lines.
