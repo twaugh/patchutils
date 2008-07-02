@@ -1,3 +1,8 @@
+2008-07-02  Tim Waugh  <twaugh@redhat.com>
+
+	* Makefile.am: Add TESTS and XFAIL_TESTS to EXTRA_DIST,
+	instead of listing each test twice.
+
 2005-08-10  Tim Waugh  <twaugh@redhat.com>
 
 	* src/diff.c (best_name): Prevent use of uninitialised variable.
