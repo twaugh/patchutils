@@ -9,5 +9,3 @@ Things to do:
 - Make interdiff support -I (?? don't remember what this is about).
 - Teach rediff how to handle multiple added hunks.
 - Add an option to make splitdiff separate out each hunk.
-- Add -I/-X options to filterdiff for including/excluding files matching
-  patterns in a one-per-line file (Debian bug #264439).
