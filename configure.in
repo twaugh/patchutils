@@ -43,10 +43,12 @@ AC_FUNC_ALLOCA
 AC_FUNC_FNMATCH
 AC_CHECK_FUNCS(strcspn strspn strtoul getline error)
 
+AC_CONFIG_LIBOBJ_DIR([src])
+
 dnl Check for long getopt
 AC_CHECK_FUNCS(getopt_long , , [
-  AC_LIBOBJ(src/getopt)
-  AC_LIBOBJ(src/getopt1)
+  AC_LIBOBJ([getopt])
+  AC_LIBOBJ([getopt1])
 ])
 
 AC_MSG_CHECKING(for diff program)
