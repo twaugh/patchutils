@@ -714,15 +714,15 @@ output_patch1_only (FILE *p1, FILE *out, int not_reverted)
 			oldnamelen = 0;
 		}
 		if (getline (&oldname, &oldnamelen, p1) < 0)
-			error (EXIT_FAILURE, errno, "Bad patch1");
+			error (EXIT_FAILURE, errno, "Bad patch #1");
 
 	} while (strncmp (oldname, "--- ", 4));
 	oldname[strlen (oldname) - 1] = '\0';
 
 	if (getline (&newname, &newnamelen, p1) < 0)
-		error (EXIT_FAILURE, errno, "Bad patch1");
+		error (EXIT_FAILURE, errno, "Bad patch #1");
 	if (strncmp (newname, "+++ ", 4))
-		error (EXIT_FAILURE, errno, "Bad patch1");
+		error (EXIT_FAILURE, errno, "Bad patch #1");
 	newname[strlen (newname) - 1] = '\0';
 	start = ftell (p1);
 
@@ -1019,7 +1019,7 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 			oldname = NULL;
 		}
 		if (getline (&oldname, &namelen, p1) < 0)
-			error (EXIT_FAILURE, errno, "Bad patch1");
+			error (EXIT_FAILURE, errno, "Bad patch #1");
 
 	} while (strncmp (oldname, "+++ ", 4));
 	oldname[strlen (oldname) - 1] = '\0';
