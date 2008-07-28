@@ -16,13 +16,12 @@ rm -rf autom4te-2.53.cache
 #libtoolize --automake --force || exit 1
 
 # generate 'aclocal.m4', and use our macros in ./m4
-#aclocal -I ./m4
-aclocal-1.7 || exit 1
+aclocal || exit 1
 
 autoheader || exit 1
 
 #  generate Makefile.in's from Makefile.am's
-automake-1.7 --add-missing || exit 1
+automake --add-missing || exit 1
 
 # generate configure from configure.in
 autoconf || exit 1
