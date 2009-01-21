@@ -489,6 +489,9 @@ static long show_modified_hunk (struct hunk **hunkp, long line_offset,
 	do {
 		/* Lines before the modification are unaltered. */
 		int trim = 0;
+		if (morig_offset < hunk->line_in_diff)
+			error (EXIT_FAILURE, errno, "Invalid changes made");
+
 		unaltered = morig_offset - hunk->line_in_diff;
 		if (!morig_count)
 			unaltered++;

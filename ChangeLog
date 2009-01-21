@@ -1,5 +1,10 @@
 2009-01-21  Tim Waugh  <twaugh@redhat.com>
 
+	* src/rediff.c (show_modified_hunk): If changes have been made
+	outside the original diff, error out (trac #1).
+
+2009-01-21  Tim Waugh  <twaugh@redhat.com>
+
 	* tests/rediff2/run-test: New test case.
 
 2009-01-21  Tim Waugh  <twaugh@redhat.com>
