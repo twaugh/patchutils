@@ -1,5 +1,18 @@
 2009-01-21  Tim Waugh  <twaugh@redhat.com>
 
+	* src/rediff.c (show_modified_hunk): If changes have been made
+	outside the original diff, error out (trac #1).
+
+2009-01-21  Tim Waugh  <twaugh@redhat.com>
+
+	* tests/rediff2/run-test: New test case.
+
+2009-01-21  Tim Waugh  <twaugh@redhat.com>
+
+	* doc/patchutils.xml: Fixed typo (trac #7).
+
+2009-01-21  Tim Waugh  <twaugh@redhat.com>
+
 	* src/util.c (xtmpfile): New function.
 	* src/interdiff.c (output_delta): Use it.
 	(take_diff): Likewise.

@@ -1,0 +1,36 @@
+#!/bin/sh
+
+# This is a rediff(1) testcase.
+# Test: Don't segfault when changes are made outside the diff.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << "EOF" > patch.orig
+Index: file
+===================================================================
+--- file
++++ file
+@@ -3,3 +3,4 @@
+ 1
+ 2
+ 3
++4.5
+EOF
+
+cat << "EOF" > patch.mod
+# this change is invalid
+Index: file
+===================================================================
+--- file
++++ file
+@@ -3,3 +3,4 @@
+ 1
+ 2
+ 3
++4.5
+EOF
+
+${REDIFF} patch.orig patch.mod > patch-rediffed 2>stderr && exit 1
+[ $? == 1 ] || exit 1
+exit 0

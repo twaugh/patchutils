@@ -1941,7 +1941,7 @@ done)]]></screen></para>
 	  to recombine a wrapped line, or just join them
 	  together.  Currently this is done by comparing with last
 	  three characters of a line with the first two characters of
-	  its continuation, and using a space of any of them are
+	  its continuation, and using a space if any of them are
 	  different.</para>
 
 	<para>The patch needs to have been valid before being
