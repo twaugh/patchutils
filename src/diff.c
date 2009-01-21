@@ -1,6 +1,6 @@
 /*
  * diff.c - diff specific util functions
- * Copyright (C) 2001, 2002, 2003, 2004, 2005 Tim Waugh <twaugh@redhat.com>
+ * Copyright (C) 2001, 2002, 2003, 2004, 2005, 2009 Tim Waugh <twaugh@redhat.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -902,7 +902,7 @@ static FILE *do_convert (FILE *f, const char *mode, int seekable,
 			ret = fdopen (fildes[0], mode);
 
 			if (seekable) {
-				FILE *tmp = tmpfile ();	
+				FILE *tmp = xtmpfile ();	
 				while (!feof (ret)) {
 					int c = fgetc (ret);
 

@@ -3,7 +3,7 @@
  *
  * Utility functions.
  * Copyright (C) 2001  Marko Kreen
- * Copyright (C) 2001, 2003  Tim Waugh <twaugh@redhat.com>
+ * Copyright (C) 2001, 2003, 2009  Tim Waugh <twaugh@redhat.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -92,6 +92,28 @@ int xmkstemp (char *pattern)
 	return fd;
 }
 
+FILE *xtmpfile (void)
+{
+	FILE *ret;
+	char *tmpfname;
+	char *tmpdir = getenv ("TMPDIR");
+	size_t tmpdirlen;
+	int fd;
+
+	if (tmpdir == NULL || !strcmp (tmpdir, P_tmpdir))
+		return tmpfile ();
+
+	tmpdirlen = strlen (tmpdir);
+	tmpfname = xmalloc (tmpdirlen + 8);
+	strcpy (tmpfname, tmpdir);
+	strcpy (tmpfname + tmpdirlen, "/XXXXXX");
+	fd = mkstemp (tmpfname);
+	ret = fdopen (fd, "w+b");
+	if (ret == NULL)
+		error (EXIT_FAILURE, errno, "fdopen");
+	return ret;
+}
+
 /*
  * Pattern operations.
  */
@@ -174,9 +196,7 @@ FILE *xopen_seekable (const char *name, const char *mode)
 	if (fseek (f, 0L, SEEK_SET) != 0) {
 		const size_t buflen = 64 * 1024;
 		char *buffer = xmalloc (buflen);
-		FILE *tmp = tmpfile();
-		if (!tmp)
-			error (EXIT_FAILURE, errno, "tmpfile");
+		FILE *tmp = xtmpfile();
 
 		while (!feof (f)) {
 			size_t count = fread (buffer, 1, buflen, f);
@@ -215,10 +235,7 @@ FILE *xopen_unzip (const char *name, const char *mode)
 		return xopen_seekable (name, mode);
 	
 	buffer = xmalloc (buflen);
-	fo = tmpfile();
-	if (!fo)
-		error (EXIT_FAILURE, errno, "tmpfile");
-	
+	fo = xtmpfile();
 	fi = xpipe(zprog, &pid, "r", zprog, name, NULL);
 	
 	while (!feof (fi)) {

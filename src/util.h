@@ -3,7 +3,7 @@
  *
  * Utility functions.
  * Copyright (C) 2001  Marko Kreen
- * Copyright (C) 2001, 2003  Tim Waugh <twaugh@redhat.com>
+ * Copyright (C) 2001, 2003, 2009  Tim Waugh <twaugh@redhat.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -40,6 +40,8 @@ char *xstrdup (const char *s);
 char *xstrndup (const char *s, const size_t n);
 /* safe mkstemp */
 int xmkstemp (char *pattern);
+/* safe tmpfile */
+FILE *xtmpfile (void);
 
 FILE *xopen(const char *file, const char *mode);
 FILE *xopen_seekable(const char *file, const char *mode);

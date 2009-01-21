@@ -1,3 +1,22 @@
+2009-01-21  Tim Waugh  <twaugh@redhat.com>
+
+	* src/util.c (xtmpfile): New function.
+	* src/interdiff.c (output_delta): Use it.
+	(take_diff): Likewise.
+	(interdiff): Likewise.
+	* src/diff.c (do_convert): Likewise.
+	* src/filterdiff.c (do_unified): Likewise.
+	(do_context): Likewise.
+	* src/rediff.c (added_hunk): Likewise.
+	(show_modified_hunk): Likewise.
+	(rediff): Likewise.
+	* src/util.c (xopen_seekable): Likewise.
+	(xopen_unzip): Likewise.
+
+	The tmpfile() function is not specified to use the TMPDIR
+	environment variable.  We wrap it to make sure that TMPDIR is
+	honoured (trac #3).
+
 2008-07-28  Tim Waugh  <twaugh@redhat.com>
 
 	* src/interdiff.c (output_patch1_only): Clean up error messages.

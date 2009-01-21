@@ -2,7 +2,7 @@
  * interdiff - create incremental patch between two against a common source
  * combinediff - create cumulative patch from two incremental patches
  * flipdiff - exchange the order of two incremental patches
- * Copyright (C) 2000, 2001, 2002, 2003, 2004, 2005 Tim Waugh <twaugh@redhat.com>
+ * Copyright (C) 2000, 2001, 2002, 2003, 2004, 2005, 2009 Tim Waugh <twaugh@redhat.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1087,7 +1087,7 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 		/* ANOTHER temporary file!  This is to catch the case
 		 * where we just don't have enough context to generate
 		 * a proper interdiff. */
-		FILE *tmpdiff = tmpfile ();
+		FILE *tmpdiff = xtmpfile ();
 		char *line = NULL;
 		size_t linelen;
 		for (;;) {
@@ -1482,7 +1482,7 @@ take_diff (const char *f1, const char *f2, char *headers[2],
 	}
 
 	if (!diff_is_empty) {
-		FILE *tmpdiff = tmpfile ();
+		FILE *tmpdiff = xtmpfile ();
 		while (!feof (in)) {
 			int ch = fgetc (in);
 			if (ch != EOF)
@@ -1821,8 +1821,8 @@ interdiff (FILE *p1, FILE *p2, const char *patch1, const char *patch2)
 	FILE *flip1 = NULL, *flip2 = NULL;
 
 	if (mode == mode_flip) {
-		flip1 = tmpfile ();
-		flip2 = tmpfile ();
+		flip1 = xtmpfile ();
+		flip2 = xtmpfile ();
 	}
 
 	if (index_patch2 (p2))

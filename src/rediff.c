@@ -1,6 +1,6 @@
 /*
  * rediff - fix offset and counts of a hand-edited diff
- * Copyright (C) 2001, 2002, 2004 Tim Waugh <twaugh@redhat.com>
+ * Copyright (C) 2001, 2002, 2004, 2009 Tim Waugh <twaugh@redhat.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -250,7 +250,7 @@ static long added_hunk (const char *meta, long offset, FILE *modify, FILE *t,
 	char *p = strchr (meta, '-'), *q;
 	unsigned long orig_offset = 0, new_offset;
 	unsigned long orig_count = 0, new_count = 0;
-	FILE *newhunk = tmpfile ();
+	FILE *newhunk = xtmpfile ();
 
 	if (!newhunk)
 		error (EXIT_FAILURE, errno, "Couldn't create temporary file");
@@ -451,7 +451,7 @@ static long show_modified_hunk (struct hunk **hunkp, long line_offset,
 	unsigned long morig_offset, morig_count, mnew_offset, mnew_count;
 	char *line = NULL;
 	size_t linelen = 0;
-	FILE *t = tmpfile ();
+	FILE *t = xtmpfile ();
 	int t_written_to = 0;
 	unsigned long i, at = 1;
 	unsigned long replaced, unaltered;
@@ -880,7 +880,7 @@ static int rediff (const char *original, const char *edited, FILE *out)
 	/* Run diff between original and edited. */
 	t = xpipe (DIFF, &child, "r", DIFF, "-U0",
 		   original, edited, NULL);
-	m = tmpfile ();
+	m = xtmpfile ();
 	if (m) {
 		size_t buffer_size = 10000;
 		char *buffer = xmalloc (buffer_size);
@@ -963,7 +963,7 @@ static int rediff (const char *original, const char *edited, FILE *out)
 			/* This meta hunk is the first pertaining to
 			 * the hunk in the original. */
 			first_hunk = pos;
-			t = tmpfile ();
+			t = xtmpfile ();
 		}
 
 		current_hunk = which;
