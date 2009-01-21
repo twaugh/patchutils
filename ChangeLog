@@ -1,5 +1,9 @@
 2009-01-21  Tim Waugh  <twaugh@redhat.com>
 
+	* doc/patchutils.xml: Fixed typo (trac #7).
+
+2009-01-21  Tim Waugh  <twaugh@redhat.com>
+
 	* src/util.c (xtmpfile): New function.
 	* src/interdiff.c (output_delta): Use it.
 	(take_diff): Likewise.
