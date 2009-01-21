@@ -2,7 +2,7 @@
  * filterdiff - extract (or exclude) a diff from a diff file
  * lsdiff - show which files are modified by a patch
  * grepdiff - show files modified by a patch containing a regexp
- * Copyright (C) 2001, 2002, 2003, 2004 Tim Waugh <twaugh@redhat.com>
+ * Copyright (C) 2001, 2002, 2003, 2004, 2009 Tim Waugh <twaugh@redhat.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -283,7 +283,7 @@ do_unified (FILE *f, char *header[2], int match, char **line,
 	int orig_is_empty = 1, new_is_empty = 1; /* assume until otherwise */
 
 	if (output_matching == output_file)
-		match_tmpf = tmpfile ();
+		match_tmpf = xtmpfile ();
 
 	for (;;) {
 		ssize_t got = getline (line, linelen, f);
@@ -314,7 +314,7 @@ do_unified (FILE *f, char *header[2], int match, char **line,
 			if (output_matching == output_hunk) {
 				if (match_tmpf)
 					fclose (match_tmpf);
-				match_tmpf = tmpfile ();
+				match_tmpf = xtmpfile ();
 			}
 
 			if (read_atatline (*line, &orig_offset, &orig_count,
@@ -558,7 +558,7 @@ do_context (FILE *f, char *header[2], int match, char **line,
 		return 1;
 
 	if (output_matching == output_file)
-		match_tmpf = tmpfile ();
+		match_tmpf = xtmpfile ();
 
  next_hunk:
 	unchanged = 0;
@@ -598,7 +598,7 @@ do_context (FILE *f, char *header[2], int match, char **line,
 			if (output_matching == output_hunk) {
 				if (match_tmpf)
 					fclose (match_tmpf);
-				match_tmpf = tmpfile ();
+				match_tmpf = xtmpfile ();
 			}
 		}
 
