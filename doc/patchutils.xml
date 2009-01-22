@@ -524,7 +524,7 @@
     <refentry id="filterdiff">
       <refentryinfo>
 	<productname>patchutils</productname>
-	<date>7 May 2004</date>
+	<date>22 Jan 2009</date>
       </refentryinfo>
 
       <refmeta>
@@ -545,6 +545,8 @@
 	  <arg choice="opt">-p <replaceable>n</replaceable></arg>
 	  <arg choice="opt">--strip=<replaceable>n</replaceable></arg>
 	  <arg choice="opt">--addprefix=<replaceable>PREFIX</replaceable></arg>
+	  <arg choice="opt">--addoldprefix=<replaceable>PREFIX</replaceable></arg>
+	  <arg choice="opt">--addnewprefix=<replaceable>PREFIX</replaceable></arg>
 	  <arg choice="opt">-x <replaceable>PATTERN</replaceable></arg>
 	  <arg choice="opt">-X <replaceable>FILE</replaceable></arg>
 	  <arg choice="opt">--verbose</arg>
@@ -726,7 +728,26 @@
 	    <term><option>--addprefix</option>=<replaceable>PREFIX</replaceable></term>
 	    <listitem>
 	      <para>Prefix pathnames in the output by
-	        <replaceable>PREFIX</replaceable>.</para>
+	        <replaceable>PREFIX</replaceable>.  This will override
+	        any individual settings specified with
+	        the <option>--addoldprefix</option>
+	        or <option>--addnewprefix</option> options.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--addoldprefix</option>=<replaceable>PREFIX</replaceable></term>
+	    <listitem>
+	      <para>Prefix pathnames for old or original files in the
+	      output by <replaceable>PREFIX</replaceable>.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--addnewprefix</option>=<replaceable>PREFIX</replaceable></term>
+	    <listitem>
+	      <para>Prefix pathnames for updated or new files in the
+	      output by <replaceable>PREFIX</replaceable>.</para>
 	    </listitem>
 	  </varlistentry>
 

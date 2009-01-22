@@ -84,6 +84,8 @@ static int annotating = 0;
 static int ignore_components = 0;
 static int strip_components = 0;
 static const char *prefix_to_add = NULL;
+static const char *old_prefix_to_add = NULL;
+static const char *new_prefix_to_add = NULL;
 static int show_status = 0;
 static int verbose = 0;
 static int removing_timestamp = 0;
@@ -157,6 +159,12 @@ static int output_header_line (const char *line)
 
 	if (prefix_to_add)
 		fputs (prefix_to_add, stdout);
+	else {
+		if (old_prefix_to_add && strncmp (line, "---", 3) == 0)
+			fputs (old_prefix_to_add, stdout);
+		if (new_prefix_to_add && strncmp (line, "+++", 3) == 0)
+			fputs (new_prefix_to_add, stdout);
+	}
 
 	fn = xstrndup (line + 4, h);
 	fputs (stripped (fn, strip_components), stdout);
@@ -1049,6 +1057,10 @@ const char * syntax_str =
 "  --strip=N initial pathname components to strip\n"
 "  --addprefix=PREFIX\n"
 "            prefix pathnames with PREFIX\n"
+"  --addoldprefix=PREFIX\n"
+"            prefix pathnames in old files with PREFIX\n"
+"  --addnewprefix=PREFIX\n"
+"            prefix pathnames in new files with PREFIX\n"
 "  -s        show file additions and removals (lsdiff)\n"
 "  -v        verbose output -- use more than once for extra verbosity\n"
 "  -E        use extended regexps, like egrep (grepdiff)\n"
@@ -1251,6 +1263,8 @@ int main (int argc, char *argv[])
 			{"grep", 0, 0, 'g'},
 			{"strip", 1, 0, 1000 + 'S'},
 			{"addprefix", 1, 0, 1000 + 'A'},
+			{"addoldprefix", 1, 0, 1000 + 'O'},
+			{"addnewprefix", 1, 0, 1000 + 'N'},
 			{"hunks", 1, 0, '#'},
 			{"lines", 1, 0, 1000 + ':'},
 			{"files", 1, 0, 1000 + 'w'},
@@ -1309,6 +1323,12 @@ int main (int argc, char *argv[])
 			break;
 		case 1000 + 'A':
 			prefix_to_add = optarg;
+			break;
+		case 1000 + 'O':
+			old_prefix_to_add = optarg;
+			break;
+		case 1000 + 'N':
+			new_prefix_to_add = optarg;
 			break;
 		case 'p':
 			ignore_components = strtoul (optarg, &end, 0);
