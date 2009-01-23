@@ -14,6 +14,7 @@
 	<affiliation>
 	  <address><email>twaugh@redhat.com</email></address>
 	</affiliation>
+	<contrib>Package maintainer</contrib>
       </author>
     </referenceinfo>
 
@@ -22,19 +23,13 @@
       <refentryinfo>
 	<productname>patchutils</productname>
 	<date>11 June 2008</date>
-	<author>
-	  <firstname>Tim</firstname>
-	  <surname>Waugh</surname>
-	  <affiliation>
-	    <address><email>twaugh@redhat.com</email></address>
-	  </affiliation>
-	</author>
 	<editor>
 	  <firstname>Michael K.</firstname>
 	  <surname>Johnson</surname>
 	  <affiliation>
 	    <address><email>johnsonm@redhat.com</email></address>
 	  </affiliation>
+	  <contrib>Original man page contributor</contrib>
 	</editor>
       </refentryinfo>
 
@@ -907,6 +902,7 @@ patch.file]]></screen></para>
 	    <affiliation>
 	      <address><email>karger@post.harvard.edu</email></address>
 	    </affiliation>
+	    <contrib>Author of the original perl script and man page</contrib>
 	  </author>
 
 	  <author>
@@ -915,16 +911,9 @@ patch.file]]></screen></para>
 	    <affiliation>
 	      <address><email>moz@compsoc.man.ac.uk</email></address>
 	    </affiliation>
+	    <contrib>Author of the original perl script and man page</contrib>
 	  </author>
 	</authorgroup>
-
-	<editor>
-	  <firstname>John</firstname>
-	  <surname>Levon</surname>
-	  <affiliation>
-	    <address><email>moz@compsoc.man.ac.uk</email></address>
-	  </affiliation>
-	</editor>
       </refentryinfo>
 
       <refmeta>
@@ -2244,19 +2233,12 @@ done)]]></screen></para>
 	<date>5 March 2003</date>
 	<authorgroup>
 	  <author>
-	    <firstname>Tim</firstname>
-	    <surname>Waugh</surname>
-	    <affiliation>
-	      <address><email>twaugh@redhat.com</email></address>
-	    </affiliation>
-	  </author>
-
-	  <author>
 	    <firstname>Mike</firstname>
 	    <surname>Harris</surname>
 	    <affiliation>
 	      <address><email>mharris@redhat.com</email></address>
 	    </affiliation>
+	    <contrib>Conceptual designer</contrib>
 	  </author>
 	</authorgroup>
       </refentryinfo>
