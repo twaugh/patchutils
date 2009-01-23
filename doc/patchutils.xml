@@ -22,7 +22,7 @@
     <refentry id="interdiff">
       <refentryinfo>
 	<productname>patchutils</productname>
-	<date>11 June 2008</date>
+	<date>23 June 2009</date>
 	<editor>
 	  <firstname>Michael K.</firstname>
 	  <surname>Johnson</surname>
@@ -46,10 +46,42 @@
       <refsynopsisdiv>
 	<cmdsynopsis>
 	  <command>interdiff</command>
-	  <arg choice="opt">-p <replaceable>n</replaceable></arg>
-	  <arg choice="opt">-U <replaceable>n</replaceable></arg>
-	  <arg choice="opt">-d <replaceable>PAT</replaceable></arg>
-	  <arg choice="opt">-Bbiqwz</arg>
+	  <group choice="opt">
+	    <arg>-p <replaceable>n</replaceable></arg>
+	    <arg>--strip-match=<replaceable>n</replaceable></arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-U <replaceable>n</replaceable></arg>
+	    <arg>--unified=<replaceable>n</replaceable></arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-d <replaceable>PAT</replaceable></arg>
+	    <arg>--drop-context=<replaceable>PAT</replaceable></arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-q</arg>
+	    <arg>--quiet</arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-z</arg>
+	    <arg>--decompress</arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-b</arg>
+	    <arg>--ignore-space-change</arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-B</arg>
+	    <arg>--ignore-blank-lines</arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-i</arg>
+	    <arg>--ignore-case</arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-w</arg>
+	    <arg>--ignore-all-space</arg>
+	  </group>
 	  <group choice="opt">
 	    <arg>--interpolate</arg>
 	    <arg>--combine</arg>
@@ -120,7 +152,8 @@
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-p</option> <replaceable>n</replaceable></term>
+	    <term><option>-p</option> <replaceable>n</replaceable>,
+	    <option>--strip-match=<replaceable>n</replaceable></option></term>
 	    <listitem>
 	      <para>When comparing filenames, ignore the first
                 <replaceable>n</replaceable> pathname components from
@@ -133,7 +166,7 @@
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-q</option></term>
+	    <term><option>-q</option>, <option>--quiet</option></term>
 	    <listitem>
 	      <para>Quieter output.  Don't emit rationale lines at the
 	       beginning of each patch.</para>
@@ -141,7 +174,8 @@
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-U</option> <replaceable>n</replaceable></term>
+	    <term><option>-U</option> <replaceable>n</replaceable>,
+	    <option>--unified=<replaceable>n</replaceable></option></term>
 	    <listitem>
 	      <para>Attempt to display <replaceable>n</replaceable>
                 lines of context (requires at least
@@ -156,10 +190,11 @@
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-d</option> <replaceable>pattern</replaceable></term>
+	    <term><option>-d</option> <replaceable>PATTERN</replaceable>,
+	    <option>--drop-context=<replaceable>PATTERN</replaceable></option></term>
 	    <listitem>
 	      <para>Don't display any context on files that match the
-                shell wildcard <replaceable>pattern</replaceable>.
+                shell wildcard <replaceable>PATTERN</replaceable>.
                 This option can be given multiple times.</para>
 
 	      <para>Note that the interpretation of the shell wildcard
@@ -173,35 +208,39 @@
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-i</option></term>
+	    <term><option>-i</option>, <option>--ignore-case</option></term>
 	    <listitem>
 	      <para>Consider upper- and lower-case to be the same.</para>
 	    </listitem>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-w</option></term>
+	    <term><option>-w</option>,
+	    <option>--ignore-all-space</option></term>
 	    <listitem>
 	      <para>Ignore whitespace changes in patches.</para>
 	    </listitem>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-b</option></term>
+	    <term><option>-b</option>,
+	    <option>--ignore-space-change</option></term>
 	    <listitem>
 	      <para>Ignore changes in the amount of whitespace.</para>
 	    </listitem>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-B</option></term>
+	    <term><option>-B</option>,
+	    <option>--ignore-blank-lines</option></term>
 	    <listitem>
 	      <para>Ignore changes whose lines are all blank.</para>
 	    </listitem>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-z</option></term>
+	    <term><option>-z</option>,
+	    <option>--decompress</option></term>
 	    <listitem>
 	      <para>Decompress files with extensions .gz and .bz2.</para>
 	    </listitem>
@@ -299,7 +338,7 @@
     <refentry id="combinediff">
       <refentryinfo>
 	<productname>patchutils</productname>
-	<date>7 Jul 2003</date>
+	<date>23 Jan 2009</date>
       </refentryinfo>
 
       <refmeta>
@@ -316,10 +355,42 @@
       <refsynopsisdiv>
 	<cmdsynopsis>
 	  <command>combinediff</command>
-	  <arg choice="opt">-p <replaceable>n</replaceable></arg>
-	  <arg choice="opt">-U <replaceable>n</replaceable></arg>
-	  <arg choice="opt">-d <replaceable>PAT</replaceable></arg>
-	  <arg choice="opt">-Bbiqwz</arg>
+	  <group choice="opt">
+	    <arg>-p <replaceable>n</replaceable></arg>
+	    <arg>--strip-match=<replaceable>n</replaceable></arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-U <replaceable>n</replaceable></arg>
+	    <arg>--unified=<replaceable>n</replaceable></arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-d <replaceable>PAT</replaceable></arg>
+	    <arg>--drop-context=<replaceable>PAT</replaceable></arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-q</arg>
+	    <arg>--quiet</arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-z</arg>
+	    <arg>--decompress</arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-b</arg>
+	    <arg>--ignore-space-change</arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-B</arg>
+	    <arg>--ignore-blank-lines</arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-i</arg>
+	    <arg>--ignore-case</arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-w</arg>
+	    <arg>--ignore-all-space</arg>
+	  </group>
 	  <group choice="opt">
 	    <arg>--interpolate</arg>
 	    <arg>--combine</arg>
@@ -373,7 +444,8 @@
 
 	<variablelist>
 	  <varlistentry>
-	    <term><option>-p</option> <replaceable>n</replaceable></term>
+	    <term><option>-p</option> <replaceable>n</replaceable>,
+	    <option>--strip-match=<replaceable>n</replaceable></option></term>
 	    <listitem>
 	      <para>When comparing filenames, ignore the first
                 <replaceable>n</replaceable> pathname components from
@@ -386,7 +458,7 @@
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-q</option></term>
+	    <term><option>-q</option>, <option>--quiet</option></term>
 	    <listitem>
 	      <para>Quieter output.  Don't emit rationale lines at the
 	       beginning of each patch.</para>
@@ -394,7 +466,8 @@
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-U</option> <replaceable>n</replaceable></term>
+	    <term><option>-U</option> <replaceable>n</replaceable>,
+	    <option>--unified=<replaceable>n</replaceable></option></term>
 	    <listitem>
 	      <para>Attempt to display <replaceable>n</replaceable>
                 lines of context (requires at least
@@ -409,7 +482,8 @@
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-d</option> <replaceable>pattern</replaceable></term>
+	    <term><option>-d</option> <replaceable>pattern</replaceable>,
+	    <option>--drop-context=<replaceable>PATTERN</replaceable></option></term>
 	    <listitem>
 	      <para>Don't display any context on files that match the
                 shell wildcard <replaceable>pattern</replaceable>.
@@ -426,35 +500,39 @@
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-i</option></term>
+	    <term><option>-i</option>, <option>--ignore-case</option></term>
 	    <listitem>
 	      <para>Consider upper- and lower-case to be the same.</para>
 	    </listitem>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-w</option></term>
+	    <term><option>-w</option>,
+	    <option>--ignore-all-space</option></term>
 	    <listitem>
 	      <para>Ignore whitespace changes in patches.</para>
 	    </listitem>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-b</option></term>
+	    <term><option>-b</option>,
+	    <option>--ignore-space-change</option></term>
 	    <listitem>
 	      <para>Ignore changes in the amount of whitespace.</para>
 	    </listitem>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-B</option></term>
+	    <term><option>-B</option>,
+	    <option>--ignore-blank-lines</option></term>
 	    <listitem>
 	      <para>Ignore changes whose lines are all blank.</para>
 	    </listitem>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-z</option></term>
+	    <term><option>-z</option>,
+	    <option>--decompress</option></term>
 	    <listitem>
 	      <para>Decompress files with extensions .gz and .bz2.</para>
 	    </listitem>
@@ -519,7 +597,7 @@
     <refentry id="filterdiff">
       <refentryinfo>
 	<productname>patchutils</productname>
-	<date>22 Jan 2009</date>
+	<date>23 Jan 2009</date>
       </refentryinfo>
 
       <refmeta>
@@ -535,19 +613,39 @@
       <refsynopsisdiv>
 	<cmdsynopsis>
 	  <command>filterdiff</command>
-	  <arg choice="opt">-i <replaceable>PATTERN</replaceable></arg>
-	  <arg choice="opt">-I <replaceable>FILE</replaceable></arg>
-	  <arg choice="opt">-p <replaceable>n</replaceable></arg>
+	  <group choice="opt">
+	    <arg>-i <replaceable>PATTERN</replaceable></arg>
+	    <arg>--include=<replaceable>PATTERN</replaceable></arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-I <replaceable>FILE</replaceable></arg>
+	    <arg>--include-from-file=<replaceable>FILE</replaceable></arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-p <replaceable>n</replaceable></arg>
+	    <arg>--strip-match=<replaceable>n</replaceable></arg>
+	  </group>
 	  <arg choice="opt">--strip=<replaceable>n</replaceable></arg>
 	  <arg choice="opt">--addprefix=<replaceable>PREFIX</replaceable></arg>
 	  <arg choice="opt">--addoldprefix=<replaceable>PREFIX</replaceable></arg>
 	  <arg choice="opt">--addnewprefix=<replaceable>PREFIX</replaceable></arg>
-	  <arg choice="opt">-x <replaceable>PATTERN</replaceable></arg>
-	  <arg choice="opt">-X <replaceable>FILE</replaceable></arg>
-	  <arg choice="opt">--verbose</arg>
-	  <arg choice="opt">-v</arg>
+	  <group choice="opt">
+	    <arg>-x <replaceable>PATTERN</replaceable></arg>
+	    <arg>--exclude=<replaceable>PATTERN</replaceable></arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-X <replaceable>FILE</replaceable></arg>
+	    <arg>--exclude-from-file=<replaceable>FILE</replaceable></arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-v</arg>
+	    <arg>--verbose</arg>
+	  </group>
 	  <arg choice="opt">--clean</arg>
-	  <arg choice="opt">-z</arg>
+	  <group choice="opt">
+	    <arg>-z</arg>
+	    <arg>--decompress</arg>
+	  </group>
 	  <group choice="opt">
 	    <arg>-# <replaceable>RANGE</replaceable></arg>
 	    <arg>--hunks=<replaceable>RANGE</replaceable></arg>
@@ -611,7 +709,8 @@
 
 	<variablelist>
 	  <varlistentry>
-	    <term><option>-i</option> <replaceable>PATTERN</replaceable></term>
+	    <term><option>-i</option> <replaceable>PATTERN</replaceable>,
+	    <option>--include=<replaceable>PATTERN</replaceable></option></term>
 	    <listitem>
 	      <para>Include only files matching
 	        <replaceable>PATTERN</replaceable>.  All other lines
@@ -620,7 +719,8 @@
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-I</option> <replaceable>FILE</replaceable></term>
+	    <term><option>-I</option> <replaceable>FILE</replaceable>,
+	    <option>--include-from-file=<replaceable>FILE</replaceable></option></term>
 	    <listitem>
 	      <para>Include only files matching any pattern listed in
 	        <replaceable>FILE</replaceable>, one pattern per line.
@@ -629,7 +729,8 @@
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-x</option> <replaceable>PATTERN</replaceable></term>
+	    <term><option>-x</option> <replaceable>PATTERN</replaceable>,
+	    <option>--exclude=<replaceable>PATTERN</replaceable></option></term>
 	    <listitem>
 	      <para>Exclude files matching
 	        <replaceable>PATTERN</replaceable>.  All other lines
@@ -638,7 +739,8 @@
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-X</option> <replaceable>FILE</replaceable></term>
+	    <term><option>-X</option> <replaceable>FILE</replaceable>,
+	    <option>--exclude-from-file=<replaceable>FILE</replaceable></option></term>
 	    <listitem>
 	      <para>Exclude files matching any pattern listed in
 	        <replaceable>FILE</replaceable>, one pattern per line.
@@ -647,7 +749,8 @@
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-p</option> <replaceable>n</replaceable></term>
+	    <term><option>-p</option> <replaceable>n</replaceable>,
+	    <option>--strip-match=<replaceable>n</replaceable></option></term>
 	    <listitem>
 	      <para>When matching, ignore the first
 	        <replaceable>n</replaceable> components of the
@@ -656,7 +759,7 @@
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-#</option> <replaceable>RANGE</replaceable> |
+	    <term><option>-#</option> <replaceable>RANGE</replaceable>,
 	    <option>--hunks</option>=<replaceable>RANGE</replaceable></term>
 	    <listitem>
 	      <para>Only include hunks within the specified
@@ -786,7 +889,7 @@
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-z</option></term>
+	    <term><option>-z</option>, <option>--decompress</option></term>
 	    <listitem>
 	      <para>Decompress files with extensions .gz and .bz2.</para>
 	    </listitem>
@@ -991,7 +1094,7 @@ patch.file]]></screen></para>
     <refentry id="lsdiff">
       <refentryinfo>
 	<productname>patchutils</productname>
-	<date>2 Jul 2004</date>
+	<date>23 Jan 2009</date>
       </refentryinfo>
 
       <refmeta>
@@ -1007,15 +1110,36 @@ patch.file]]></screen></para>
       <refsynopsisdiv>
 	<cmdsynopsis>
 	  <command>lsdiff</command>
-	  <arg choice="opt">-n</arg>
-	  <arg choice="opt">-p <replaceable>n</replaceable></arg>
+	  <group choice="opt">
+	    <arg>-n</arg>
+	    <arg>--line-number</arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-p <replaceable>n</replaceable></arg>
+	    <arg>--strip-match=<replaceable>n</replaceable></arg>
+	  </group>
 	  <arg choice="opt">--strip=<replaceable>n</replaceable></arg>
 	  <arg choice="opt">--addprefix=<replaceable>PREFIX</replaceable></arg>
-	  <arg choice="opt">-s</arg>
-	  <arg choice="opt">-E</arg>
-	  <arg choice="opt">-i <replaceable>PATTERN</replaceable></arg>
-	  <arg choice="opt">-x <replaceable>PATTERN</replaceable></arg>
-	  <arg choice="opt">-z</arg>
+	  <group choice="opt">
+	    <arg>-s</arg>
+	    <arg>--status</arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-E</arg>
+	    <arg>--empty-files-as-removed</arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-i <replaceable>PATTERN</replaceable></arg>
+	    <arg>--include=<replaceable>PATTERN</replaceable></arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-x <replaceable>PATTERN</replaceable></arg>
+	    <arg>--exclude=<replaceable>PATTERN</replaceable></arg>
+	  </group>
+	  <group>
+	    <arg>-z</arg>
+	    <arg>--decompress</arg>
+	  </group>
 	  <group choice="opt">
 	    <arg>-# <replaceable>RANGE</replaceable></arg>
 	    <arg>--hunks=<replaceable>RANGE</replaceable></arg>
@@ -1030,7 +1154,10 @@ patch.file]]></screen></para>
 	    <arg>-h</arg>
 	    <arg>--no-filename</arg>
 	  </group>
-	  <arg choice="opt" rep="repeat">-v</arg>
+	  <group choice="opt" rep="repeat">
+	    <arg>-v</arg>
+	    <arg>--verbose</arg>
+	  </group>
 	  <arg choice="opt" rep="repeat"><replaceable>file</replaceable></arg>
 	</cmdsynopsis>
 
@@ -1060,7 +1187,7 @@ patch.file]]></screen></para>
 
 	<variablelist>
 	  <varlistentry>
-	    <term><option>-n</option></term>
+	    <term><option>-n</option>, <option>--line-number</option></term>
 	    <listitem>
 	      <para>Display the line number that each patch begins at.
 	        If verbose output is requested (using
@@ -1098,7 +1225,7 @@ patch.file]]></screen></para>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-#</option> <replaceable>RANGE</replaceable> |
+	    <term><option>-#</option> <replaceable>RANGE</replaceable>,
 	    <option>--hunks</option>=<replaceable>RANGE</replaceable></term>
 	    <listitem>
 	      <para>Only list hunks within the specified
@@ -1137,7 +1264,8 @@ patch.file]]></screen></para>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-p</option> <replaceable>n</replaceable></term>
+	    <term><option>-p</option> <replaceable>n</replaceable>,
+	    <option>--strip-match=<replaceable>n</replaceable></option></term>
 	    <listitem>
 	      <para>When matching, ignore the first
 	        <replaceable>n</replaceable> components of the
@@ -1164,7 +1292,7 @@ patch.file]]></screen></para>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-s</option></term>
+	    <term><option>-s</option>, <option>--status</option></term>
 	    <listitem>
 	      <para>Show file additions, modifications and removals.
 	       A file addition is indicated by a <quote>+</quote>, a
@@ -1174,7 +1302,8 @@ patch.file]]></screen></para>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-E</option></term>
+	    <term><option>-E</option>,
+	    <option>--empty-files-as-removed</option></term>
 	    <listitem>
 	      <para>Treat empty files as absent for the purpose of
 	      displaying file additions, modifications and
@@ -1183,7 +1312,8 @@ patch.file]]></screen></para>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-i</option> <replaceable>PATTERN</replaceable></term>
+	    <term><option>-i</option> <replaceable>PATTERN</replaceable>,
+	    <option>--include=<replaceable>PATTERN</replaceable></option></term>
 	    <listitem>
 	      <para>Include only files matching
 	        <replaceable>PATTERN</replaceable>.</para>
@@ -1191,7 +1321,8 @@ patch.file]]></screen></para>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-x</option> <replaceable>PATTERN</replaceable></term>
+	    <term><option>-x</option> <replaceable>PATTERN</replaceable>,
+	    <option>--exclude=<replaceable>PATTERN</replaceable></option></term>
 	    <listitem>
 	      <para>Exclude files matching
 	        <replaceable>PATTERN</replaceable>.</para>
@@ -1199,7 +1330,8 @@ patch.file]]></screen></para>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-z</option></term>
+	    <term><option>-z</option>,
+	    <option>--decompress</option></term>
 	    <listitem>
 	      <para>Decompress files with extensions .gz and .bz2.
               </para>
@@ -1223,7 +1355,7 @@ patch.file]]></screen></para>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-v</option></term>
+	    <term><option>-v</option>, <option>--verbose</option></term>
 	    <listitem>
 	      <para>Verbose output.</para>
 	    </listitem>
@@ -1546,7 +1678,7 @@ done)]]></screen></para>
     <refentry id="grepdiff">
       <refentryinfo>
 	<productname>patchutils</productname>
-	<date>2 Jul 2004</date>
+	<date>23 Jan 2009</date>
       </refentryinfo>
 
       <refmeta>
@@ -1563,16 +1695,37 @@ done)]]></screen></para>
       <refsynopsisdiv>
 	<cmdsynopsis>
 	  <command>grepdiff</command>
-	  <arg choice="opt">-n</arg>
+	  <group choice="opt">
+	    <arg>-n</arg>
+	    <arg>--line-number</arg>
+	  </group>
 	  <arg choice="opt">--number-files</arg>
-	  <arg choice="opt">-p <replaceable>n</replaceable></arg>
+	  <group choice="opt">
+	    <arg>-p <replaceable>n</replaceable></arg>
+	    <arg>--strip-match=<replaceable>n</replaceable></arg>
+	  </group>
 	  <arg choice="opt">--strip=<replaceable>n</replaceable></arg>
 	  <arg choice="opt">--addprefix=<replaceable>PREFIX</replaceable></arg>
-	  <arg choice="opt">-s</arg>
-	  <arg choice="opt">-i <replaceable>PATTERN</replaceable></arg>
-	  <arg choice="opt">-x <replaceable>PATTERN</replaceable></arg>
-	  <arg choice="opt">-v</arg>
-	  <arg choice="opt">-E</arg>
+	  <group choice="opt">
+	    <arg>-s</arg>
+	    <arg>--status</arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-i <replaceable>PATTERN</replaceable></arg>
+	    <arg>--include=<replaceable>PATTERN</replaceable></arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-x <replaceable>PATTERN</replaceable></arg>
+	    <arg>--exclude=<replaceable>PATTERN</replaceable></arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-v</arg>
+	    <arg>--verbose</arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-E</arg>
+	    <arg>--extended-regexp</arg>
+	  </group>
 	  <group choice="opt">
 	    <arg>-H</arg>
 	    <arg>--with-filename</arg>
@@ -1629,7 +1782,7 @@ done)]]></screen></para>
 
 	<variablelist>
 	  <varlistentry>
-	    <term><option>-n</option></term>
+	    <term><option>-n</option>, <option>--line-number</option></term>
 	    <listitem>
 	      <para>Display the line number that each patch begins at.
 	        If verbose output is requested, each matching hunk is
@@ -1652,7 +1805,8 @@ done)]]></screen></para>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-p</option> <replaceable>n</replaceable></term>
+	    <term><option>-p</option> <replaceable>n</replaceable>,
+	    <option>--strip-match=<replaceable>n</replaceable></option></term>
 	    <listitem>
 	      <para>When matching, ignore the first
 	        <replaceable>n</replaceable> components of the
@@ -1689,7 +1843,8 @@ done)]]></screen></para>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-i</option> <replaceable>PATTERN</replaceable></term>
+	    <term><option>-i</option> <replaceable>PATTERN</replaceable>,
+	    <option>--include=<replaceable>PATTERN</replaceable></option></term>
 	    <listitem>
 	      <para>Include only files matching
 	        <replaceable>PATTERN</replaceable>.</para>
@@ -1697,7 +1852,8 @@ done)]]></screen></para>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-x</option> <replaceable>PATTERN</replaceable></term>
+	    <term><option>-x</option> <replaceable>PATTERN</replaceable>
+	    <option>--exclude=<replaceable>PATTERN</replaceable></option></term>
 	    <listitem>
 	      <para>Exclude files matching
 	        <replaceable>PATTERN</replaceable>.</para>
@@ -1705,7 +1861,8 @@ done)]]></screen></para>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-E</option></term>
+	    <term><option>-E</option>,
+	    <option>--extended-regexp</option></term>
 	    <listitem>
 	      <para>Use POSIX Extended Regular Expression
 	        syntax.</para>
@@ -1729,7 +1886,8 @@ done)]]></screen></para>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-f</option> <replaceable>FILE</replaceable></term>
+	    <term><option>-f</option> <replaceable>FILE</replaceable>,
+	    <option>--file=<replaceable>FILE</replaceable></option></term>
 	    <listitem>
 	      <para>Read regular expressions from
 	        <replaceable>FILE</replaceable>, one per line.</para>
@@ -2053,7 +2211,7 @@ done)]]></screen></para>
     <refentry id="flipdiff">
       <refentryinfo>
 	<productname>patchutils</productname>
-	<date>31 January 2003</date>
+	<date>23 January 2009</date>
       </refentryinfo>
 
       <refmeta>
@@ -2069,9 +2227,42 @@ done)]]></screen></para>
       <refsynopsisdiv>
 	<cmdsynopsis>
 	  <command>flipdiff</command>
-	  <arg choice="opt">-p <replaceable>n</replaceable></arg>
-	  <arg choice="opt">-U <replaceable>n</replaceable></arg>
-	  <arg choice="opt">-Bbiwz</arg>
+	  <group choice="opt">
+	    <arg>-p <replaceable>n</replaceable></arg>
+	    <arg>--strip-match=<replaceable>n</replaceable></arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-U <replaceable>n</replaceable></arg>
+	    <arg>--unified=<replaceable>n</replaceable></arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-d <replaceable>PAT</replaceable></arg>
+	    <arg>--drop-context=<replaceable>PAT</replaceable></arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-q</arg>
+	    <arg>--quiet</arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-z</arg>
+	    <arg>--decompress</arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-b</arg>
+	    <arg>--ignore-space-change</arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-B</arg>
+	    <arg>--ignore-blank-lines</arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-i</arg>
+	    <arg>--ignore-case</arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-w</arg>
+	    <arg>--ignore-all-space</arg>
+	  </group>
 	  <arg choice="opt">--in-place</arg>
 	  <arg choice="plain"><replaceable>diff1</replaceable></arg>
 	  <arg choice="plain"><replaceable>diff2</replaceable></arg>
@@ -2107,7 +2298,8 @@ done)]]></screen></para>
 
 	<variablelist>
 	  <varlistentry>
-	    <term><option>-p</option> <replaceable>n</replaceable></term>
+	    <term><option>-p</option> <replaceable>n</replaceable>,
+	    <option>--strip-match=<replaceable>n</replaceable></option></term>
 	    <listitem>
 	      <para>When comparing filenames, ignore the first
                 <replaceable>n</replaceable> pathname components from
@@ -2120,7 +2312,16 @@ done)]]></screen></para>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-U</option> <replaceable>n</replaceable></term>
+	    <term><option>-q</option>, <option>--quiet</option></term>
+	    <listitem>
+	      <para>Quieter output.  Don't emit rationale lines at the
+	       beginning of each patch.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-U</option> <replaceable>n</replaceable>,
+	    <option>--unified=<replaceable>n</replaceable></option></term>
 	    <listitem>
 	      <para>Attempt to display <replaceable>n</replaceable>
                 lines of context (requires at least
@@ -2135,7 +2336,8 @@ done)]]></screen></para>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-d</option> <replaceable>pattern</replaceable></term>
+	    <term><option>-d</option> <replaceable>pattern</replaceable>,
+	    <option>--drop-context=<replaceable>PATTERN</replaceable></option></term>
 	    <listitem>
 	      <para>Don't display any context on files that match the
                 shell wildcard <replaceable>pattern</replaceable>.
@@ -2152,35 +2354,39 @@ done)]]></screen></para>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-i</option></term>
+	    <term><option>-i</option>, <option>--ignore-case</option></term>
 	    <listitem>
 	      <para>Consider upper- and lower-case to be the same.</para>
 	    </listitem>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-w</option></term>
+	    <term><option>-w</option>,
+	    <option>--ignore-all-space</option></term>
 	    <listitem>
 	      <para>Ignore whitespace changes in patches.</para>
 	    </listitem>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-b</option></term>
+	    <term><option>-b</option>,
+	    <option>--ignore-space-change</option></term>
 	    <listitem>
 	      <para>Ignore changes in the amount of whitespace.</para>
 	    </listitem>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-B</option></term>
+	    <term><option>-B</option>,
+	    <option>--ignore-blank-lines</option></term>
 	    <listitem>
 	      <para>Ignore changes whose lines are all blank.</para>
 	    </listitem>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>-z</option></term>
+	    <term><option>-z</option>,
+	    <option>--decompress</option></term>
 	    <listitem>
 	      <para>Decompress files with extensions .gz and .bz2.</para>
 	    </listitem>

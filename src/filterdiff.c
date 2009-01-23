@@ -1024,10 +1024,14 @@ static int filterdiff (FILE *f, const char *patchname)
 
 const char * syntax_str =
 "Options:\n"
-"  -x PAT    exclude files matching PAT\n"
-"  -X FILE   exclude files that match any pattern in FILE\n"
-"  -i PAT    include only files matching PAT\n"
-"  -I FILE   include only files that match any pattern in FILE\n"
+"  -x PAT, --exclude=PAT\n"
+"            exclude files matching PAT\n"
+"  -X FILE, --exclude-from-file=FILE\n"
+"            exclude files that match any pattern in FILE\n"
+"  -i PAT, --include=PAT\n"
+"            include only files matching PAT\n"
+"  -I FILE, --include-from-file=FILE\n"
+"            include only files that match any pattern in FILE\n"
 "  --hunks=H, -# H\n"
 "            include only hunks in range H\n"
 "  --lines=L include only hunks with (original) lines in range L\n"
@@ -1045,15 +1049,18 @@ const char * syntax_str =
 "            don't show timestamps from output (filterdiff, grepdiff)\n"
 "  --clean (filterdiff)\n"
 "            remove all comments (non-diff lines) from output (filterdiff)\n"
-"  -z        decompress .gz and .bz2 files\n"
-"  -n        show line numbers (lsdiff, grepdiff)\n"
+"  -z, --decompress\n"
+"            decompress .gz and .bz2 files\n"
+"  -n, --line-number\n"
+"            show line numbers (lsdiff, grepdiff)\n"
 "  --number-files (lsdiff, grepdiff)\n"
 "            show file numbers, for use with filterdiff's --files option (lsdiff, grepdiff)\n"
 "  -H, --with-filename (lsdiff, grepdiff)\n"
 "            show patch file names (lsdiff, grepdiff)\n"
 "  -h, --no-filename (lsdiff, grepdiff)\n"
 "            suppress patch file names (lsdiff, grepdiff)\n"
-"  -p N      initial pathname components to ignore\n"
+"  -p N, --strip-match=N\n"
+"            initial pathname components to ignore\n"
 "  --strip=N initial pathname components to strip\n"
 "  --addprefix=PREFIX\n"
 "            prefix pathnames with PREFIX\n"
@@ -1061,12 +1068,16 @@ const char * syntax_str =
 "            prefix pathnames in old files with PREFIX\n"
 "  --addnewprefix=PREFIX\n"
 "            prefix pathnames in new files with PREFIX\n"
-"  -s        show file additions and removals (lsdiff)\n"
-"  -v        verbose output -- use more than once for extra verbosity\n"
-"  -E        use extended regexps, like egrep (grepdiff)\n"
+"  -s, --status\n"
+"            show file additions and removals (lsdiff)\n"
+"  -v, --verbose\n"
+"            verbose output -- use more than once for extra verbosity\n"
+"  -E, --extended-regexp\n"
+"            use extended regexps, like egrep (grepdiff)\n"
 "  -E, --empty-files-as-absent (lsdiff)\n"
 "            treat empty files as absent (lsdiff)\n"
-"  -f FILE   read regular expressions from FILE (grepdiff)\n"
+"  -f FILE, --file=FILE\n"
+"            read regular expressions from FILE (grepdiff)\n"
 "  --filter  run as 'filterdiff' (grepdiff, lsdiff)\n"
 "  --list    run as 'lsdiff' (filterdiff, grepdiff)\n"
 "  --grep    run as 'grepdiff' (filterdiff, lsdiff)\n"
@@ -1278,6 +1289,18 @@ int main (int argc, char *argv[])
 			{"empty-files-as-absent", 0, 0, 'E'},
 			{"number-files", 0, 0, 1000 + 'n'},
 			{"clean", 0, 0, 1000 + 'c'},
+			{"strip-match", 1, 0, 'p'},
+			{"include", 1, 0, 'i'},
+			{"exclude", 1, 0, 'x'},
+			{"include-from-file", 1, 0, 'I'},
+			{"exclude-from-file", 1, 0, 'X'},
+			{"decompress", 0, 0, 'z'},
+			{"line-number", 0, 0, 'n'},
+			{"strip-match", 1, 0, 'p'},
+			{"status", 0, 0, 's'},
+			{"extended-regexp", 0, 0, 'E'},
+			{"empty-files-as-removed", 0, 0, 'E'},
+			{"file", 1, 0, 'f'},
 			{0, 0, 0, 0}
 		};
 		char *end;

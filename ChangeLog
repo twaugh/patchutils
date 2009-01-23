@@ -1,5 +1,12 @@
 2009-01-23  Tim Waugh  <twaugh@redhat.com>
 
+	* src/filterdiff.c (main): Provide GNU-style long names for all
+	options (trac #6).
+	* src/interdiff.c (main): Likewise.
+	* doc/patchutils.xml: Updated.
+
+2009-01-23  Tim Waugh  <twaugh@redhat.com>
+
 	* src/filterdiff.c (do_unified): Cope a little better with
 	incomplete @@ lines.
 

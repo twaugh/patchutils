@@ -1933,15 +1933,24 @@ syntax (int err)
 "usage: %s [OPTIONS] patch1 patch2\n"
 "       %s --version|--help\n"
 "OPTIONS are:\n"
-"  -U N            max lines of context to carry\n"
-"  -i              Consider upper- and lower-case to be the same\n"
-"  -w              ignore whitespace changes in patches\n"
-"  -b              ignore changes in the amount of whitespace\n"
-"  -B              ignore changes whose lines are all blank\n"
-"  -p N            pathname components to ignore\n"
-"  -q              don't add rationale text\n"
-"  -d PAT          drop context on matching files\n"
-"  -z              decompress .gz and .bz2 files\n"
+"  -U N, --unified=N\n"
+"                  max lines of context to carry\n"
+"  -i, --ignore-case\n"
+"                  Consider upper- and lower-case to be the same\n"
+"  -w, --ignore-all-space\n"
+"                  ignore whitespace changes in patches\n"
+"  -b, --ignore-space-change\n"
+"                  ignore changes in the amount of whitespace\n"
+"  -B, --ignore-blank-lines\n"
+"                  ignore changes whose lines are all blank\n"
+"  -p N, --strip-match=N\n"
+"                  pathname components to ignore\n"
+"  -q, --quiet\n"
+"                  don't add rationale text\n"
+"  -d PAT, --drop-context=PAT\n"
+"                  drop context on matching files\n"
+"  -z, --decompress\n"
+"                  decompress .gz and .bz2 files\n"
 "  --interpolate   run as 'interdiff'\n"
 "  --combine       run as 'combinediff'\n"
 "  --flip          run as 'flipdiff'\n"
@@ -2014,6 +2023,15 @@ main (int argc, char *argv[])
 			{"no-revert-omitted", 0, 0, 1000 + 'R' },
 			{"in-place", 0, 0, 1000 + 'i' },
 			{"debug", 0, 0, 1000 + 'D' },
+			{"strip-match", 1, 0, 'p'},
+			{"unified", 1, 0, 'U'},
+			{"drop-context", 1, 0, 'd'},
+			{"ignore-blank-lines", 0, 0, 'B'},
+			{"ignore-space-change", 0, 0, 'b'},
+			{"ignore-case", 0, 0, 'i'},
+			{"ignore-all-space", 0, 0, 'w'},
+			{"decompress", 0, 0, 'z'},
+			{"quiet", 0, 0, 'q'},
 			{0, 0, 0, 0}
 		};
 		char *end;
