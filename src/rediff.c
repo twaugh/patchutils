@@ -127,6 +127,7 @@ static unsigned long adjust_offsets_and_copy (long *offset, FILE *in,
 	size_t linelen = 0;
 	unsigned long orig_offset, orig_lines, new_offset, new_lines;
 	unsigned long count = 0;
+	char *trailing;
 
 	if (getline (&line, &linelen, in) == -1)
 		goto out;
@@ -154,7 +155,12 @@ static unsigned long adjust_offsets_and_copy (long *offset, FILE *in,
 		error (EXIT_FAILURE, 0, "Line not understood: %s", line);
 	}
 
-	free (line);
+	/* Find the part after "@@...@@". */
+	trailing = strchr (line, '+');
+	trailing += strcspn (trailing, " \n");
+	if (*trailing == ' ')
+		trailing++;
+	trailing += strspn (trailing, "@");
 
 	/* Adjust offsets */
 	fprintf (out, "@@ -%lu", orig_offset);
@@ -163,7 +169,8 @@ static unsigned long adjust_offsets_and_copy (long *offset, FILE *in,
 	fprintf (out, " +%lu", new_offset + *offset);
 	if (new_lines != 1)
 		fprintf (out, ",%lu", new_lines);
-	fprintf (out, " @@\n");
+	fprintf (out, " @@%s", trailing);
+	free (line);
 
 	/* Copy remaining lines of hunk */
 	count += copy_hunk (in, out, orig_lines, new_lines);
@@ -344,6 +351,7 @@ static long removed_hunk (const char *meta, FILE *modify, FILE *t,
 	if (line[0] == '+' && line[1] == '@') {
 		/* Minimally correct modified @@ banners. */
 		unsigned long oo, no;
+		char *trailing;
 		if (read_atatline (line + 1, &oo, NULL, &no, NULL))
 			goto out;
 
@@ -353,6 +361,12 @@ static long removed_hunk (const char *meta, FILE *modify, FILE *t,
 			fputs (hunk->info->new_file, t);
 			hunk->info->info_written = 1;
 		}
+
+		trailing = strchr (line + 1, '+');
+		trailing += strcspn (trailing, " \n");
+		if (*trailing == ' ')
+			trailing++;
+		trailing += strspn (trailing, "@");
 
 		if (oo != orig_offset)
 			no = new_offset + oo - orig_offset;
@@ -364,7 +378,7 @@ static long removed_hunk (const char *meta, FILE *modify, FILE *t,
 		fprintf (t, " +%lu", no);
 		if (new_count != 1)
 			fprintf (t, ",%lu", new_count);
-		fprintf (t, " @@\n");
+		fprintf (t, " @@%s", trailing);
 		goto out;
 	}
 
@@ -455,6 +469,7 @@ static long show_modified_hunk (struct hunk **hunkp, long line_offset,
 	int t_written_to = 0;
 	unsigned long i, at = 1;
 	unsigned long replaced, unaltered;
+	char *trailing;
 	int r;
 
 	if (!t)
@@ -478,6 +493,13 @@ static long show_modified_hunk (struct hunk **hunkp, long line_offset,
 	calc_orig_count = orig_count;
 	calc_new_offset = new_offset;
 	calc_new_count = new_count;
+
+	trailing = strchr (line, '+');
+	trailing += strcspn (trailing, " \n");
+	if (*trailing == ' ')
+		trailing++;
+	trailing += strspn (trailing, "@");
+	trailing = xstrdup (trailing);
 
 	r = getline (&line, &linelen, modify);
 	assert (r != -1);
@@ -748,9 +770,10 @@ static long show_modified_hunk (struct hunk **hunkp, long line_offset,
 		fprintf (out, " +%lu", calc_new_offset + line_offset);
 		if (calc_new_count != 1)
 			fprintf (out, ",%lu", calc_new_count);
-		fprintf (out, " @@\n");
+		fprintf (out, " @@%s", trailing);
 	}
 
+	free (trailing);
 	while (getline (&line, &linelen, t) != -1)
 		fputs (line, out);
 
