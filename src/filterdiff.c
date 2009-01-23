@@ -345,7 +345,7 @@ do_unified (FILE *f, char *header[2], int match, char **line,
 			else hunk_match = 0;
 
 			trailing = strchr (*line, '+');
-			trailing += strcspn (trailing, " ");
+			trailing += strcspn (trailing, " \n");
 			if (*trailing == ' ')
 				trailing++;
 			trailing += strspn (trailing, "@");
