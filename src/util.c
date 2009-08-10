@@ -111,6 +111,8 @@ FILE *xtmpfile (void)
 	ret = fdopen (fd, "w+b");
 	if (ret == NULL)
 		error (EXIT_FAILURE, errno, "fdopen");
+	unlink (tmpfname);
+	free (tmpfname);
 	return ret;
 }
 
