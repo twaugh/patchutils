@@ -3,7 +3,7 @@
  *
  * Utility functions.
  * Copyright (C) 2001  Marko Kreen
- * Copyright (C) 2001, 2003, 2009  Tim Waugh <twaugh@redhat.com>
+ * Copyright (C) 2001, 2003, 2009, 2011  Tim Waugh <twaugh@redhat.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -225,7 +225,9 @@ FILE *xopen_unzip (const char *name, const char *mode)
 	const size_t buflen = 64 * 1024;
 	char *buffer;
 	pid_t pid;
-	
+	int status;
+	int any_data = 0;
+
 	p = strrchr(name, '.');
 	if (p != NULL) {
 		if (!strcmp (p, ".bz2"))
@@ -252,13 +254,20 @@ FILE *xopen_unzip (const char *name, const char *mode)
 		fwrite (buffer, count, 1, fo);
 		if (ferror (fo))
 			error (EXIT_FAILURE, errno, "writing temp file");
+
+		any_data = 1;
 	}
 	
 	free (buffer);
 	fclose (fi);
 	
-	waitpid (pid, NULL, 0);
-	
+	waitpid (pid, &status, 0);
+	if (any_data == 0 && WEXITSTATUS (status) != 0)
+	{
+		fclose (fo);
+		exit (1);
+	}
+
 	fseek (fo, 0L, SEEK_SET);
 
 	return fo;
