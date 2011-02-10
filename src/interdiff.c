@@ -2,7 +2,7 @@
  * interdiff - create incremental patch between two against a common source
  * combinediff - create cumulative patch from two incremental patches
  * flipdiff - exchange the order of two incremental patches
- * Copyright (C) 2000, 2001, 2002, 2003, 2004, 2005, 2009 Tim Waugh <twaugh@redhat.com>
+ * Copyright (C) 2000, 2001, 2002, 2003, 2004, 2005, 2009, 2011 Tim Waugh <twaugh@redhat.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -800,6 +800,7 @@ output_patch1_only (FILE *p1, FILE *out, int not_reverted)
 static int
 apply_patch (FILE *patch, const char *file, int reverted)
 {
+	const char *basename;
 	unsigned long orig_lines, new_lines;
 	size_t linelen;
 	char *line;
@@ -807,10 +808,16 @@ apply_patch (FILE *patch, const char *file, int reverted)
 	int status;
 	FILE *w;
 
-	w = xpipe(PATCH, &child, "w", PATCH,
-		  reverted ? "-Rsp0" : "-sp0", NULL);
+	basename = strrchr (file, '/');
+	if (basename)
+	    basename++;
+	else
+	    basename = file;
 
-	fprintf (w, "--- %s\n+++ %s\n", file, file);
+	w = xpipe(PATCH, &child, "w", PATCH,
+		  reverted ? "-Rsp0" : "-sp0", file, NULL);
+
+	fprintf (w, "--- %s\n+++ %s\n", basename, basename);
 	line = NULL;
 	linelen = 0;
 	orig_lines = new_lines = 0;
