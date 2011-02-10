@@ -1678,7 +1678,7 @@ done)]]></screen></para>
     <refentry id="grepdiff">
       <refentryinfo>
 	<productname>patchutils</productname>
-	<date>23 Jan 2009</date>
+	<date>10 Feb 2011</date>
       </refentryinfo>
 
       <refmeta>
@@ -1706,6 +1706,8 @@ done)]]></screen></para>
 	  </group>
 	  <arg choice="opt">--strip=<replaceable>n</replaceable></arg>
 	  <arg choice="opt">--addprefix=<replaceable>PREFIX</replaceable></arg>
+	  <arg choice="opt">--addoldprefix=<replaceable>PREFIX</replaceable></arg>
+	  <arg choice="opt">--addnewprefix=<replaceable>PREFIX</replaceable></arg>
 	  <group choice="opt">
 	    <arg>-s</arg>
 	    <arg>--status</arg>
@@ -1715,12 +1717,34 @@ done)]]></screen></para>
 	    <arg>--include=<replaceable>PATTERN</replaceable></arg>
 	  </group>
 	  <group choice="opt">
+	    <arg>-I <replaceable>FILE</replaceable></arg>
+	    <arg>--include-from-file=<replaceable>FILE</replaceable></arg>
+	  </group>
+	  <group choice="opt">
 	    <arg>-x <replaceable>PATTERN</replaceable></arg>
 	    <arg>--exclude=<replaceable>PATTERN</replaceable></arg>
 	  </group>
 	  <group choice="opt">
+	    <arg>-X <replaceable>FILE</replaceable></arg>
+	    <arg>--exclude-from-file=<replaceable>FILE</replaceable></arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-# <replaceable>RANGE</replaceable></arg>
+	    <arg>--hunks=<replaceable>RANGE</replaceable></arg>
+	  </group>
+	  <arg choice="opt">--lines=<replaceable>RANGE</replaceable></arg>
+	  <arg choice="opt">--files=<replaceable>RANGE</replaceable></arg>
+	  <arg choice="opt">--annotate</arg>
+	  <arg choice="opt">--as-numbered-lines=<replaceable>WHEN</replaceable></arg>
+	  <arg choice="opt">--format=<replaceable>FORMAT</replaceable></arg>
+	  <arg choice="opt">--remove-timestamps</arg>
+	  <group choice="opt">
 	    <arg>-v</arg>
 	    <arg>--verbose</arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-z</arg>
+	    <arg>--decompress</arg>
 	  </group>
 	  <group choice="opt">
 	    <arg>-E</arg>
@@ -1827,8 +1851,26 @@ done)]]></screen></para>
 	    <term><option>--addprefix</option>=<replaceable>PREFIX</replaceable></term>
 	    <listitem>
 	      <para>Prefix the pathname with
-	        <replaceable>PREFIX</replaceable> before displaying
-	        it.</para>
+	      <replaceable>PREFIX</replaceable> before displaying it.
+	      This will override any individual settings specified
+	      with the <option>--addoldprefix</option> or
+	      <option>--addnewprefix</option> options.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--addoldprefix</option>=<replaceable>PREFIX</replaceable></term>
+	    <listitem>
+	      <para>Prefix pathnames for old or original files in the
+	      output by <replaceable>PREFIX</replaceable>.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--addnewprefix</option>=<replaceable>PREFIX</replaceable></term>
+	    <listitem>
+	      <para>Prefix pathnames for updated or new files in the
+	      output by <replaceable>PREFIX</replaceable>.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -1852,11 +1894,117 @@ done)]]></screen></para>
 	  </varlistentry>
 
 	  <varlistentry>
+	    <term><option>-I</option> <replaceable>FILE</replaceable>,
+	    <option>--include-from-file=<replaceable>FILE</replaceable></option></term>
+	    <listitem>
+	      <para>Include only files matching any pattern listed in
+	        <replaceable>FILE</replaceable>, one pattern per line.
+		All other lines in the input are suppressed.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
 	    <term><option>-x</option> <replaceable>PATTERN</replaceable>
 	    <option>--exclude=<replaceable>PATTERN</replaceable></option></term>
 	    <listitem>
 	      <para>Exclude files matching
 	        <replaceable>PATTERN</replaceable>.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-X</option> <replaceable>FILE</replaceable>,
+	    <option>--exclude-from-file=<replaceable>FILE</replaceable></option></term>
+	    <listitem>
+	      <para>Exclude files matching any pattern listed in
+	        <replaceable>FILE</replaceable>, one pattern per line.
+	        All other lines in the input are displayed.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-#</option> <replaceable>RANGE</replaceable>,
+	    <option>--hunks</option>=<replaceable>RANGE</replaceable></term>
+	    <listitem>
+	      <para>Only include hunks within the specified
+	      <replaceable>RANGE</replaceable>.  Hunks are numbered
+	      from 1, and the range is a comma-separated list of
+	      numbers or <quote>first-last</quote> spans; either the
+	      first or the last in the span may be omitted to indicate
+	      no limit in that direction.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--lines</option>=<replaceable>RANGE</replaceable></term>
+	    <listitem>
+	      <para>Only list hunks that contain lines from the
+	        original file that lie within the specified
+	        <replaceable>RANGE</replaceable>.  Lines are numbered
+	        from 1, and the range is a comma-separated list of
+	        numbers or <quote>first-last</quote> spans; either the
+	        first or the last in the span may be omitted to
+	        indicate no limit in that direction.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--files</option>=<replaceable>RANGE</replaceable></term>
+	    <listitem>
+	      <para>Only list files indicated by the specified
+	        <replaceable>RANGE</replaceable>.  Files are numbered
+	        from 1 in the order they appear in the patch input,
+	        and the range is a comma-separated list of numbers or
+	        <quote>first-last</quote> spans; either the first or
+	        the last in the span may be omitted to indicate no
+	        limit in that direction.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--annotate</option></term>
+
+	    <listitem>
+	      <para>Annotate each hunk with the filename and hunk
+	        number.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--as-numbered-lines</option>=before|after</term>
+	    <listitem>
+	      <para>Instead of a patch fragment, display the lines of
+	        the selected hunks with the line number of the file
+	        before (or after) the patch is applied, followed by a
+	        <keycode>TAB</keycode> character and a colon, at the
+	        beginning of each line.  Each hunk except the first
+	        will have a line consisting of <quote>...</quote>
+	        before it.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--format</option>=unified|context</term>
+
+	    <listitem>
+	      <para>Use specified output format.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--remove-timestamps</option></term>
+
+	    <listitem>
+	      <para>Do not include file timestamps in the
+	        output.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-z</option>,
+	    <option>--decompress</option></term>
+	    <listitem>
+	      <para>Decompress files with extensions .gz and .bz2.</para>
 	    </listitem>
 	  </varlistentry>
 

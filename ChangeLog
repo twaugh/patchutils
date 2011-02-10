@@ -1,5 +1,8 @@
 2011-02-10  Tim Waugh  <twaugh@redhat.com>  
 
+	* doc/patchutils.xml: Updated grepdiff documentation to
+	include all its options (trac #17).
+
 	* src/interdiff.c (apply_patch): Don't put absolute filenames
 	in the input to patch.
 
