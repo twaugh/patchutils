@@ -1,6 +1,15 @@
 Patchutils news
 ---------------
 
+0.3.2 (stable)
+
+	Interdiff had previously been putting absolute filenames in
+	the input to the patch program.  It now avoids doing this.
+	Editdiff no longer runs rediff when no changes were made in
+	the editor.  The correct exit status is now set when the
+	decompress option fails.  A temporary file leak has been
+	fixed.  The documentation has been updated.
+
 0.3.0 (stable)
 
 	The lsdiff -H option is now the default, and new options have
