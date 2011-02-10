@@ -1,5 +1,9 @@
 2011-02-10  Tim Waugh  <twaugh@redhat.com>  
 
+	* configure.in: Version 0.3.2.
+
+2011-02-10  Tim Waugh  <twaugh@redhat.com>  
+
 	* editdiff.in: Do not run rediff if no changes were made (trac
 	#14).
 
