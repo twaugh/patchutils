@@ -1,5 +1,7 @@
 2011-02-14  Tim Waugh  <twaugh@redhat.com>
 
+	* src/util.c (patlist_add_file): Avoid PATH_MAX (trac #11).
+
 	* tests/rediff2/run-test: Portability fix (trac #18).
 
 2011-02-10  Tim Waugh  <twaugh@redhat.com>

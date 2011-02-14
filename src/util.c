@@ -137,21 +137,27 @@ void patlist_add(struct patlist **dst, const char *s)
 void patlist_add_file(struct patlist **dst, const char *fn)
 {
 	FILE *fd;
-	char buf[PATH_MAX];
+	char *line;
+	size_t linelen = 0;
 	size_t len;
 	
 	fd = fopen (fn, "r");
 	if (NULL == fd)
 		return;
 
-	while (fgets (buf, sizeof(buf), fd)) {
-		len = strlen(buf);
-		if (len <= 1) /* only '\n' presents */
+	while ((len = getline (&line, &linelen, fd)) != -1) {
+		if (len < 1)
+			/* Shouldn't really happen */
 			continue;
+
 		/* Remove '\n' from pattern */
-		if ('\n' == buf[len - 1])
-			buf[len - 1] = '\0';
-		patlist_add (dst, buf);
+		if ('\n' == line[len - 1]) {
+			if (len == 1) /* only '\n' present */
+				continue;
+
+			line[len - 1] = '\0';
+		}
+		patlist_add (dst, line);
 	} 
 	fclose (fd);
 }
