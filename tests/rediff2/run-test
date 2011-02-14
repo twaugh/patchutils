@@ -32,5 +32,5 @@ Index: file
 EOF
 
 ${REDIFF} patch.orig patch.mod > patch-rediffed 2>stderr && exit 1
-[ $? == 1 ] || exit 1
+[ $? = 1 ] || exit 1
 exit 0
