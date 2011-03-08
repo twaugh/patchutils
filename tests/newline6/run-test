@@ -1,0 +1,24 @@
+#!/bin/sh
+#
+# This is a filterdiff(1) test case.
+# Test: Handle adding newline to EOF
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > orig
+a
+b
+EOF
+echo -n c >> orig
+cat << EOF > new
+a
+b
+c
+EOF
+
+${DIFF} -c orig new > patch
+${FILTERDIFF} patch 2>errors > filtered || exit 1
+[ -s errors ] && exit 1
+
+${PATCH} orig -i filtered || exit 1
+cmp orig new || exit 1

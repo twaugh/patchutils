@@ -75,6 +75,7 @@ TESTS = tests/newline1/run-test \
 	tests/newline3/run-test \
 	tests/newline4/run-test \
 	tests/newline5/run-test \
+	tests/newline6/run-test \
 	tests/create1/run-test \
 	tests/broken1/run-test \
 	tests/revert1/run-test \

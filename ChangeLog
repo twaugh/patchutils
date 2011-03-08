@@ -1,3 +1,8 @@
+2011-03-08  Tim Waugh  <twaugh@redhat.com>
+
+	* tests/newline6/run-test: New test case for trac #13.
+	* Makefile.am: Run it (currently fails).
+
 2011-02-14  Tim Waugh  <twaugh@redhat.com>
 
 	* src/util.c (patlist_add_file): Avoid PATH_MAX (trac #11).
