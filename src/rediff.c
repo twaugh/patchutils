@@ -268,7 +268,8 @@ static long added_hunk (const char *meta, long offset, FILE *modify, FILE *t,
 	}
 
 	if (!p || p == q) {
-		p[strlen (p) - 1] = '\0';
+		if (p)
+			p[strlen (p) - 1] = '\0';
 		error (EXIT_FAILURE, 0,
 		       "Hunk addition requires original line: %s", meta);
 	}
