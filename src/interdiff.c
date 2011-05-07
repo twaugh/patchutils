@@ -2122,8 +2122,10 @@ main (int argc, char *argv[])
 		p1 = xopen_unzip (argv[optind], "rb");
 		p2 = xopen_unzip (argv[optind + 1], "rb");
 	} else {
-		p1 = xopen (argv[optind], "rbm");
-		p2 = xopen (argv[optind + 1], "rbm");
+		if (strcmp (argv[optind], "-") == 0 && strcmp(argv[optind+1], "-") == 0)
+			error (EXIT_FAILURE, 0, "only one input file can come from stdin");
+		p1 = strcmp (argv[optind], "-") == 0 ? stdin : xopen (argv[optind], "rbm");
+		p2 = strcmp (argv[optind+1], "-") == 0 ? stdin : xopen (argv[optind + 1], "rbm");
 	}
 
 	p1 = convert_to_unified (p1, "rb", 1);

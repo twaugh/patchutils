@@ -197,7 +197,8 @@ TESTS = tests/newline1/run-test \
 	tests/nul3/run-test \
 	tests/convert1/run-test \
 	tests/convert2/run-test \
-	tests/clean1/run-test
+	tests/clean1/run-test \
+	tests/stdin/run-test
 
 # These ones don't work yet.
 # Feel free to send me patches. :-)

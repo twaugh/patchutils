@@ -1,0 +1,35 @@
+#!/bin/sh
+
+# This is an interdiff(1) testcase.
+# Test: Test taking files in on stdin.
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > orig
+a
+b
+c
+EOF
+cat << EOF > new1
+a
+b
+EOF
+cat << EOF > new2
+a
+b
+d
+EOF
+
+${DIFF} -u orig new1 > patch1
+${DIFF} -u orig new2 > patch2
+${INTERDIFF} patch1 patch2 2>errors > patch1-2.good || exit 1
+[ -s errors ] && exit 1
+${INTERDIFF} patch1 - < patch2 2>errors > patch1-2.1 || exit 1
+[ -s errors ] && exit 1
+${INTERDIFF} - patch2 < patch1 2>errors > patch1-2.2 || exit 1
+[ -s errors ] && exit 1
+cmp patch1-2.good patch1-2.1 || exit 1
+cmp patch1-2.good patch1-2.2 || exit 1
+
+# 2 stdins fail:
+${INTERDIFF} - - < patch1 2>errors > patch1-1 && exit 1 || true
