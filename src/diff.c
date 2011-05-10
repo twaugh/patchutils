@@ -71,9 +71,9 @@ char *best_name (int n, char **names)
         int best_pn, best_bn, best_n, best = 0; /* shut gcc up */
         int i;
 
-        pathname_components = xmalloc (sizeof (int *) * n);
-        basename_length = xmalloc (sizeof (int *) * n);
-        is_dev_null = xmalloc (sizeof (int *) * n);
+        pathname_components = xmalloc (sizeof (int) * n);
+        basename_length = xmalloc (sizeof (int) * n);
+        is_dev_null = xmalloc (sizeof (int) * n);
 
         best_pn = -1;
         for (i = 0; i < n; i++) {
