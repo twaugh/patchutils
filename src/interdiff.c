@@ -1785,8 +1785,12 @@ flipdiff (FILE *p1, FILE *p2, FILE *flip1, FILE *flip2)
 	take_diff (tmpp1, tmpp2, header2, intermediate.unline, flip1);
 	take_diff (tmpp2, tmpp3, header1, intermediate.unline, flip2);
 
+	if (offsets)
+		free (offsets)
 	if (line)
 		free (line);
+	if (f)
+		fclose (f);
 	if (debug)
 		printf ("flipped\n");
 	else {

@@ -624,8 +624,11 @@ static void convert_context_hunks_to_unified (char **line, size_t *linelen,
 
 			if (!i && !strncmp (*line, "***************", 15)) {
 				char *m = *line + 15;
-				if (strcmp (m, "\n"))
+				if (strcmp (m, "\n")) {
+					if (misc)
+						free (misc);
 					misc = xstrdup (m);
+				}
 				i--;
 				continue;
 			}
@@ -913,6 +916,8 @@ static FILE *do_convert (FILE *f, const char *mode, int seekable,
 				}
 
 				rewind (tmp);
+				if (ret)
+					fclose (ret);
 				return tmp;
 			}
 
