@@ -352,6 +352,20 @@ static void convert_unified_hunks_to_context (char **line, size_t *linelen,
 
 			switch (**line) {
 			case ' ':
+				if (orig_linenum == orig_count)
+					/* We've already seen all the orig
+					 * lines we were expecting. */
+					error (EXIT_FAILURE, 0,
+					       "Garbled input at line %lu",
+					       *linenum);
+
+				if (new_linenum == new_count)
+					/* We've already seen all the new
+					 * lines we were expecting. */
+					error (EXIT_FAILURE, 0,
+					       "Garbled input at line %lu",
+					       *linenum);
+
 				what = NULL;
 				orig_what[orig_linenum] = " ";
 				new_what[new_linenum] = " ";
@@ -362,6 +376,13 @@ static void convert_unified_hunks_to_context (char **line, size_t *linelen,
 				break;
 
 			case '-':
+				if (orig_linenum == orig_count)
+					/* We've already seen all the orig
+					 * lines we were expecting. */
+					error (EXIT_FAILURE, 0,
+					       "Garbled input at line %lu",
+					       *linenum);
+
 				if (what) {
 					if (*what != '-')
 						*what = '!';
@@ -378,6 +399,13 @@ static void convert_unified_hunks_to_context (char **line, size_t *linelen,
 				break;
 
 			case '+':
+				if (new_linenum == new_count)
+					/* We've already seen all the new
+					 * lines we were expecting. */
+					error (EXIT_FAILURE, 0,
+					       "Garbled input at line %lu",
+					       *linenum);
+
 				if (what) {
 					if (*what != '+')
 						*what = '!';
