@@ -677,7 +677,6 @@ output_patch1_only (FILE *p1, FILE *out, int not_reverted)
 	char options[100];
 	int tmpp1fd, tmpp2fd;
 	long pos;
-	long start;
 	char *oldname = NULL, *newname = NULL;
 	size_t oldnamelen = 0, newnamelen = 0;
 	struct lines_info file_orig = { NULL, 0, 0, NULL, NULL };
@@ -724,7 +723,6 @@ output_patch1_only (FILE *p1, FILE *out, int not_reverted)
 	if (strncmp (newname, "+++ ", 4))
 		error (EXIT_FAILURE, errno, "Bad patch #1");
 	newname[strlen (newname) - 1] = '\0';
-	start = ftell (p1);
 
 	/* Recreate the original and modified state. */
 	fseek (p1, pos, SEEK_SET);

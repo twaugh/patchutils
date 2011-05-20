@@ -1,6 +1,6 @@
 /*
  * rediff - fix offset and counts of a hand-edited diff
- * Copyright (C) 2001, 2002, 2004, 2009 Tim Waugh <twaugh@redhat.com>
+ * Copyright (C) 2001, 2002, 2004, 2009, 2011 Tim Waugh <twaugh@redhat.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -809,7 +809,6 @@ static int rediff (const char *original, const char *edited, FILE *out)
 	struct hunk *hunks = NULL, **p = &hunks, *last = NULL;
 	struct hunk *current_hunk = NULL;
 	long line_offset = 0;
-	fpos_t first_hunk;
 
 	/* Let's take a look at what hunks are in the original diff. */
 	o = xopen (original, "rbm");
@@ -989,7 +988,6 @@ static int rediff (const char *original, const char *edited, FILE *out)
 
 			/* This meta hunk is the first pertaining to
 			 * the hunk in the original. */
-			first_hunk = pos;
 			t = xtmpfile ();
 		}
 
