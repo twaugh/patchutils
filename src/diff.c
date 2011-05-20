@@ -1,6 +1,6 @@
 /*
  * diff.c - diff specific util functions
- * Copyright (C) 2001, 2002, 2003, 2004, 2005, 2009 Tim Waugh <twaugh@redhat.com>
+ * Copyright (C) 2001, 2002, 2003, 2004, 2005, 2009, 2011 Tim Waugh <twaugh@redhat.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -622,13 +622,11 @@ static void convert_context_hunks_to_unified (char **line, size_t *linelen,
 				goto eof;
 			++*linenum;
 
-			if (!i && !strncmp (*line, "***************", 15)) {
+			if (!i && !misc &&
+			    !strncmp (*line, "***************", 15)) {
 				char *m = *line + 15;
-				if (strcmp (m, "\n")) {
-					if (misc)
-						free (misc);
+				if (strcmp (m, "\n"))
 					misc = xstrdup (m);
-				}
 				i--;
 				continue;
 			}
@@ -903,6 +901,8 @@ static FILE *do_convert (FILE *f, const char *mode, int seekable,
 			/* Parent. */
 			close (fildes[1]);
 			ret = fdopen (fildes[0], mode);
+			if (!ret)
+			    error (EXIT_FAILURE, errno, "fdopen failed");
 
 			if (seekable) {
 				FILE *tmp = xtmpfile ();	
@@ -915,9 +915,8 @@ static FILE *do_convert (FILE *f, const char *mode, int seekable,
 					fputc (c, tmp);
 				}
 
+				fclose (ret);
 				rewind (tmp);
-				if (ret)
-					fclose (ret);
 				return tmp;
 			}
 

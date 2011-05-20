@@ -1335,6 +1335,12 @@ add_offset (unsigned long line, long offset,
 	return offsets;
 }
 
+static void
+free_offsets (struct offset *offsets)
+{
+	free (offsets);
+}
+
 static int
 patch2_removes_line (unsigned long line,	/* line number after patch1 */
 		     struct offset *offsets,
@@ -1693,6 +1699,9 @@ flipdiff (FILE *p1, FILE *p2, FILE *flip1, FILE *flip2)
 	free_lines (intermediate.head);
 	intermediate.head = intermediate.tail = NULL;
 	f = fopen (tmpp3, "r");
+	if (!f)
+	    error (EXIT_FAILURE, errno, "error opening temporary file");
+
 	linenum = 0;
 	saw_first_offset = 0;
 	while (!feof (f)) {
@@ -1785,12 +1794,10 @@ flipdiff (FILE *p1, FILE *p2, FILE *flip1, FILE *flip2)
 	take_diff (tmpp1, tmpp2, header2, intermediate.unline, flip1);
 	take_diff (tmpp2, tmpp3, header1, intermediate.unline, flip2);
 
-	if (offsets)
-		free (offsets)
-	if (line)
-		free (line);
-	if (f)
-		fclose (f);
+	free (line);
+	free_offsets (offsets);
+	fclose (f);
+
 	if (debug)
 		printf ("flipped\n");
 	else {

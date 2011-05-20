@@ -1,3 +1,14 @@
+2011-05-20  Tim Waugh  <twaugh@redhat.com>
+
+	* src/rediff.c: Applied patch from Jiri Popelka to fix
+	possible NULL pointer access.
+
+	* src/diff.c: Applied patch from Jiri Popelka to fix incorrect
+	use of sizeof for memory allocation.
+
+	* src/diff.c, src/interdiff.c: Applied patch from Jiri Popelka
+	to fix resource leaks.  Slight changes made my me.
+
 2011-03-08  Tim Waugh  <twaugh@redhat.com>
 
 	* tests/newline6/run-test: New test case for trac #13.
