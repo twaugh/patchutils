@@ -1435,7 +1435,7 @@ done)]]></screen></para>
     <refentry id="splitdiff">
       <refentryinfo>
 	<productname>patchutils</productname>
-	<date>21 Oct 2003</date>
+	<date>25 May 2011</date>
       </refentryinfo>
 
       <refmeta>
@@ -1454,6 +1454,7 @@ done)]]></screen></para>
 	  <arg choice="opt">-a</arg>
 	  <arg choice="opt">-d</arg>
 	  <arg choice="opt">-p <replaceable>n</replaceable></arg>
+	  <arg choice="opt">-E</arg>
 	  <arg choice="opt"><replaceable>file</replaceable></arg>
 	</cmdsynopsis>
 
@@ -1496,8 +1497,8 @@ done)]]></screen></para>
 	    <term><option>-d</option></term>
 	    <listitem>
 	      <para>Create file names such as
-	        <filename>a_b.c</filename> for a patch that modifies
-	        <filename>a/b.c</filename>.</para>
+	      <filename>a_b.c.patch</filename> for a patch that
+	      modifies <filename>a/b.c</filename>.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -1506,6 +1507,14 @@ done)]]></screen></para>
 	    <listitem>
 	      <para>Strip the first <replaceable>n</replaceable>
 	        components of the pathname to aid comparisons.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-E</option></term>
+	    <listitem>
+	      <para>Don't use .patch filename extension when writing
+	      output files.</para>
 	    </listitem>
 	  </varlistentry>
 

@@ -1,7 +1,7 @@
 #!@PERL@
 #
 # splitdiff - split up a diff made of incremental patches
-# Copyright (C) 2001, 2002, 2003  Tim Waugh <twaugh@redhat.com>
+# Copyright (C) 2001, 2002, 2003, 2011  Tim Waugh <twaugh@redhat.com>
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 use Getopt::Std;
-getopts('p:v-:ad', \%opts);
+getopts('p:v-:adE', \%opts);
 if ($opts{'-'} && $opts{'-'} eq 'version') {
     print "splitdiff - patchutils version @VERSION@\n";
     exit 0;
@@ -28,7 +28,8 @@ if ($opts{'-'} && $opts{'-'} eq 'help') {
     print "OPTIONS are:\n";
     print "  -a              split out every single file-level patch\n";
     print "  -p N            pathname components to ignore\n";
-    print "  -d              use output filenames like a_b.c for a/b.c\n";
+    print "  -d              use output filenames like a_b.c.patch for a/b.c\n";
+    print "  -E              don't use .patch filename extension\n";
     exit 0;
 }
 
@@ -46,6 +47,9 @@ sub process {
 	$out =~ s,/,_,g;
     } else {
 	$out = sprintf ("%s.part%03d", $ARGV[0], $part);
+    }
+    unless ($opts{E}) {
+        $out = sprintf("%s.patch", $out);
     }
     if ($written{$_[2]}) { $mode = '>>' } else { $mode = '>' }
     $written{$_[2]} = $_[2];

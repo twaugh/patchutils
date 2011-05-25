@@ -1,3 +1,8 @@
+2022-05-25  Tim Waugh  <twaugh@redhat.com>
+
+	* splitdiff.in: Output files now have a .patch filename
+	extension, unless the new -E option is given.
+
 2011-05-20  Tim Waugh  <twaugh@redhat.com>
 
 	* src/rediff.c: Applied patch from Jiri Popelka to fix
