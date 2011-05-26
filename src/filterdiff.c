@@ -2,7 +2,7 @@
  * filterdiff - extract (or exclude) a diff from a diff file
  * lsdiff - show which files are modified by a patch
  * grepdiff - show files modified by a patch containing a regexp
- * Copyright (C) 2001, 2002, 2003, 2004, 2008, 2009 Tim Waugh <twaugh@redhat.com>
+ * Copyright (C) 2001, 2002, 2003, 2004, 2008, 2009, 2011 Tim Waugh <twaugh@redhat.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -546,6 +546,7 @@ do_context (FILE *f, char *header[2], int match, char **line,
 	unsigned long unchanged;
 	int first_hunk = 0;
 	int orig_is_empty = 1, new_is_empty = 1; /* assume until otherwise */
+	size_t got = 0;
 
 	/* Context diff hunks are like this:
 	 *
@@ -557,6 +558,9 @@ do_context (FILE *f, char *header[2], int match, char **line,
 	 *   to lines... (omitted if there are only deletions)
 	 *[*** start[,end] ****
 	 * ...]
+	 *
+	 * Both from and to lines may end with:
+	 * \ No newline at end of file
 	 */
 
 	if (getline (line, linelen, f) == -1)
@@ -565,6 +569,10 @@ do_context (FILE *f, char *header[2], int match, char **line,
 
 	if (strncmp (*line, "***************", 15))
 		return 1;
+
+	if (getline (line, linelen, f) == -1)
+		return EOF;
+	++*linenum;
 
 	if (output_matching == output_file)
 		match_tmpf = xtmpfile ();
@@ -579,18 +587,18 @@ do_context (FILE *f, char *header[2], int match, char **line,
 		if (i == 0)
 			first_hunk = !header_displayed;
 
-		if (getline (line, linelen, f) == -1) {
-			ret = EOF;
-			goto out;
-		}
-
-		++*linenum;
-
 		if (!i && !strncmp (*line, "***************", 15)) {
 			/* Some diffs seem to have this for every
 			 * set of changes.  SuSV2 says not to,
 			 * but the GNU diff info page disagrees. */
 			i--;
+
+			if (getline (line, linelen, f) == -1) {
+			    ret = EOF;
+			    goto out;
+			}
+
+			++*linenum;
 			continue;
 		}
 
@@ -734,15 +742,16 @@ do_context (FILE *f, char *header[2], int match, char **line,
 		if (i && line_count == unchanged)
 			break;
 
-		while (line_count--) {
-			ssize_t got = getline (line, linelen, f);
-			if (got == -1) {
-				ret = EOF;
-				goto out;
-			}
+		got = getline (line, linelen, f);
+		if (got == -1) {
+			ret = EOF;
+			goto out;
+		}
 
-			++*linenum;
+		++*linenum;
 
+		while ((line_count == 0 && **line == '\\') ||
+		       line_count--) {
 			if (hunk_match && mode == mode_grep &&
 			    !regexecs (regex, num_regex, *line + 2,
 				       0, NULL, 0)) {
@@ -839,6 +848,7 @@ do_context (FILE *f, char *header[2], int match, char **line,
 			    output_matching == output_hunk)
 				switch (**line) {
 				case '!':
+				case '\\':
 					changed[i]++;
 					break;
 				case '+':
@@ -848,6 +858,14 @@ do_context (FILE *f, char *header[2], int match, char **line,
 					changed[0]++;
 					break;
 				}
+
+			got = getline (line, linelen, f);
+			if (got == -1) {
+				ret = EOF;
+				goto out;
+			}
+
+			++*linenum;
 		}
 	}
 

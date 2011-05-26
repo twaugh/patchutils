@@ -1,3 +1,8 @@
+2011-05-26  Tim Waugh  <twaugh@redhat.com>
+
+	* src/filterdiff.c (do_context): Handle "no newline" lines
+	(trac #13, newline6 test case).
+
 2011-05-25  Tim Waugh  <twaugh@redhat.com>
 
 	* splitdiff.in: Output files now have a .patch filename
