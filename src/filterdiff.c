@@ -3,7 +3,6 @@
  * lsdiff - show which files are modified by a patch
  * grepdiff - show files modified by a patch containing a regexp
  * Copyright (C) 2001, 2002, 2003, 2004, 2008, 2009 Tim Waugh <twaugh@redhat.com>
- * Copyright (C) 2001, 2002, 2003, 2004, 2009 Tim Waugh <twaugh@redhat.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
