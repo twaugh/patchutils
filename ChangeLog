@@ -1,3 +1,7 @@
+2013-04-02  Tim Waugh  <twaugh@redhat.com>
+
+	* configure.in: Version 0.3.3.
+
 2011-05-26  Tim Waugh  <twaugh@redhat.com>
 
 	* src/filterdiff.c (do_context): Handle "no newline" lines

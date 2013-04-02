@@ -1,6 +1,14 @@
 Patchutils news
 ---------------
 
+0.3.3 (stable)
+
+	Context output format for "no newline" lines has been fixed.
+	The splitdiff utility now has an option to disable ".patch"
+	filename extensions. Some fixes for bugs spotted by
+	Coverity. Interdiff can now use "-" (stdin) for one of the
+	inputs.
+
 0.3.2 (stable)
 
 	Interdiff had previously been putting absolute filenames in
