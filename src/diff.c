@@ -1,6 +1,6 @@
 /*
  * diff.c - diff specific util functions
- * Copyright (C) 2001, 2002, 2003, 2004, 2005, 2009, 2011 Tim Waugh <twaugh@redhat.com>
+ * Copyright (C) 2001, 2002, 2003, 2004, 2005, 2009, 2011, 2013 Tim Waugh <twaugh@redhat.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -304,6 +304,7 @@ static void convert_unified_hunks_to_context (char **line, size_t *linelen,
 	unsigned int n_whats = 0;
 	unsigned long orig_linenum, new_linenum;
 	const char *no_newline_str = "\\ No newline at end of file\n";
+	char *misc = NULL;
 
 	if (feof (stdin))
 		goto eof;
@@ -315,11 +316,12 @@ static void convert_unified_hunks_to_context (char **line, size_t *linelen,
 	for (;;) {
 		char *last_orig = NULL;
 		char *last_new = NULL;
-		char *misc = NULL;
 		char *what = NULL;
 		int newline = 1;
 		int can_omit_from = 1, can_omit_to = 1;
 		unsigned long i;
+
+		misc = NULL;
 
 		if (read_atatline (*line, &orig_offset, &orig_count,
 				   &new_offset, &new_count))
