@@ -4,7 +4,7 @@ AC_INIT(patchutils, 0.3.2)
 AC_CONFIG_SRCDIR(patchutils.spec.in)
 AM_CONFIG_HEADER(config.h)
 
-AM_INIT_AUTOMAKE([dist-bzip2 subdir-objects 1.6])
+AM_INIT_AUTOMAKE([dist-xz dist-bzip2 subdir-objects 1.6])
 
 dnl Checks for programs.
 AC_PROG_CC
