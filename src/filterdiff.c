@@ -2,7 +2,7 @@
  * filterdiff - extract (or exclude) a diff from a diff file
  * lsdiff - show which files are modified by a patch
  * grepdiff - show files modified by a patch containing a regexp
- * Copyright (C) 2001, 2002, 2003, 2004, 2008, 2009, 2011 Tim Waugh <twaugh@redhat.com>
+ * Copyright (C) 2001, 2002, 2003, 2004, 2008, 2009, 2011, 2013 Tim Waugh <twaugh@redhat.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1068,7 +1068,7 @@ const char * syntax_str =
 "            remove all comments (non-diff lines) from output (filterdiff)\n"
 "  -z, --decompress\n"
 "            decompress .gz and .bz2 files\n"
-"  -n, --line-number\n"
+"  -n, --line-number (lsdiff, grepdiff)\n"
 "            show line numbers (lsdiff, grepdiff)\n"
 "  --number-files (lsdiff, grepdiff)\n"
 "            show file numbers, for use with filterdiff's --files option (lsdiff, grepdiff)\n"
@@ -1085,15 +1085,15 @@ const char * syntax_str =
 "            prefix pathnames in old files with PREFIX\n"
 "  --addnewprefix=PREFIX\n"
 "            prefix pathnames in new files with PREFIX\n"
-"  -s, --status\n"
+"  -s, --status (lsdiff)\n"
 "            show file additions and removals (lsdiff)\n"
 "  -v, --verbose\n"
 "            verbose output -- use more than once for extra verbosity\n"
-"  -E, --extended-regexp\n"
+"  -E, --extended-regexp (grepdiff)\n"
 "            use extended regexps, like egrep (grepdiff)\n"
 "  -E, --empty-files-as-absent (lsdiff)\n"
 "            treat empty files as absent (lsdiff)\n"
-"  -f FILE, --file=FILE\n"
+"  -f FILE, --file=FILE (grepdiff)\n"
 "            read regular expressions from FILE (grepdiff)\n"
 "  --filter  run as 'filterdiff' (grepdiff, lsdiff)\n"
 "  --list    run as 'lsdiff' (filterdiff, grepdiff)\n"
