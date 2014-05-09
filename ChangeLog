@@ -1,3 +1,10 @@
+2014-05-09  Tim Waugh  <twaugh@redhat.com>
+
+	* src/filterdiff.c: Make --clean drop comments after '@@'
+	lines as well (trac #29).
+	* tests/clean2/run-test: Test case for that.
+	* Makefile.am: Run it.
+
 2013-04-11  Tim Waugh  <twaugh@redhat.com>
 
 	* src/filterdiff.c: Don't show grepdiff-specific options in
