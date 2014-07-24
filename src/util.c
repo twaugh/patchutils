@@ -137,7 +137,7 @@ void patlist_add(struct patlist **dst, const char *s)
 void patlist_add_file(struct patlist **dst, const char *fn)
 {
 	FILE *fd;
-	char *line;
+	char *line = NULL;
 	size_t linelen = 0;
 	size_t len;
 	
