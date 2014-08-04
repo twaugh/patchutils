@@ -1067,8 +1067,8 @@ int main (int argc, char *argv[])
 		char *p = xmalloc (strlen (argv[0]) +
 				   strlen ("recountdiff") + 1);
 		char *f;
-		char **const new_argv = xmalloc (sizeof (char *) * argc);
-		memcpy (new_argv, argv, sizeof (char *) * argc);
+		char **const new_argv = xmalloc (sizeof (char *) * (argc + 1));
+		memcpy (new_argv, argv, sizeof (char *) * (argc + 1));
 		new_argv[0] = p;
 		strcpy (p, argv[0]);
 		f = strrchr (p, '/');
