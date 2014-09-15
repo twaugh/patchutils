@@ -1050,10 +1050,11 @@ const char * syntax_str =
 "            include only files matching PAT\n"
 "  -I FILE, --include-from-file=FILE\n"
 "            include only files that match any pattern in FILE\n"
-"  --hunks=H, -# H\n"
+"  -# H, --hunks=H\n"
 "            include only hunks in range H\n"
 "  --lines=L include only hunks with (original) lines in range L\n"
-"  --files=F include only files in range F\n"
+"  -F F, --files=F\n"
+"            include only files in range F\n"
 "  --annotate (filterdiff, grepdiff)\n"
 "            annotate each hunk with the filename and hunk number (filterdiff, grepdiff)\n"
 "  --as-numbered-lines=before|after (filterdiff, grepdiff)\n"
@@ -1071,7 +1072,7 @@ const char * syntax_str =
 "            decompress .gz and .bz2 files\n"
 "  -n, --line-number (lsdiff, grepdiff)\n"
 "            show line numbers (lsdiff, grepdiff)\n"
-"  --number-files (lsdiff, grepdiff)\n"
+"  -N, --number-files (lsdiff, grepdiff)\n"
 "            show file numbers, for use with filterdiff's --files option (lsdiff, grepdiff)\n"
 "  -H, --with-filename (lsdiff, grepdiff)\n"
 "            show patch file names (lsdiff, grepdiff)\n"
@@ -1296,7 +1297,7 @@ int main (int argc, char *argv[])
 			{"addnewprefix", 1, 0, 1000 + 'N'},
 			{"hunks", 1, 0, '#'},
 			{"lines", 1, 0, 1000 + ':'},
-			{"files", 1, 0, 1000 + 'w'},
+			{"files", 1, 0, 'F'},
 			{"as-numbered-lines", 1, 0, 1000 + 'L'},
 			{"annotate", 0, 0, 1000 + 'a'},
 			{"format", 1, 0, 1000 + 'F'},
@@ -1305,7 +1306,7 @@ int main (int argc, char *argv[])
 			{"with-filename", 0, 0, 'H'},
 			{"no-filename", 0, 0, 'h'},
 			{"empty-files-as-absent", 0, 0, 'E'},
-			{"number-files", 0, 0, 1000 + 'n'},
+			{"number-files", 0, 0, 'N'},
 			{"clean", 0, 0, 1000 + 'c'},
 			{"strip-match", 1, 0, 'p'},
 			{"include", 1, 0, 'i'},
@@ -1322,7 +1323,7 @@ int main (int argc, char *argv[])
 			{0, 0, 0, 0}
 		};
 		char *end;
-		int c = getopt_long (argc, argv, "vp:i:I:x:X:zns#:Ef:Hh",
+		int c = getopt_long (argc, argv, "vp:i:I:x:X:zns#:F:Ef:HhN",
 				     long_options, NULL);
 		if (c == -1)
 			break;
@@ -1394,7 +1395,7 @@ int main (int argc, char *argv[])
 		case 'n':
 			numbering = 1;
 			break;
-		case 1000 + 'n':
+		case 'N':
 			number_files = 1;
 			break;
 		case 's':
@@ -1425,7 +1426,7 @@ int main (int argc, char *argv[])
 				syntax (1);
 			parse_range (&lines, optarg);
 			break;
-		case 1000 + 'w':
+		case 'F':
 			if (files)
 				syntax (1);
 			parse_range (&files, optarg);

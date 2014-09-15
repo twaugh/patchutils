@@ -651,7 +651,10 @@
 	    <arg>--hunks=<replaceable>RANGE</replaceable></arg>
 	  </group>
 	  <arg choice="opt">--lines=<replaceable>RANGE</replaceable></arg>
-	  <arg choice="opt">--files=<replaceable>RANGE</replaceable></arg>
+	  <group choice="opt">
+	    <arg>-F<replaceable>RANGE</replaceable></arg>
+	    <arg>--files=<replaceable>RANGE</replaceable></arg>
+	  </group>
 	  <arg choice="opt">--annotate</arg>
 	  <arg choice="opt">--format=<replaceable>FORMAT</replaceable></arg>
 	  <arg choice="opt">--as-numbered-lines=<replaceable>WHEN</replaceable></arg>
@@ -785,7 +788,8 @@
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>--files</option>=<replaceable>RANGE</replaceable></term>
+	    <term><option>-F</option>=<replaceable>RANGE</replaceable>,
+	    <option>--files</option>=<replaceable>RANGE</replaceable></term>
 	    <listitem>
 	      <para>Only include files indicated by the specified
 	        <replaceable>RANGE</replaceable>.  Files are numbered
@@ -1145,7 +1149,10 @@ patch.file]]></screen></para>
 	    <arg>--hunks=<replaceable>RANGE</replaceable></arg>
 	  </group>
 	  <arg choice="opt">--lines=<replaceable>RANGE</replaceable></arg>
-	  <arg choice="opt">--files=<replaceable>RANGE</replaceable></arg>
+	  <group choice="opt">
+	    <arg>-F<replaceable>RANGE</replaceable></arg>
+	    <arg>--files=<replaceable>RANGE</replaceable></arg>
+	  </group>
 	  <group choice="opt">
 	    <arg>-H</arg>
 	    <arg>--with-filename</arg>
@@ -1217,7 +1224,7 @@ patch.file]]></screen></para>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>--number-files</option></term>
+	    <term><option>-N</option>, <option>--number-files</option></term>
 	    <listitem>
 	      <para>File numbers are listed, beginning at 1, before
 	      each filename.</para>
@@ -1251,7 +1258,8 @@ patch.file]]></screen></para>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>--files</option>=<replaceable>RANGE</replaceable></term>
+	    <term><option>-F</option>=<replaceable>RANGE</replaceable>,
+	    <option>--files</option>=<replaceable>RANGE</replaceable></term>
 	    <listitem>
 	      <para>Only list files indicated by the specified
 	        <replaceable>RANGE</replaceable>.  Files are numbered
@@ -1708,7 +1716,10 @@ done)]]></screen></para>
 	    <arg>-n</arg>
 	    <arg>--line-number</arg>
 	  </group>
-	  <arg choice="opt">--number-files</arg>
+	  <group choice="opt">
+	    <arg>-N</arg>
+	    <arg>--number-files</arg>
+	  </group>
 	  <group choice="opt">
 	    <arg>-p <replaceable>n</replaceable></arg>
 	    <arg>--strip-match=<replaceable>n</replaceable></arg>
@@ -1742,7 +1753,10 @@ done)]]></screen></para>
 	    <arg>--hunks=<replaceable>RANGE</replaceable></arg>
 	  </group>
 	  <arg choice="opt">--lines=<replaceable>RANGE</replaceable></arg>
-	  <arg choice="opt">--files=<replaceable>RANGE</replaceable></arg>
+	  <group choice="opt">
+	    <arg>-F<replaceable>RANGE</replaceable></arg>
+	    <arg>--files=<replaceable>RANGE</replaceable></arg>
+	  </group>
 	  <arg choice="opt">--annotate</arg>
 	  <arg choice="opt">--as-numbered-lines=<replaceable>WHEN</replaceable></arg>
 	  <arg choice="opt">--format=<replaceable>FORMAT</replaceable></arg>
@@ -1830,7 +1844,7 @@ done)]]></screen></para>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>--number-files</option></term>
+	    <term><option>-N</option>, <option>--number-files</option></term>
 	    <listitem>
 	      <para>File numbers are listed, beginning at 1, before
 	      each filename.</para>
@@ -1958,7 +1972,8 @@ done)]]></screen></para>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>--files</option>=<replaceable>RANGE</replaceable></term>
+	    <term><option>-F</option>=<replaceable>RANGE</replaceable>,
+	    <option>--files</option>=<replaceable>RANGE</replaceable></term>
 	    <listitem>
 	      <para>Only list files indicated by the specified
 	        <replaceable>RANGE</replaceable>.  Files are numbered
