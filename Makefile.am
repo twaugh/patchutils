@@ -53,7 +53,7 @@ uninstall-hook:
 CLEANFILES=src/combinediff src/flipdiff src/lsdiff src/grepdiff
 MAINTAINERCLEANFILES=$(man_MANS)
 
-tests/combine1/run-test: src/combinediff$(EXEEXT) src/flipdiff$(EXEEXT) \
+tests/newline1/run-test: src/combinediff$(EXEEXT) src/flipdiff$(EXEEXT) \
 		src/lsdiff$(EXEEXT) src/grepdiff$(EXEEXT)
 	for script in $(bin_SCRIPTS); do \
 		if [ -f $(top_builddir)/$$script ]; then \
@@ -115,6 +115,8 @@ TESTS = tests/newline1/run-test \
 	tests/delhunk4/run-test \
 	tests/delhunk5/run-test \
 	tests/trimcontext1/run-test \
+	tests/trimlast1/run-test \
+	tests/trimlast2/run-test \
 	tests/nodate/run-test \
 	tests/lsdiff1/run-test \
 	tests/lsdiff2/run-test \
@@ -205,7 +207,9 @@ TESTS = tests/newline1/run-test \
 # Feel free to send me patches. :-)
 XFAIL_TESTS = \
 	tests/delhunk5/run-test \
-	tests/delhunk6/run-test
+	tests/delhunk6/run-test \
+	tests/trimlast1/run-test \
+	tests/trimlast2/run-test
 
 distclean-local:
 	-rm -rf $(top_builddir)/test-arena

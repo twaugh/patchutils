@@ -1,3 +1,9 @@
+2014-10-17  Tim Waugh  <twaugh@redhat.com>
+
+	* tests/trimlast1/run-test: Test case for trac issue #32.
+	* tests/trimlast1/run-test: Another one.
+	* Makefile.am: Run them (they both currently fail).
+
 2014-05-09  Tim Waugh  <twaugh@redhat.com>
 
 	* src/filterdiff.c: Make --clean drop comments after '@@'

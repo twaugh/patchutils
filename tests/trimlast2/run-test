@@ -1,0 +1,51 @@
+#!/bin/sh
+
+# This is an combinediff(1) testcase.
+# Test: Final hunk should retain 'earlier' context.
+# https://fedorahosted.org/patchutils/ticket/32
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > patch1
+--- file.orig
++++ file
+@@ -1,7 +1,7 @@
+-0
++1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+EOF
+
+cat <<EOF > patch2
+--- file.orig
++++ file
+@@ -6,3 +6,4 @@
+ 6
+ 7
+ 8
++9
+EOF
+
+${COMBINEDIFF} patch1 patch2 > patch12 2>errors || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - patch12 || exit 1
+--- file
++++ file
+@@ -1,4 +1,4 @@
+-0
++1
+ 2
+ 3
+ 4
+@@ -6,3 +6,4 @@
+ 6
+ 7
+ 8
++9
+EOF
