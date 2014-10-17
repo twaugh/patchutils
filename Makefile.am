@@ -114,6 +114,7 @@ TESTS = tests/newline1/run-test \
 	tests/delhunk3/run-test \
 	tests/delhunk4/run-test \
 	tests/delhunk5/run-test \
+	tests/delhunk6/run-test \
 	tests/trimcontext1/run-test \
 	tests/trimlast1/run-test \
 	tests/trimlast2/run-test \

@@ -1,5 +1,8 @@
 2014-10-17  Tim Waugh  <twaugh@redhat.com>
 
+	* Makefile.am: Run delhunk6 test even though it is expected to
+	fail.
+
 	* tests/trimlast1/run-test: Test case for trac issue #32.
 	* tests/trimlast1/run-test: Another one.
 	* Makefile.am: Run them (they both currently fail).
