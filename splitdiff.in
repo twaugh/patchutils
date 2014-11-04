@@ -18,7 +18,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 use Getopt::Std;
-getopts('p:v-:adE', \%opts);
+getopts('p:v-:D:adE', \%opts);
 if ($opts{'-'} && $opts{'-'} eq 'version') {
     print "splitdiff - patchutils version @VERSION@\n";
     exit 0;
@@ -29,6 +29,7 @@ if ($opts{'-'} && $opts{'-'} eq 'help') {
     print "  -a              split out every single file-level patch\n";
     print "  -p N            pathname components to ignore\n";
     print "  -d              use output filenames like a_b.c.patch for a/b.c\n";
+    print "  -D dir          create patches in subdirectory dir (implies -d)\n";
     print "  -E              don't use .patch filename extension\n";
     exit 0;
 }
@@ -42,12 +43,21 @@ $part = 1;
 my %written = ();
 sub process {
     print "Lines $_[0] to $_[1]\n" if ($opts{v});
-    if ($opts{d}) {
+    if ($opts{d} || $opts{D}) {
 	$out = $_[2];
 	$out =~ s,/,_,g;
+
+	if ($opts{D}) {
+	    $out = sprintf("%s/%s", $opts{D}, $out);
+	}
     } else {
 	$out = sprintf ("%s.part%03d", $ARGV[0], $part);
     }
+
+    if ($opts{D} && ! -e $opts{D}) {
+	mkdir $opts{D} || die "Can't create output directory\n";
+    }
+
     unless ($opts{E}) {
         $out = sprintf("%s.patch", $out);
     }

@@ -12,6 +12,7 @@ FILTERDIFF=${top_builddir}/src/filterdiff
 SELECTDIFF=${top_builddir}/src/selectdiff
 RECOUNTDIFF=${top_builddir}/recountdiff
 UNWRAPDIFF=${top_builddir}/unwrapdiff
+SPLITDIFF=${top_builddir}/splitdiff
 : ${DIFF:=diff}
 : ${PATCH:=patch -s}
 cd $ARENA

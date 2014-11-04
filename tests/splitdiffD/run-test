@@ -1,0 +1,20 @@
+#!/bin/sh
+
+# This is a splitdiff(1) testcase.
+# Test: See if -D works.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+mkdir dir dir.orig
+echo a > dir.orig/a
+echo A > dir/a
+echo b > dir.orig/b
+echo B > dir/b
+${DIFF} -uN dir.orig dir > diff
+${SPLITDIFF} -a -D split diff 2>errors >output || exit 1
+[ -s errors ] && exit 1
+
+[ -d split ] || exit 1
+[ -f split/dir_a.patch ] || exit 1
+[ -f split/dir_b.patch ] || exit 1

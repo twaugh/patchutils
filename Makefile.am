@@ -54,7 +54,8 @@ CLEANFILES=src/combinediff src/flipdiff src/lsdiff src/grepdiff
 MAINTAINERCLEANFILES=$(man_MANS)
 
 tests/newline1/run-test: src/combinediff$(EXEEXT) src/flipdiff$(EXEEXT) \
-		src/lsdiff$(EXEEXT) src/grepdiff$(EXEEXT)
+		src/lsdiff$(EXEEXT) src/grepdiff$(EXEEXT) \
+		splitdiff
 	for script in $(bin_SCRIPTS); do \
 		if [ -f $(top_builddir)/$$script ]; then \
 			chmod a+x $(top_builddir)/$$script; \
@@ -202,7 +203,8 @@ TESTS = tests/newline1/run-test \
 	tests/convert2/run-test \
 	tests/clean1/run-test \
 	tests/clean2/run-test \
-	tests/stdin/run-test
+	tests/stdin/run-test \
+	tests/splitdiffD/run-test
 
 # These ones don't work yet.
 # Feel free to send me patches. :-)
