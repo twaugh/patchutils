@@ -1,5 +1,7 @@
 2014-11-04  Tim Waugh  <twaugh@redhat.com>
 
+	* NEWS: Updated.
+
 	* splitdiff.in: New -D option, suggested by Ulf Samuelsson.
 	* common.sh: Set path to splitdiff in the test environment.
 	* tests/splitdiffD/run-test: Test splitdiff -D.
