@@ -770,7 +770,8 @@
 	        from 1, and the range is a comma-separated list of
 	        numbers or <quote>first-last</quote> spans; either the
 	        first or the last in the span may be omitted to
-	        indicate no limit in that direction.</para>
+	        indicate no limit in that direction. If range begins with "x",
+ 	        instead show the range selected, show all except the range.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -783,7 +784,8 @@
 	        from 1, and the range is a comma-separated list of
 	        numbers or <quote>first-last</quote> spans; either the
 	        first or the last in the span may be omitted to
-	        indicate no limit in that direction.</para>
+	        indicate no limit in that direction. If range begins with "x",
+ 	        instead show the range selected, show all except the range.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -797,7 +799,8 @@
 	        and the range is a comma-separated list of numbers or
 	        <quote>first-last</quote> spans; either the first or
 	        the last in the span may be omitted to indicate no
-	        limit in that direction.</para>
+	        limit in that direction. If range begins with "x",
+ 	        instead show the range selected, show all except the range.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -1240,7 +1243,8 @@ patch.file]]></screen></para>
 	        from 1, and the range is a comma-separated list of
 	        numbers or <quote>first-last</quote> spans; either the
 	        first or the last in the span may be omitted to
-	        indicate no limit in that direction.</para>
+	        indicate no limit in that direction. If range begins with "x",
+	        instead show the range selected, show all except the range.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -1253,7 +1257,8 @@ patch.file]]></screen></para>
 	        from 1, and the range is a comma-separated list of
 	        numbers or <quote>first-last</quote> spans; either the
 	        first or the last in the span may be omitted to
-	        indicate no limit in that direction.</para>
+	        indicate no limit in that direction. If range begins with "x",
+	        instead show the range selected, show all except the range.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -1267,7 +1272,8 @@ patch.file]]></screen></para>
 	        and the range is a comma-separated list of numbers or
 	        <quote>first-last</quote> spans; either the first or
 	        the last in the span may be omitted to indicate no
-	        limit in that direction.</para>
+	        limit in that direction. If range begins with "x",
+	        instead show the range selected, show all except the range.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -1965,7 +1971,8 @@ done)]]></screen></para>
 	      from 1, and the range is a comma-separated list of
 	      numbers or <quote>first-last</quote> spans; either the
 	      first or the last in the span may be omitted to indicate
-	      no limit in that direction.</para>
+	      no limit in that direction. If range begins with "x",
+	      instead show the range selected, show all except the range.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -1978,7 +1985,8 @@ done)]]></screen></para>
 	        from 1, and the range is a comma-separated list of
 	        numbers or <quote>first-last</quote> spans; either the
 	        first or the last in the span may be omitted to
-	        indicate no limit in that direction.</para>
+	        indicate no limit in that direction. If range begins with "x",
+	        instead show the range selected, show all except the range. </para>
 	    </listitem>
 	  </varlistentry>
 
@@ -1992,7 +2000,8 @@ done)]]></screen></para>
 	        and the range is a comma-separated list of numbers or
 	        <quote>first-last</quote> spans; either the first or
 	        the last in the span may be omitted to indicate no
-	        limit in that direction.</para>
+	        limit in that direction. If range begins with "x",
+	        instead show the range selected, show all except the range.</para>
 	    </listitem>
 	  </varlistentry>
 

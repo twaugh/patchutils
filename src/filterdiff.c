@@ -68,6 +68,9 @@ static struct range *lines = NULL;
 static struct range *files = NULL;
 static enum line_numbering number_lines = None;
 static int number_files = 0;
+static int files_exclude = 0;
+static int lines_exclude = 0;
+static int hunks_exclude = 0;
 
 static int unzip = 0;
 static enum {
@@ -193,7 +196,9 @@ file_matches (void)
 			break;
 		}
 
-	if (files && !f)
+	if (files && !f && !files_exclude)
+		return 0;
+	if (files && f && files_exclude)
 		return 0;
 
 	return 1;
@@ -258,10 +263,16 @@ hunk_matches (unsigned long orig_offset, unsigned long orig_count,
 			break;
 		}
 
-	if (hunks && !h)
+	if (hunks && !h && !hunks_exclude)
 		return 0;
 
-	if (lines && !l)
+	if (hunks && h && hunks_exclude)
+		return 0;
+
+	if (lines && !l && !lines_exclude)
+		return 0;
+
+	if (lines && l && lines_exclude)
 		return 0;
 
 	return 1;
@@ -1051,10 +1062,10 @@ const char * syntax_str =
 "  -I FILE, --include-from-file=FILE\n"
 "            include only files that match any pattern in FILE\n"
 "  -# H, --hunks=H\n"
-"            include only hunks in range H\n"
-"  --lines=L include only hunks with (original) lines in range L\n"
+"            include only hunks in range H, if range begins with x show all excluding range H\n"
+"  --lines=L include only hunks with (original) lines in range L, if range begins with x show all excluding range L\n"
 "  -F F, --files=F\n"
-"            include only files in range F\n"
+"            include only files in range F, if range begins with x show all excluding range F\n"
 "  --annotate (filterdiff, grepdiff)\n"
 "            annotate each hunk with the filename and hunk number (filterdiff, grepdiff)\n"
 "  --as-numbered-lines=before|after (filterdiff, grepdiff)\n"
@@ -1409,6 +1420,10 @@ int main (int argc, char *argv[])
 		case '#':
 			if (hunks)
 				syntax (1);
+			if (*optarg == 'x') {
+				hunks_exclude = 1;
+				optarg = optarg + 1;
+			}
 			parse_range (&hunks, optarg);
 			break;
 		case 'H':
@@ -1424,11 +1439,19 @@ int main (int argc, char *argv[])
 		case 1000 + ':':
 			if (lines)
 				syntax (1);
+			if (*optarg == 'x') {
+				lines_exclude = 1;
+				optarg = optarg + 1;
+			}
 			parse_range (&lines, optarg);
 			break;
 		case 'F':
 			if (files)
 				syntax (1);
+			if (*optarg == 'x') {
+				files_exclude = 1;
+				optarg = optarg + 1;
+			}
 			parse_range (&files, optarg);
 			break;
 		case 1000 + 'L':
