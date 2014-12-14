@@ -768,10 +768,10 @@
 	      <para>Only include hunks within the specified
 	        <replaceable>RANGE</replaceable>.  Hunks are numbered
 	        from 1, and the range is a comma-separated list of
-	        numbers or <quote>first-last</quote> spans; either the
+	        numbers or <quote>first-last</quote> spans, optionially preceeded
+			by a modifier 'x' which inverts the entire range; either the
 	        first or the last in the span may be omitted to
-	        indicate no limit in that direction. If range begins with "x",
- 	        instead show the range selected, show all except the range.</para>
+	        indicate no limit in that direction.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -782,10 +782,10 @@
 	        original file that lie within the specified
 	        <replaceable>RANGE</replaceable>.  Lines are numbered
 	        from 1, and the range is a comma-separated list of
-	        numbers or <quote>first-last</quote> spans; either the
+	        numbers or <quote>first-last</quote> spans, optionially preceeded
+	        by a modifier 'x' which inverts the entire range; either the
 	        first or the last in the span may be omitted to
-	        indicate no limit in that direction. If range begins with "x",
- 	        instead show the range selected, show all except the range.</para>
+	        indicate no limit in that direction.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -797,10 +797,10 @@
 	        <replaceable>RANGE</replaceable>.  Files are numbered
 	        from 1 in the order they appear in the patch input,
 	        and the range is a comma-separated list of numbers or
-	        <quote>first-last</quote> spans; either the first or
-	        the last in the span may be omitted to indicate no
-	        limit in that direction. If range begins with "x",
- 	        instead show the range selected, show all except the range.</para>
+	        <quote>first-last</quote> spans, optionially preceeded
+	        by a modifier 'x' which inverts the entire range; either the
+	        first or the last in the span may be omitted to indicate no
+	        limit in that direction.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -1241,10 +1241,10 @@ patch.file]]></screen></para>
 	      <para>Only list hunks within the specified
 	        <replaceable>RANGE</replaceable>.  Hunks are numbered
 	        from 1, and the range is a comma-separated list of
-	        numbers or <quote>first-last</quote> spans; either the
+	        numbers or <quote>first-last</quote> spans, optionially preceeded
+	        by a modifier 'x' which inverts the entire range; either the
 	        first or the last in the span may be omitted to
-	        indicate no limit in that direction. If range begins with "x",
-	        instead show the range selected, show all except the range.</para>
+	        indicate no limit in that direction.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -1255,10 +1255,10 @@ patch.file]]></screen></para>
 	        original file that lie within the specified
 	        <replaceable>RANGE</replaceable>.  Lines are numbered
 	        from 1, and the range is a comma-separated list of
-	        numbers or <quote>first-last</quote> spans; either the
+	        numbers or <quote>first-last</quote> spans, optionially preceeded
+	        by a modifier 'x' which inverts the entire range; either the
 	        first or the last in the span may be omitted to
-	        indicate no limit in that direction. If range begins with "x",
-	        instead show the range selected, show all except the range.</para>
+	        indicate no limit in that direction.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -1270,10 +1270,10 @@ patch.file]]></screen></para>
 	        <replaceable>RANGE</replaceable>.  Files are numbered
 	        from 1 in the order they appear in the patch input,
 	        and the range is a comma-separated list of numbers or
-	        <quote>first-last</quote> spans; either the first or
+	        <quote>first-last</quote> spans, optionially preceeded by a
+			modifier 'x' which inverts the entire range; either the first or
 	        the last in the span may be omitted to indicate no
-	        limit in that direction. If range begins with "x",
-	        instead show the range selected, show all except the range.</para>
+	        limit in that direction.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -1969,10 +1969,10 @@ done)]]></screen></para>
 	      <para>Only include hunks within the specified
 	      <replaceable>RANGE</replaceable>.  Hunks are numbered
 	      from 1, and the range is a comma-separated list of
-	      numbers or <quote>first-last</quote> spans; either the
+	      numbers or <quote>first-last</quote> spans, optionially preceeded
+	      by a modifier 'x' which inverts the entire range; either the
 	      first or the last in the span may be omitted to indicate
-	      no limit in that direction. If range begins with "x",
-	      instead show the range selected, show all except the range.</para>
+	      no limit in that direction.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -1983,10 +1983,10 @@ done)]]></screen></para>
 	        original file that lie within the specified
 	        <replaceable>RANGE</replaceable>.  Lines are numbered
 	        from 1, and the range is a comma-separated list of
-	        numbers or <quote>first-last</quote> spans; either the
+	        numbers or <quote>first-last</quote> spans, optionially preceeded
+	        by a modifier 'x' which inverts the entire range; either the
 	        first or the last in the span may be omitted to
-	        indicate no limit in that direction. If range begins with "x",
-	        instead show the range selected, show all except the range. </para>
+	        indicate no limit in that direction.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -1998,10 +1998,10 @@ done)]]></screen></para>
 	        <replaceable>RANGE</replaceable>.  Files are numbered
 	        from 1 in the order they appear in the patch input,
 	        and the range is a comma-separated list of numbers or
-	        <quote>first-last</quote> spans; either the first or
+	        <quote>first-last</quote> spans, optionially preceeded by a
+	        modifier 'x' which inverts the entire range; either the first or
 	        the last in the span may be omitted to indicate no
-	        limit in that direction. If range begins with "x",
-	        instead show the range selected, show all except the range.</para>
+	        limit in that direction.</para>
 	    </listitem>
 	  </varlistentry>
 
