@@ -77,7 +77,7 @@ sub process {
 if($#ARGV != 0) {
     die "usage: splitdiff DIFF\n";
 }
-$getlist = 'lsdiff -n ';
+$getlist = '${LSDIFF-lsdiff} -n ';
 $getlist .= '--strip='.$opts{p}.' ' if ($opts{p});
 $getlist .= $ARGV[0]; # Yuck.  How do you do this properly in perl?
 open(LIST, '-|', $getlist) or die "Can't run lsdiff";
