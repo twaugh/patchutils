@@ -1,8 +1,6 @@
 language: c
 compiler: gcc
-before_install:
-  - sudo apt-get update -qq
-  - sudo apt-get install -qq xmlto
+sudo: false
 script: ./bootstrap &&
         ./configure &&
         make distcheck

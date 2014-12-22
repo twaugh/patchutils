@@ -9,10 +9,6 @@ bin_SCRIPTS = \
 	scripts/unwrapdiff \
 	scripts/dehtmldiff \
 	scripts/espdiff
-man_MANS = doc/interdiff.1 doc/filterdiff.1 doc/fixcvsdiff.1 doc/rediff.1 \
-	doc/editdiff.1 doc/combinediff.1 doc/lsdiff.1 doc/splitdiff.1 \
-	doc/grepdiff.1 doc/recountdiff.1 doc/unwrapdiff.1 doc/dehtmldiff.1 \
-	doc/flipdiff.1 doc/espdiff.1
 
 AM_CFLAGS = -I$(srcdir)/src
 src_interdiff_SOURCES = src/interdiff.c src/util.c src/util.h src/diff.c \
@@ -26,9 +22,16 @@ src_interdiff_LDADD = @LIBOBJS@
 src_filterdiff_LDADD = @LIBOBJS@
 src_rediff_LDADD = @LIBOBJS@
 
+if HAVE_XMLTO
 # The man pages are generated from DocBook XML.
+man_MANS = doc/interdiff.1 doc/filterdiff.1 doc/fixcvsdiff.1 doc/rediff.1 \
+	doc/editdiff.1 doc/combinediff.1 doc/lsdiff.1 doc/splitdiff.1 \
+	doc/grepdiff.1 doc/recountdiff.1 doc/unwrapdiff.1 doc/dehtmldiff.1 \
+	doc/flipdiff.1 doc/espdiff.1
+
 $(man_MANS): doc/patchutils.xml
-	xmlto man -o doc $<
+	$(XMLTO) man -o doc $<
+endif
 
 # Special rules for combinediff, flipdiff, lsdiff and grepdiff, which are
 # just symlinks.

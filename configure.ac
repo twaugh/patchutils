@@ -14,6 +14,11 @@ AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
 AC_PROG_RANLIB
+AC_PATH_PROG([XMLTO], [xmlto])
+AM_CONDITIONAL(HAVE_XMLTO, test x$XMLTO != x)
+if test x$XMLTO = x; then
+  AC_MSG_WARN([xmlto not available so not building docs])
+fi
 
 dnl Checks for perl, for the scripts
 AC_PATH_PROGS(PERL, perl perl5)
