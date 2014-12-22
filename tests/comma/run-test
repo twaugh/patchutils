@@ -21,7 +21,12 @@ a
 b
 d
 EOF
-gendiff dir .orig > patch1
+# "gendiff dir .orig", but without requiring gendiff:
+( for f in file xyzzy
+  do
+    printf "diff -up dir/$f.orig dir/$f\n"
+    diff -up dir/$f.orig dir/$f
+  done) > patch1
 
 ${INTERDIFF} patch1 patch1 2>errors > patch1-2 || exit 1
 [ -s errors ] && exit 1

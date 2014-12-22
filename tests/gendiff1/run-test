@@ -18,10 +18,13 @@ b
 d
 EOF
 cp abc dir/file
-gendiff dir .orig > patch1
+# "gendiff dir .orig" without requiring gendiff:
+(printf "diff -up dir/file.orig dir/file\n"
+ diff -up dir/file.orig dir/file) > patch1
 
 cp abd dir/file
-gendiff dir .orig > patch2
+(printf "diff -up dir/file.orig dir/file\n"
+ diff -up dir/file.orig dir/file) > patch2
 
 ${INTERDIFF} patch1 patch2 2>errors > patch1-2 || exit 1
 [ -s errors ] && exit 1
