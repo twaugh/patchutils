@@ -10,9 +10,9 @@ LSDIFF=${top_builddir}/src/lsdiff
 GREPDIFF=${top_builddir}/src/grepdiff
 FILTERDIFF=${top_builddir}/src/filterdiff
 SELECTDIFF=${top_builddir}/src/selectdiff
-RECOUNTDIFF=${top_builddir}/recountdiff
-UNWRAPDIFF=${top_builddir}/unwrapdiff
-SPLITDIFF=${top_builddir}/splitdiff
+RECOUNTDIFF=${top_builddir}/scripts/recountdiff
+UNWRAPDIFF=${top_builddir}/scripts/unwrapdiff
+SPLITDIFF=${top_builddir}/scripts/splitdiff
 export LSDIFF
 : ${DIFF:=diff}
 : ${PATCH:=patch -s}

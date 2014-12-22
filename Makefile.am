@@ -1,8 +1,14 @@
 DISTCLEANFILES = src/stamp-h[0-9]* src/config.h
 
 bin_PROGRAMS = src/interdiff src/filterdiff src/rediff
-bin_SCRIPTS = fixcvsdiff splitdiff editdiff recountdiff unwrapdiff dehtmldiff \
-	espdiff
+bin_SCRIPTS = \
+	scripts/fixcvsdiff \
+	scripts/splitdiff \
+	scripts/editdiff \
+	scripts/recountdiff \
+	scripts/unwrapdiff \
+	scripts/dehtmldiff \
+	scripts/espdiff
 man_MANS = doc/interdiff.1 doc/filterdiff.1 doc/fixcvsdiff.1 doc/rediff.1 \
 	doc/editdiff.1 doc/combinediff.1 doc/lsdiff.1 doc/splitdiff.1 \
 	doc/grepdiff.1 doc/recountdiff.1 doc/unwrapdiff.1 doc/dehtmldiff.1 \
@@ -55,7 +61,7 @@ MAINTAINERCLEANFILES=$(man_MANS)
 
 tests/newline1/run-test: src/combinediff$(EXEEXT) src/flipdiff$(EXEEXT) \
 		src/lsdiff$(EXEEXT) src/grepdiff$(EXEEXT) \
-		splitdiff
+		scripts/splitdiff
 	for script in $(bin_SCRIPTS); do \
 		if [ -f $(top_builddir)/$$script ]; then \
 			chmod a+x $(top_builddir)/$$script; \
@@ -225,7 +231,7 @@ EXTRA_DIST = $(man_MANS) \
 	patchutils.spec \
 	doc/patchutils.xml \
 	src/getopt.h \
-	move-to-front
+	scripts/move-to-front
 
 tag:
 	cvs tag -c `echo V@VERSION@ | tr . _`

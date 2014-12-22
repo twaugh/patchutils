@@ -78,6 +78,13 @@ AC_DEFINE_UNQUOTED(PATCH, "$PATCH", How patch(1) is called)
 AC_DEFINE_UNQUOTED(DIFF, "$DIFF", How diff(1) is called)
 
 AC_OUTPUT([
-Makefile splitdiff editdiff fixcvsdiff recountdiff
-unwrapdiff dehtmldiff espdiff patchutils.spec
+Makefile
+scripts/splitdiff
+scripts/editdiff
+scripts/fixcvsdiff
+scripts/recountdiff
+scripts/unwrapdiff
+scripts/dehtmldiff
+scripts/espdiff
+patchutils.spec
 ])
