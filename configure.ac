@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 
-AC_INIT(patchutils, 0.3.3)
+AC_INIT([patchutils],[0.3.3])
 AC_CONFIG_SRCDIR(patchutils.spec.in)
 AM_CONFIG_HEADER(config.h)
 
@@ -82,7 +82,7 @@ AC_MSG_RESULT(yes)
 AC_DEFINE_UNQUOTED(PATCH, "$PATCH", How patch(1) is called)
 AC_DEFINE_UNQUOTED(DIFF, "$DIFF", How diff(1) is called)
 
-AC_OUTPUT([
+AC_CONFIG_FILES([
 Makefile
 scripts/splitdiff
 scripts/editdiff
@@ -93,3 +93,4 @@ scripts/dehtmldiff
 scripts/espdiff
 patchutils.spec
 ])
+AC_OUTPUT
