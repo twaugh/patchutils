@@ -75,7 +75,7 @@ while ($i < $#line) {
     } elsif ($state == 3) {
 	# Counting lines.
 	my $spit = 0;
-	if (/^ /) { $orig++; $new++; }
+	if (/^\s/ or /^$/) { $orig++; $new++; }
 	elsif (/^\+/) { $new++; }
 	elsif (/^-/) {
 	    # Look out for new file changes.

@@ -1,3 +1,8 @@
+2015-02-19  Tim Waugh  <twaugh@redhat.com>
+
+	* scripts/recountdiff.in: Be more forgiving of broken
+	whitespace-only context lines (found due to bug #1194285).
+
 2014-11-04  Tim Waugh  <twaugh@redhat.com>
 
 	* NEWS: Updated.
