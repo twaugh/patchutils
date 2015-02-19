@@ -1,5 +1,7 @@
 2015-02-19  Tim Waugh  <twaugh@redhat.com>
 
+	* tests/recount7/run-test: Test for recountdiff with broken
+	whitespace-only lines.
 	* scripts/recountdiff.in: Be more forgiving of broken
 	whitespace-only context lines (found due to bug #1194285).
 

@@ -181,6 +181,7 @@ TESTS = tests/newline1/run-test \
 	tests/recount4/run-test \
 	tests/recount5/run-test \
 	tests/recount6/run-test \
+	tests/recount7/run-test \
 	tests/unwrapdiff1/run-test \
 	tests/overstrip/run-test \
 	tests/context1/run-test \
