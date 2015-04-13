@@ -215,7 +215,8 @@ TESTS = tests/newline1/run-test \
 	tests/clean2/run-test \
 	tests/stdin/run-test \
 	tests/splitdiffD/run-test \
-	tests/fullheader1/run-test
+	tests/fullheader1/run-test \
+	tests/fullheader2/run-test
 
 # These ones don't work yet.
 # Feel free to send me patches. :-)
@@ -224,7 +225,8 @@ XFAIL_TESTS = \
 	tests/delhunk6/run-test \
 	tests/trimlast1/run-test \
 	tests/trimlast2/run-test \
-	tests/fullheader1/run-test
+	tests/fullheader1/run-test \
+	tests/fullheader2/run-test
 
 distclean-local:
 	-rm -rf $(top_builddir)/test-arena

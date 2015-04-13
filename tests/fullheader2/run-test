@@ -1,0 +1,36 @@
+#!/bin/sh
+
+# This is an interdiff(1) testcase.
+# Deal with git format-patch output more intelligently.
+# From: https://bugzilla.redhat.com/show_bug.cgi?id=1211062
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat <<"EOF" > git-output
+new file mode 100644
+index 0000000..f0c06ab
+--- /dev/null
++++ b/elf/tst-audit11mod1.c
+@@ -0,0 +1,6 @@
++extern int f2 (void);
++int
++f1 (void)
++{
++  return f2 ();
++}
+diff --git a/elf/tst-audit11mod2.c b/elf/tst-audit11mod2.c
+new file mode 100644
+index 0000000..cd3c9b1
+--- /dev/null
++++ b/elf/tst-audit11mod2.c
+@@ -0,0 +1,5 @@
++int
++f2 (void)
++{
++  return 42;
++}
+EOF
+
+${INTERDIFF} git-output git-output 2>errors >index || { cat errors; exit 1; }
+[ -s errors ] && { cat errors; exit 1; }
+[ -s index ] && { cat index; exit 1; }

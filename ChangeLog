@@ -1,3 +1,9 @@
+2015-04-13  Tim Waugh  <twaugh@redhat.com>
+
+	* tests/fullheader2/run-test: Another test for handling git
+	output.
+	* Makefile.am: Run it. Currently expected to fail.
+
 2015-03-20  Tim Waugh  <twaugh@redhat.com>
 
 	* tests/fullheader1/run-test: Test for handling git output.
