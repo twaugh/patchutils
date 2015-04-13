@@ -34,3 +34,4 @@ EOF
 ${INTERDIFF} git-output git-output 2>errors >index || { cat errors; exit 1; }
 [ -s errors ] && { cat errors; exit 1; }
 [ -s index ] && { cat index; exit 1; }
+exit 0
