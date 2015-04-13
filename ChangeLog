@@ -1,5 +1,9 @@
 2015-04-13  Tim Waugh  <twaugh@redhat.com>
 
+	* src/interdiff.c: Applied patch from Ulrich Drepper to fix
+	fullheader2 test case.
+	* Makefile.am: Now the test case is expected to pass.
+
 	* tests/fullheader2/run-test: Another test for handling git
 	output.
 	* Makefile.am: Run it. Currently expected to fail.

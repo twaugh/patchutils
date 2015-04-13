@@ -225,8 +225,7 @@ XFAIL_TESTS = \
 	tests/delhunk6/run-test \
 	tests/trimlast1/run-test \
 	tests/trimlast2/run-test \
-	tests/fullheader1/run-test \
-	tests/fullheader2/run-test
+	tests/fullheader1/run-test
 
 distclean-local:
 	-rm -rf $(top_builddir)/test-arena

@@ -824,9 +824,15 @@ apply_patch (FILE *patch, const char *file, int reverted)
 		if (got == -1)
 			break;
 
-		/* FIXME: Should this compare with '@@ ' instead of '--- '? */
-		if (!orig_lines && !new_lines && !strncmp (line, "--- ", 4))
-			break;
+		if (!orig_lines && !new_lines) {
+			/* FIXME: Should this compare with '@@ ' instead of '--- '? */
+			if (!strncmp (line, "--- ", 4))
+				break;
+			if (!strncmp (line, "diff ", 5)
+			    || !strncmp (line, "new file mode ", 14)
+			    || !strncmp (line, "index ", 6))
+				continue;
+		}
 
 		fwrite (line, (size_t) got, 1, w);
 
