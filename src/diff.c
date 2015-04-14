@@ -114,6 +114,9 @@ char *best_name (int n, char **names)
 		int len;
 
 		if (is_dev_null[i])
+                        continue;
+
+                if (pathname_components[i] != best_pn)
 			continue;
 
                 if (basename_length[i] != best_bn)
