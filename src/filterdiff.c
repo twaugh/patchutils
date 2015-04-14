@@ -279,7 +279,8 @@ hunk_matches (unsigned long orig_offset, unsigned long orig_count,
 }
 
 static int
-do_unified (FILE *f, char *header[2], int match, char **line,
+do_unified (FILE *f, char **header, unsigned int num_headers,
+            int match, char **line,
 	    size_t *linelen, unsigned long *linenum,
 	    unsigned long start_linenum, char status,
 	    const char *bestname, const char *patchname,
@@ -390,10 +391,13 @@ do_unified (FILE *f, char *header[2], int match, char **line,
 				if (!header_displayed &&
 				    mode != mode_grep) {
 					// Display the header.
+                                        unsigned int i;
+                                        for (i = 0; i < num_headers - 2; i++)
+                                                output_header_line (header[i]);
 					if (number_lines != After)
-						output_header_line (header[0]);
+						output_header_line (header[num_headers - 2]);
 					if (number_lines != Before)
-						output_header_line (header[1]);
+						output_header_line (header[num_headers - 1]);
 					header_displayed = 1;
 				}
 				switch (number_lines) {
@@ -476,16 +480,16 @@ do_unified (FILE *f, char *header[2], int match, char **line,
 				}
 			} else {
 				if (match_tmpf) {
-					if (!header_displayed &&
-					    number_lines != After)
-						output_header_line (header[0]);
-
-					if (!header_displayed &&
-					    number_lines != Before)
-						output_header_line (header[1]);
-
-					if (!header_displayed)
+                                        if (!header_displayed) {
+                                                unsigned int i;
+                                                for (i = 0; i < num_headers - 2; i++)
+                                                        output_header_line (header[i]);
+                                                if (number_lines != After)
+                                                        output_header_line (header[num_headers - 2]);
+                                                if (number_lines != Before)
+                                                        output_header_line (header[num_headers - 1]);
 						header_displayed = 1;
+                                        }
 
 					rewind (match_tmpf);
 					while (!feof (match_tmpf)) {
@@ -533,7 +537,8 @@ do_unified (FILE *f, char *header[2], int match, char **line,
 }
 
 static int
-do_context (FILE *f, char *header[2], int match, char **line,
+do_context (FILE *f, char **header, unsigned int num_headers,
+            int match, char **line,
 	    size_t *linelen, unsigned long *linenum,
 	    unsigned long start_linenum, char status,
 	    const char *bestname, const char *patchname,
@@ -687,10 +692,13 @@ do_context (FILE *f, char *header[2], int match, char **line,
 
 			// Display the line counts.
 			if (!header_displayed && mode == mode_filter) {
+                                unsigned int i;
+                                for (i = 0; i < num_headers - 2; i++)
+                                        output_header_line (header[i]);
 				if (number_lines != After)
-					output_header_line (header[0]);
+					output_header_line (header[num_headers - 2]);
 				if (number_lines != Before)
-					output_header_line (header[1]);
+					output_header_line (header[num_headers - 1]);
 				header_displayed = 1;
 			}
 
@@ -787,10 +795,13 @@ do_context (FILE *f, char *header[2], int match, char **line,
 					}
 				} else {
 					if (!header_displayed) {
+                                                unsigned int i;
+                                                for (i = 0; i < num_headers - 2; i++)
+                                                        output_header_line (header[i]);
 						if (number_lines != After)
-							output_header_line (header[0]);
+							output_header_line (header[num_headers - 2]);
 						if (number_lines != Before)
-							output_header_line (header[1]);
+							output_header_line (header[num_headers - 1]);
 						header_displayed = 1;
 					}
 
@@ -899,11 +910,13 @@ out:
 	return ret;
 }
 
+#define MAX_HEADERS 5
 static int filterdiff (FILE *f, const char *patchname)
 {
 	static unsigned long linenum = 1;
 	char *names[2];
-	char *header[2] = { NULL, NULL };
+	char *header[MAX_HEADERS] = { NULL, NULL };
+        unsigned int num_headers = 0;
 	char *line = NULL;
 	size_t linelen = 0;
 	char *p;
@@ -918,18 +931,22 @@ static int filterdiff (FILE *f, const char *patchname)
 		char status = '!';
 		unsigned long start_linenum;
 		int orig_file_exists, new_file_exists;
-		int is_context = 0;
+		int is_context = -1;
 		int result;
-		int (*do_diff) (FILE *, char *[2], int, char **, size_t *,
+		int (*do_diff) (FILE *, char **, unsigned int,
+                                int, char **, size_t *,
 				unsigned long *, unsigned long,
 				char, const char *, const char *,
 				int *, int *);
 
 		orig_file_exists = 0; // shut gcc up
 
-		// Search for start of patch ("--- " for unified diff,
-		// "*** " for context).
+		// Search for start of patch ("diff ", or "--- " for
+		// unified diff, "*** " for context).
 		for (;;) {
+                        if (!strncmp (line, "diff ", 5))
+                                break;
+
 			if (!strncmp (line, "--- ", 4)) {
 				is_context = 0;
 				break;
@@ -953,6 +970,70 @@ static int filterdiff (FILE *f, const char *patchname)
 
 		start_linenum = linenum;
 		header[0] = xstrdup (line);
+                num_headers = 1;
+
+                if (is_context == -1) {
+                        int valid_extended = 1;
+                        for (;;) {
+                                if (getline (&line, &linelen, f) == -1)
+                                        goto eof;
+                                linenum++;
+
+                                if (!strncmp (line, "diff ", 5)) {
+                                        header[num_headers++] = xstrdup (line);
+                                        break;
+                                }
+
+                                if (!strncmp (line, "--- ", 4))
+                                        is_context = 0;
+                                else if (!strncmp (line, "*** ", 4))
+                                        is_context = 1;
+                                else if (strncmp (line, "old mode ", 9) &&
+                                    strncmp (line, "new mode ", 9) &&
+                                    strncmp (line, "deleted file mode ", 18) &&
+                                    strncmp (line, "new file mode ", 15) &&
+                                    strncmp (line, "copy from ", 10) &&
+                                    strncmp (line, "copy to ", 8) &&
+                                    strncmp (line, "rename from ", 12) &&
+                                    strncmp (line, "rename to ", 10) &&
+                                    strncmp (line, "similarity index ", 17) &&
+                                    strncmp (line, "dissimilarity index ", 20) &&
+                                    strncmp (line, "index ", 6))
+                                        valid_extended = 0;
+
+                                if (!valid_extended)
+                                        break;
+
+                                /* Drop excess header lines */
+                                if (num_headers < MAX_HEADERS - 2)
+                                        header[num_headers++] = xstrdup (line);
+
+                                if (is_context != -1)
+                                        break;
+                        }
+
+                        if (!valid_extended)
+                                goto flush_continue;
+                }
+
+                if (is_context == -1) {
+                        /* We don't yet do anything with diffs with
+                         * zero hunks. */
+                        unsigned int i = 0;
+                flush_continue:
+                        if (mode == mode_filter && (pat_exclude || verbose)
+                            && !clean_comments) {
+                                for (i = 0; i < num_headers; i++)
+                                        fputs (header[i], stdout);
+                        }
+                        for (i = 0; i < num_headers; i++) {
+                                free (header[i]);
+                                header[i] = NULL;
+                        }
+                        num_headers = 0;
+                        continue;
+                }
+
 		names[0] = filename_from_header (line + 4);
 		if (mode != mode_filter && show_status)
 			orig_file_exists = file_exists (names[0], line + 4 +
@@ -972,17 +1053,12 @@ static int filterdiff (FILE *f, const char *patchname)
 		if (strncmp (line, is_context ? "--- " : "+++ ", 4)) {
 			/* Show non-diff lines if excluding, or if
 			 * in verbose mode, and if --clean isn't specified. */
-			if (mode == mode_filter && (pat_exclude || verbose)
-				&& !clean_comments)
-				fputs (header[0], stdout);
 			free (names[0]);
-			free (header[0]);
-			header[0] = NULL;
-			continue;
+                        goto flush_continue;
 		}
 
 		filecount++;
-		header[1] = xstrdup (line);
+		header[num_headers++] = xstrdup (line);
 		names[1] = filename_from_header (line + 4);
 
 		if (mode != mode_filter && show_status)
@@ -1007,7 +1083,8 @@ static int filterdiff (FILE *f, const char *patchname)
 		else
 			do_diff = do_unified;
 
-		result = do_diff (f, header, match, &line,
+		result = do_diff (f, header, num_headers,
+                                  match, &line,
 				  &linelen, &linenum,
 				  start_linenum, status, p, patchname,
 				  &orig_file_exists, &new_file_exists);
@@ -1033,15 +1110,17 @@ static int filterdiff (FILE *f, const char *patchname)
 		}
 
 	next_diff:
-		for (i = 0; i < 2; i++) {
+		for (i = 0; i < 2; i++)
 			free (names[i]);
+                for (i = 0; i < num_headers; i++) {
 			free (header[i]);
 			header[i] = NULL;
 		}
+                num_headers = 0;
 	}
 
  eof:
-	for (i = 0; i < 2; i++)
+	for (i = 0; i < num_headers; i++)
 		if (header[i])
 			free (header[i]);
 
