@@ -1,3 +1,8 @@
+2014-04-14  Tim Waugh  <twaugh@redhat.com>
+
+	* tests/lsdiff6/run-test: Fixed typo.
+	* tests/fullheader1/run-test: Fixed typo.
+
 2015-04-13  Tim Waugh  <twaugh@redhat.com>
 
 	* src/interdiff.c: Applied patch from Ulrich Drepper to fix

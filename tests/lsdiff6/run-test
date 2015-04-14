@@ -18,10 +18,10 @@ prefix/a
 EOF
 
 ${FILTERDIFF} --addprefix=prefix/ --strip=1 diff 2>errors >filtered || exit 1
-[ -z "${ERRPRS}" ] || exit 1
+[ -s errors ] && exit 1
 
 ${LSDIFF} filtered 2>errors >filtered-index || exit 1
-[ -z "${ERRPRS}" ] || exit 1
+[ -s errors ] && exit 1
 
 cat << EOF | cmp - filtered-index || exit 1
 prefix/a

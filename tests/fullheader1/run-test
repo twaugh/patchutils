@@ -25,8 +25,8 @@ EOF
 ${LSDIFF} -n git-output 2>errors >index || exit 1
 [ -s errors ] && exit 1
 cat <<"EOF" | cmp - index || exit 1
-1       a/ChangeLog
-8       a/otherfile
+1	a/ChangeLog
+8	a/otherfile
 EOF
 
 ${FILTERDIFF} -p1 -i otherfile git-output 2>errors >otherfile.patch || exit 1
