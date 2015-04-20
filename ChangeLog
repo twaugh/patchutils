@@ -1,4 +1,4 @@
-2014-04-14  Tim Waugh  <twaugh@redhat.com>
+2015-04-14  Tim Waugh  <twaugh@redhat.com>
 
 	* src/filterdiff.c: Handle git extended headers.
 	* Makefile.am: The fullheader1 test case should now pass.
