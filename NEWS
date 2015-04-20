@@ -6,7 +6,8 @@ Patchutils news
 	Some fixes for filterdiff and rediff. The splitdiff utility
 	now has an option to write output to a subdirectory. Ranges
 	can now be prefixed by a modifier ('x') to exclude spans
-	instead of include them.
+	instead of include them. Extended headers produced by git are
+        now handled by filterdiff and interdiff.
 
 0.3.3 (stable)
 
