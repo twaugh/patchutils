@@ -33,7 +33,8 @@ sed -e "s/$(/bin/echo -ne '\t').*$//" patch-flipped > patch-cmp
 cmp - patch-cmp << EOF || exit 1
 --- file.orig
 +++ file
-@@ -2,2 +2,2 @@
+@@ -1,3 +1,3 @@
+ a
 -b
  c
 +d

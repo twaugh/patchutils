@@ -933,7 +933,7 @@ trim_context (FILE *f /* positioned at start of @@ line */,
 
 		pre -= strip_pre;
 		post -= strip_post;
-		if (pre > post)
+		if (post && pre > post)
 			strip_pre += pre - post;
 		orig_offset += strip_pre;
 		new_orig_count -= strip_pre + strip_post;

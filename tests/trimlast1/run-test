@@ -41,6 +41,7 @@ ${INTERDIFF} patch1 patch2 > patch1-2 2>errors || exit 1
 [ -s errors ] && exit 1
 
 cat << EOF | cmp - patch1-2 || exit 1
+diff -u file file
 --- file
 +++ file
 @@ -6,3 +6,4 @@
