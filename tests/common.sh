@@ -17,5 +17,7 @@ export LSDIFF
 : ${DIFF:=diff}
 : ${PATCH:=patch -s}
 cd $ARENA
-export PS4='[$LINENO] '
+if [ -n "$LxINENO" ]; then
+  export PS4='[$LINENO] '
+fi
 set -x
