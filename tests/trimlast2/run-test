@@ -35,6 +35,7 @@ ${COMBINEDIFF} patch1 patch2 > patch12 2>errors || exit 1
 [ -s errors ] && exit 1
 
 cat << EOF | cmp - patch12 || exit 1
+diff -u file file
 --- file
 +++ file
 @@ -1,4 +1,4 @@

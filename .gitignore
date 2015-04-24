@@ -28,23 +28,28 @@ src/rediff
 
 # These are generated from *.in files
 /patchutils.spec
-/dehtmldiff
-/editdiff
-/espdiff
-/fixcvsdiff
-/recountdiff
-/splitdiff
-/unwrapdiff
+/scripts/dehtmldiff
+/scripts/editdiff
+/scripts/espdiff
+/scripts/fixcvsdiff
+/scripts/recountdiff
+/scripts/splitdiff
+/scripts/unwrapdiff
 
 # These are generated from the XML file.
 doc/*.1
 
-# Test arena
+# Tests
 /test-arena
+/test-driver
+/test-suite.log
+/tests/*/run-test.log
+/tests/*/run-test.trs
 
 # Backup files
 *.bak
 *~
+*.swp
 
 # Tarballs
 patchutils-*.tar.?z*

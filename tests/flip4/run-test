@@ -57,7 +57,10 @@ sed -e "s/$(/bin/echo -ne '\t').*$//" patch-flipped > patch-cmp
 cmp - patch-cmp << EOF || exit 1
 --- file.orig
 +++ file
-@@ -12 +11,0 @@
+@@ -9,4 +9,3 @@
+ i
+ j
+ k
 -l
 
 === 8< === cut here === 8< ===
