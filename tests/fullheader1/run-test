@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# This is a filter(1) testcase.
+# This is a filterdiff(1) testcase.
 # Deal with git format-patch output more intelligently.
 
 . ${top_srcdir-.}/tests/common.sh
