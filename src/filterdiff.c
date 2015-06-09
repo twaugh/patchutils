@@ -910,7 +910,7 @@ out:
 	return ret;
 }
 
-#define MAX_HEADERS 5
+#define MAX_HEADERS 6
 static int filterdiff (FILE *f, const char *patchname)
 {
 	static unsigned long linenum = 1;

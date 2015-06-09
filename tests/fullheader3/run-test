@@ -1,0 +1,22 @@
+#!/bin/sh
+
+# This is a filterdiff(1) testcase.
+# Handle git format-patch output containing remove-file diffs.
+# From: https://bugzilla.redhat.com/show_bug.cgi?id=1226985
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat <<"EOF" > git-output
+diff --git a/a b/a
+deleted file mode 100644
+index 7898192..0000000
+--- a/a
++++ /dev/null
+@@ -1 +0,0 @@
+-a
+EOF
+
+${FILTERDIFF} git-output 2>errors >output || { cat errors; exit 1; }
+[ -s errors ] && { cat errors; exit 1; }
+cmp git-output output || exit 1
+exit 0
