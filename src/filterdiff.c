@@ -1005,8 +1005,10 @@ static int filterdiff (FILE *f, const char *patchname)
                                         break;
 
                                 /* Drop excess header lines */
-                                if (num_headers < MAX_HEADERS - 2)
-                                        header[num_headers++] = xstrdup (line);
+                                if (num_headers >= MAX_HEADERS - 2)
+                                        free (header[--num_headers]);
+
+                                header[num_headers++] = xstrdup (line);
 
                                 if (is_context != -1)
                                         break;
