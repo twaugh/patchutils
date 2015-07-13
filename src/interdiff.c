@@ -286,12 +286,21 @@ merge_lines (struct lines_info *lines1, struct lines_info *lines2)
 static void
 free_lines (struct lines *list)
 {
-	struct lines *next;
+        struct lines *next;
 	for (; list; list = next) {
 		next = list->next;
 		free (list->line);
 		free (list);
 	}
+}
+
+static void
+clear_lines_info (struct lines_info *info)
+{
+        free_lines (info->head);
+        info->tail = info->head = NULL;
+        free (info->unline);
+        info->unline = NULL;
 }
 
 static struct lines *
@@ -741,10 +750,11 @@ output_patch1_only (FILE *p1, FILE *out, int not_reverted)
 
 	/* Write it out. */
 	write_file (&file_orig, tmpp1fd);
-	file_new.unline = file_orig.unline;
+        free (file_new.unline);
+	file_new.unline = xstrdup (file_orig.unline);
 	write_file (&file_new, tmpp2fd);
-	free_lines (file_orig.head);
-	free_lines (file_new.head);
+	clear_lines_info (&file_orig);
+	clear_lines_info (&file_new);
 
 	fflush (NULL);
 	in = xpipe (DIFF, &child, "r", DIFF, options, tmpp1, tmpp2, NULL);
@@ -780,6 +790,7 @@ output_patch1_only (FILE *p1, FILE *out, int not_reverted)
 				break;
 			fwrite (line, (size_t) got, 1, out);
 		}
+                free (line);
 	}
 
 	fclose (in);
@@ -1060,7 +1071,6 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 	/* Write it out. */
 	write_file (&file, tmpp1fd);
 	write_file (&file, tmpp2fd);
-	free_lines (file.head);
 
 	fseek (p1, start1, SEEK_SET);
 	fseek (p2, start2, SEEK_SET);
@@ -1166,6 +1176,7 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 	}
 	free (oldname);
 	free (newname);
+	clear_lines_info (&file);
 	return 0;
 
  evasive_action:
@@ -1912,6 +1923,7 @@ interdiff (FILE *p1, FILE *p2, const char *patch1, const char *patch2)
 		}
 
 		add_to_list (&files_done, p, 0);
+                free (p);
 	}
 
 	if (!file_is_empty && !patch_found)
@@ -1925,11 +1937,13 @@ interdiff (FILE *p1, FILE *p2, const char *patch1, const char *patch2)
 		rewind (flip2);
 
 		if (flipdiff_inplace) {
-			FILE *p1 = xopen (patch1, "wb");
-			FILE *p2 = xopen (patch2, "wb");
+			FILE *pp1 = xopen (patch1, "wb");
+			FILE *pp2 = xopen (patch2, "wb");
 
-			copy (flip1, p2);
-			copy (flip2, p1);
+			copy (flip1, pp2);
+			copy (flip2, pp1);
+                        fclose (pp1);
+                        fclose (pp2);
 		} else {
 			copy (flip1, stdout);
 			puts ("\n=== 8< === cut here === 8< ===\n");
