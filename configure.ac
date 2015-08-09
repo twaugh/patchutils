@@ -2,7 +2,7 @@ dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([patchutils],[0.3.4])
 AC_CONFIG_SRCDIR(patchutils.spec.in)
-AM_CONFIG_HEADER(config.h)
+AC_CONFIG_HEADERS(config.h)
 
 AM_INIT_AUTOMAKE([dist-xz dist-bzip2 subdir-objects 1.6])
 
