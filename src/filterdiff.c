@@ -1353,8 +1353,50 @@ static void set_grep (void)
 	mode = mode_grep;
 }
 
-static void determine_mode_from_name (const char *argv0)
+
+static struct option long_options[] = {
+	{"help", 0, 0, 1000 + 'H'},
+	{"version", 0, 0, 1000 + 'V'},
+	{"verbose", 0, 0, 'v'},
+	{"list", 0, 0, 'l'},
+	{"filter", 0, 0, 1000 + 'f'},
+	{"grep", 0, 0, 'g'},
+	{"strip", 1, 0, 1000 + 'S'},
+	{"addprefix", 1, 0, 1000 + 'A'},
+	{"addoldprefix", 1, 0, 1000 + 'O'},
+	{"addnewprefix", 1, 0, 1000 + 'N'},
+	{"hunks", 1, 0, '#'},
+	{"lines", 1, 0, 1000 + ':'},
+	{"files", 1, 0, 'F'},
+	{"as-numbered-lines", 1, 0, 1000 + 'L'},
+	{"annotate", 0, 0, 1000 + 'a'},
+	{"format", 1, 0, 1000 + 'F'},
+	{"output-matching", 1, 0, 1000 + 'o'},
+	{"remove-timestamps", 0, 0, 1000 + 'r'},
+	{"with-filename", 0, 0, 'H'},
+	{"no-filename", 0, 0, 'h'},
+	{"empty-files-as-absent", 0, 0, 'E'},
+	{"number-files", 0, 0, 'N'},
+	{"clean", 0, 0, 1000 + 'c'},
+	{"strip-match", 1, 0, 'p'},
+	{"include", 1, 0, 'i'},
+	{"exclude", 1, 0, 'x'},
+	{"include-from-file", 1, 0, 'I'},
+	{"exclude-from-file", 1, 0, 'X'},
+	{"decompress", 0, 0, 'z'},
+	{"line-number", 0, 0, 'n'},
+	{"strip-match", 1, 0, 'p'},
+	{"status", 0, 0, 's'},
+	{"extended-regexp", 0, 0, 'E'},
+	{"empty-files-as-removed", 0, 0, 'E'},
+	{"file", 1, 0, 'f'},
+	{0, 0, 0, 0}
+};
+
+static void determine_mode_from_name (int argc, char *argv[])
 {
+	const char *argv0 = argv[0];
+	int switches = 0;
 	/* This is filterdiff, unless it is named 'lsdiff' or 'grepdiff'. */
 	const char *p = strrchr (argv0, '/');
 	if (!p++)
@@ -1363,6 +1405,21 @@ static void determine_mode_from_name (const char *argv0)
 		set_list ();
 	else if (strstr (p, "grepdiff"))
 		set_grep ();
+	else if (strstr (p, "patchview")) {
+		/* count switches */
+		while (getopt_long (argc, argv, "vp:i:I:x:X:zns#:F:Ef:HhN", long_options, NULL) != -1) {
+			switches ++;
+		}
+		/* reinitialize getopt() by resetting optind to 0*/
+		optind = 0;
+		/* printf ("patchview with %d args, with %d switches \n", argc, switches); */
+		if (switches)
+			set_filter ();
+		else {
+			set_list ();
+			number_files = 1;
+		}
+	}
 	else
 		set_filter ();
 }
@@ -1423,46 +1480,8 @@ int main (int argc, char *argv[])
 	int regex_file_specified = 0;
 
 	setlocale (LC_TIME, "C");
-	determine_mode_from_name (argv[0]);
+	determine_mode_from_name (argc, argv);
 	while (1) {
-		static struct option long_options[] = {
-	       		{"help", 0, 0, 1000 + 'H'},
-			{"version", 0, 0, 1000 + 'V'},
-			{"verbose", 0, 0, 'v'},
-			{"list", 0, 0, 'l'},
-			{"filter", 0, 0, 1000 + 'f'},
-			{"grep", 0, 0, 'g'},
-			{"strip", 1, 0, 1000 + 'S'},
-			{"addprefix", 1, 0, 1000 + 'A'},
-			{"addoldprefix", 1, 0, 1000 + 'O'},
-			{"addnewprefix", 1, 0, 1000 + 'N'},
-			{"hunks", 1, 0, '#'},
-			{"lines", 1, 0, 1000 + ':'},
-			{"files", 1, 0, 'F'},
-			{"as-numbered-lines", 1, 0, 1000 + 'L'},
-			{"annotate", 0, 0, 1000 + 'a'},
-			{"format", 1, 0, 1000 + 'F'},
-			{"output-matching", 1, 0, 1000 + 'o'},
-			{"remove-timestamps", 0, 0, 1000 + 'r'},
-			{"with-filename", 0, 0, 'H'},
-			{"no-filename", 0, 0, 'h'},
-			{"empty-files-as-absent", 0, 0, 'E'},
-			{"number-files", 0, 0, 'N'},
-			{"clean", 0, 0, 1000 + 'c'},
-			{"strip-match", 1, 0, 'p'},
-			{"include", 1, 0, 'i'},
-			{"exclude", 1, 0, 'x'},
-			{"include-from-file", 1, 0, 'I'},
-			{"exclude-from-file", 1, 0, 'X'},
-			{"decompress", 0, 0, 'z'},
-			{"line-number", 0, 0, 'n'},
-			{"strip-match", 1, 0, 'p'},
-			{"status", 0, 0, 's'},
-			{"extended-regexp", 0, 0, 'E'},
-			{"empty-files-as-removed", 0, 0, 'E'},
-			{"file", 1, 0, 'f'},
-			{0, 0, 0, 0}
-		};
 		char *end;
 		int c = getopt_long (argc, argv, "vp:i:I:x:X:zns#:F:Ef:HhN",
 				     long_options, NULL);

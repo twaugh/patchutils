@@ -10,6 +10,12 @@ bin_SCRIPTS = \
 	scripts/dehtmldiff \
 	scripts/espdiff
 
+dist_bin_SCRIPTS = \
+    patchview/gitdiff \
+	patchview/gitviewdiff \
+	patchview/svndiff  \
+	patchview/svnviewdiff
+
 AM_CFLAGS = -I$(srcdir)/src
 src_interdiff_SOURCES = src/interdiff.c src/util.c src/util.h src/diff.c \
 		src/diff.h src/myerror.c
@@ -33,7 +39,7 @@ $(man_MANS): doc/patchutils.xml
 	$(XMLTO) man -o doc $<
 endif
 
-# Special rules for combinediff, flipdiff, lsdiff and grepdiff, which are
+# Special rules for combinediff, flipdiff, lsdiff, grepdiff and patchview, which are
 # just symlinks.
 src/combinediff$(EXEEXT): src/interdiff$(EXEEXT)
 	ln -sf $(notdir $<) $@
@@ -47,19 +53,26 @@ src/lsdiff$(EXEEXT): src/filterdiff$(EXEEXT)
 src/grepdiff$(EXEEXT): src/filterdiff$(EXEEXT)
 	ln -sf $(notdir $<) $@
 
+src/patchview$(EXEEXT): src/filterdiff$(EXEEXT)
+	ln -sf $(notdir $<) $@
+
 install-exec-hook:
 	ln -sf "`echo interdiff|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo combinediff|sed '$(transform)'`"
 	ln -sf "`echo interdiff|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo flipdiff|sed '$(transform)'`"
 	ln -sf "`echo filterdiff|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo lsdiff|sed '$(transform)'`"
 	ln -sf "`echo filterdiff|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo grepdiff|sed '$(transform)'`"
+	ln -sf "`echo filterdiff|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo patchview|sed '$(transform)'`"
+	ln -sf "`echo svnviewdiff|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo viewdiff|sed '$(transform)'`"
 
 uninstall-hook:
 	rm -f $(DESTDIR)$(bindir)/"`echo combinediff|sed '$(transform)'`"
 	rm -f $(DESTDIR)$(bindir)/"`echo flipdiff|sed '$(transform)'`"
 	rm -f $(DESTDIR)$(bindir)/"`echo lsdiff|sed '$(transform)'`"
 	rm -f $(DESTDIR)$(bindir)/"`echo grepdiff|sed '$(transform)'`"
+	rm -f $(DESTDIR)$(bindir)/"`echo patchview|sed '$(transform)'`"
+	rm -f $(DESTDIR)$(bindir)/"`echo viewdiff|sed '$(transform)'`"
 
-CLEANFILES=src/combinediff src/flipdiff src/lsdiff src/grepdiff
+CLEANFILES=src/combinediff src/flipdiff src/lsdiff src/grepdiff src/patchview patchview/viewdiff
 MAINTAINERCLEANFILES=$(man_MANS)
 
 # Regression tests.
