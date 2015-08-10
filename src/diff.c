@@ -741,6 +741,7 @@ static void convert_context_hunks_to_unified (char **line, size_t *linelen,
 		while (at[0] < n_lines[0] || at[1] < n_lines[1]) {
 			char *l[2] = { NULL, NULL };
 			size_t llen[2];
+			llen[0] = llen[1] = 0;
 			if (lines[0] && at[0] < n_lines[0]) {
 				l[0] = lines[0][at[0]];
 				llen[0] = linelengths[0][at[0]];
