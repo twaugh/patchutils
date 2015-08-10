@@ -17,11 +17,4 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
 
-case "$1" in
-"")
-    svn diff | lsdiff --number
-    ;;
-*)
-    svn diff | filterdiff $*
-    ;;
-esac
+svn diff | patchview $*

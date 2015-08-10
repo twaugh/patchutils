@@ -17,12 +17,4 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
 
-#echo "git diff | lsdiff $*"
-case "$1" in
-"")
-    git diff | lsdiff --number
-    ;;
-*)
-    git diff | filterdiff $*
-    ;;
-esac
+git diff | patchview $*
