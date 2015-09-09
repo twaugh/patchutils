@@ -759,9 +759,6 @@ do_context (FILE *f, char **header, unsigned int num_headers,
 			}
 		}
 
-		if (i && line_count == unchanged)
-			break;
-
 		got = getline (line, linelen, f);
 		if (got == -1) {
 			ret = EOF;
@@ -769,6 +766,9 @@ do_context (FILE *f, char **header, unsigned int num_headers,
 		}
 
 		++*linenum;
+
+		if (i && line_count == unchanged)
+			break;
 
 		while ((line_count == 0 && **line == '\\') ||
 		       line_count--) {

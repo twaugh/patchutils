@@ -223,7 +223,6 @@ TESTS = tests/newline1/run-test \
 # These ones don't work yet.
 # Feel free to send me patches. :-)
 XFAIL_TESTS = \
-	tests/lscontext3/run-test \
 	tests/delhunk5/run-test \
 	tests/delhunk6/run-test
 
