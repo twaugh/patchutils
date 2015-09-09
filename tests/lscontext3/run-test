@@ -1,0 +1,19 @@
+#!/bin/sh
+
+# This is a lsdiff(1) testcase.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+printf 'a\n\n\n\n\n\n\n\nb\n' > file1.orig
+printf    '\n\n\n\n\n\n\n'    > file1
+${DIFF} -c file1.orig file1 > diff
+
+${LSDIFF} -nv diff 2>errors >index || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - index || exit 1
+1	file1
+	4	Hunk #1
+	11	Hunk #2
+EOF

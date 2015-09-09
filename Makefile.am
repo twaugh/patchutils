@@ -160,6 +160,7 @@ TESTS = tests/newline1/run-test \
 	tests/nondiff1/run-test \
 	tests/lscontext1/run-test \
 	tests/lscontext2/run-test \
+	tests/lscontext3/run-test \
 	tests/filterp/run-test \
 	tests/select1/run-test \
 	tests/select2/run-test \
@@ -222,6 +223,7 @@ TESTS = tests/newline1/run-test \
 # These ones don't work yet.
 # Feel free to send me patches. :-)
 XFAIL_TESTS = \
+	tests/lscontext3/run-test \
 	tests/delhunk5/run-test \
 	tests/delhunk6/run-test
 
