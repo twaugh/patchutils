@@ -298,7 +298,7 @@ static void copy_context_hunks (char **line, size_t *linelen, ssize_t *got,
 }
 
 static void convert_unified_hunks_to_context (char **line, size_t *linelen,
-					      unsigned long *linenum)
+					      ssize_t *got, unsigned long *linenum)
 {
 	unsigned long orig_offset, orig_count = 0, new_offset, new_count = 0;
 	char **orig_line = NULL, **new_line = NULL;
@@ -312,7 +312,7 @@ static void convert_unified_hunks_to_context (char **line, size_t *linelen,
 	if (feof (stdin))
 		goto eof;
 
-	if (getline (line, linelen, stdin) == -1)
+	if ((*got = getline (line, linelen, stdin)) == -1)
 		goto eof;
 	++*linenum;
 
@@ -345,7 +345,7 @@ static void convert_unified_hunks_to_context (char **line, size_t *linelen,
 		       (new_linenum < new_count) || newline) {
 			int get_out = 0;
 
-			if (getline (line, linelen, stdin) == -1)
+			if ((*got = getline (line, linelen, stdin)) == -1)
 				/* Should write out everything to date? */
 				break;
 			++*linenum;
@@ -574,7 +574,7 @@ static void do_convert_to_context (void)
 			fwrite (line + 4, (size_t) got - 4, 1, stdout);
 			puts ("***************");
 			convert_unified_hunks_to_context (&line, &linelen,
-							  &linenum);
+							  &got, &linenum);
 		}
 	}
 
