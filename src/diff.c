@@ -624,7 +624,7 @@ static void copy_unified_hunks (char **line, size_t *linelen, ssize_t *got,
 }
 
 static void convert_context_hunks_to_unified (char **line, size_t *linelen,
-					      unsigned long *linenum)
+					      ssize_t *got, unsigned long *linenum)
 {
 	int happy = 1;
 
@@ -638,7 +638,6 @@ static void convert_context_hunks_to_unified (char **line, size_t *linelen,
 		size_t *linelengths[2];
 		size_t n_lines[2];
 		size_t at[2];
-		ssize_t got;
 
 		n_lines[0] = n_lines[1] = 0;
 		linelengths[0] = linelengths[1] = NULL;
@@ -651,7 +650,8 @@ static void convert_context_hunks_to_unified (char **line, size_t *linelen,
 			if (feof (stdin))
 				goto eof;
 
-			if (getline (line, linelen, stdin) == -1)
+			*got = getline (line, linelen, stdin);
+			if (*got == -1)
 				goto eof;
 			++*linenum;
 
@@ -702,8 +702,8 @@ static void convert_context_hunks_to_unified (char **line, size_t *linelen,
 			memset (lines[i], 0, sizeof (char *) * line_count[i]);
 
 			for (lnum = 0; lnum < line_count[i]; lnum++) {
-				got = getline (line, linelen, stdin);
-				if (got == -1)
+				*got = getline (line, linelen, stdin);
+				if (*got == -1)
 					goto eof;
 				++*linenum;
 
@@ -717,10 +717,10 @@ static void convert_context_hunks_to_unified (char **line, size_t *linelen,
 					}
 				}
 
-				lines[i][lnum] = xmalloc ((size_t) got + 1);
-				memcpy (lines[i][lnum], *line, (size_t) got);
-				lines[i][lnum][got] = '\0';
-				linelengths[i][lnum] = (size_t) got;
+				lines[i][lnum] = xmalloc ((size_t) *got + 1);
+				memcpy (lines[i][lnum], *line, (size_t) *got);
+				lines[i][lnum][*got] = '\0';
+				linelengths[i][lnum] = (size_t) *got;
 				if (**line == ' ')
 					unchanged++;
 			}
@@ -884,7 +884,7 @@ static void do_convert_to_unified (void)
 			printf ("+++ ");
 			fwrite (line + 4, (size_t) got - 4, 1, stdout);
 			convert_context_hunks_to_unified (&line, &linelen,
-							  &linenum);
+							  &got, &linenum);
 		} else {
 			fwrite (line, (size_t) got, 1, stdout);
 			got = getline (&line, &linelen, stdin);
