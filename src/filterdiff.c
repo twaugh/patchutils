@@ -1196,17 +1196,17 @@ const char * syntax_str =
 "  --lines=L include only hunks with (original) lines in range L, if range begins with x show all excluding range L\n"
 "  -F F, --files=F\n"
 "            include only files in range F, if range begins with x show all excluding range F\n"
-"  --annotate (filterdiff, grepdiff)\n"
-"            annotate each hunk with the filename and hunk number (filterdiff, grepdiff)\n"
-"  --as-numbered-lines=before|after (filterdiff, grepdiff)\n"
-"            display lines as they would look before, or after, the (filterdiff, grepdiff)\n"
-"            patch is applied (filterdiff, grepdiff)\n"
-"  --format=context|unified (filterdiff, grepdiff)\n"
-"            set output format (filterdiff, grepdiff)\n"
+"  --annotate (filterdiff, patchview, grepdiff)\n"
+"            annotate each hunk with the filename and hunk number (filterdiff, patchview, grepdiff)\n"
+"  --as-numbered-lines=before|after (filterdiff, patchview, grepdiff)\n"
+"            display lines as they would look before, or after, the (filterdiff, patchview, grepdiff)\n"
+"            patch is applied (filterdiff, patchview, grepdiff)\n"
+"  --format=context|unified (filterdiff, patchview, grepdiff)\n"
+"            set output format (filterdiff, patchview, grepdiff)\n"
 "  --output-matching=hunk|file (grepdiff)\n"
 "            show matching hunks or file-level diffs (grepdiff)\n"
-"  --remove-timestamps (filterdiff, grepdiff)\n"
-"            don't show timestamps from output (filterdiff, grepdiff)\n"
+"  --remove-timestamps (filterdiff, patchview, grepdiff)\n"
+"            don't show timestamps from output (filterdiff, patchview, grepdiff)\n"
 "  --clean (filterdiff)\n"
 "            remove all comments (non-diff lines) from output (filterdiff)\n"
 "  -z, --decompress\n"
@@ -1238,9 +1238,9 @@ const char * syntax_str =
 "            treat empty files as absent (lsdiff)\n"
 "  -f FILE, --file=FILE (grepdiff)\n"
 "            read regular expressions from FILE (grepdiff)\n"
-"  --filter  run as 'filterdiff' (grepdiff, lsdiff)\n"
-"  --list    run as 'lsdiff' (filterdiff, grepdiff)\n"
-"  --grep    run as 'grepdiff' (filterdiff, lsdiff)\n"
+"  --filter  run as 'filterdiff' (grepdiff, patchview, lsdiff)\n"
+"  --list    run as 'lsdiff' (filterdiff, patchview, grepdiff)\n"
+"  --grep    run as 'grepdiff' (filterdiff, patchview, lsdiff)\n"
 ;
 
 NORETURN
@@ -1397,7 +1397,7 @@ static void determine_mode_from_name (int argc, char *argv[])
 {
 	const char *argv0 = argv[0];
 	int switches = 0;
-	/* This is filterdiff, unless it is named 'lsdiff' or 'grepdiff'. */
+	/* This is filterdiff, unless it is named 'lsdiff', 'grepdiff' or 'patchview'. */
 	const char *p = strrchr (argv0, '/');
 	if (!p++)
 		p = argv0;
@@ -1413,10 +1413,11 @@ static void determine_mode_from_name (int argc, char *argv[])
 		/* reinitialize getopt() by resetting optind to 0*/
 		optind = 0;
 		/* printf ("patchview with %d args, with %d switches \n", argc, switches); */
+		set_progname ("patchview");
 		if (switches)
-			set_filter ();
+			mode = mode_filter;
 		else {
-			set_list ();
+			mode = mode_list;
 			number_files = 1;
 		}
 	}
