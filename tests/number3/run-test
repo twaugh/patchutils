@@ -1,0 +1,36 @@
+#!/bin/sh
+
+# This is a filterdiff(1) testcase.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > diff
+--- file1
++++ file1
+@@ -1,3 +1,3 @@
+-Damaged patch (before)
++Damaged patch (after)
+
+ Previous line is damaged
+EOF
+${FILTERDIFF} --as-numbered-lines=before diff \
+	2>errors >file-before || exit 1
+${FILTERDIFF} --as-numbered-lines=after diff \
+	2>>errors >file-after || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - file-before || exit 1
+--- file1
+1	:Damaged patch (before)
+2	:
+3	:Previous line is damaged
+EOF
+
+cat << EOF | cmp - file-after || exit 1
++++ file1
+1	:Damaged patch (after)
+2	:
+3	:Previous line is damaged
+EOF
+

@@ -156,6 +156,7 @@ TESTS = tests/newline1/run-test \
 	tests/grepdiff7/run-test \
 	tests/number1/run-test \
 	tests/number2/run-test \
+	tests/number3/run-test \
 	tests/nondiff/run-test \
 	tests/nondiff1/run-test \
 	tests/lscontext1/run-test \
@@ -223,6 +224,7 @@ TESTS = tests/newline1/run-test \
 # These ones don't work yet.
 # Feel free to send me patches. :-)
 XFAIL_TESTS = \
+	tests/number3/run-test \
 	tests/delhunk5/run-test \
 	tests/delhunk6/run-test
 
