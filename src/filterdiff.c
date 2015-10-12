@@ -515,10 +515,16 @@ do_unified (FILE *f, char **header, unsigned int num_headers,
 				// Just display each line.
 				fwrite (*line, (size_t) got, 1, output_to);
 			else if ((number_lines == Before && **line != '+') ||
-				 (number_lines == After && **line != '-'))
+				 (number_lines == After && **line != '-')) {
 				// Numbered line.
+                                const char *rest = *line;
+                                if (rest[0] != '\n')
+                                        // Handle whitespace damage
+                                        rest++;
+
 				fprintf (output_to, "%lu\t:%s",
-					 track_linenum++, 1 + *line);
+					 track_linenum++, rest);
+                        }
 		}
 	}
 
