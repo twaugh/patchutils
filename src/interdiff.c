@@ -303,6 +303,13 @@ clear_lines_info (struct lines_info *info)
         info->unline = NULL;
 }
 
+static void
+whitespace_damage (const char *which)
+{
+        error (EXIT_FAILURE, 0, "Whitespace damage detected in %s", which);
+}
+
+
 static struct lines *
 create_orig (FILE *f, struct lines_info *file,
 	     int reverted, int *clash)
@@ -386,6 +393,8 @@ create_orig (FILE *f, struct lines_info *file,
 			}
 
 			switch (first_char) {
+                        case '\n':
+                                whitespace_damage("input");
 			case ' ':
 				if (leading_context) context++;
 				if (new_lines) new_lines--;
@@ -632,6 +641,8 @@ do_output_patch1_only (FILE *p1, FILE *out, int not_reverted)
 			}
 
 			switch (first_char) {
+                        case '\n':
+                                whitespace_damage("patch #1");
 			case ' ':
 				if (orig_lines) orig_lines--;
 				if (new_lines) new_lines--;
@@ -911,6 +922,8 @@ trim_context (FILE *f /* positioned at start of @@ line */,
 
 			total_count++;
 			switch (line[0]) {
+                        case '\n':
+                                whitespace_damage("input");
 			case ' ' :
 				if (orig_count) orig_count--;
 				if (new_count) new_count--;
@@ -1664,6 +1677,8 @@ flipdiff (FILE *p1, FILE *p2, FILE *flip1, FILE *flip2)
 			new_lines--;
 
 		switch (line[0]) {
+                case '\n':
+                        whitespace_damage("patch #2");
 		case ' ':
 			if (this_offset) {
 				offsets = add_offset (first_linenum,

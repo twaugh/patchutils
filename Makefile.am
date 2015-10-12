@@ -219,7 +219,8 @@ TESTS = tests/newline1/run-test \
 	tests/splitdiffD/run-test \
 	tests/fullheader1/run-test \
 	tests/fullheader2/run-test \
-	tests/fullheader3/run-test
+	tests/fullheader3/run-test \
+	tests/whitespace/run-test
 
 # These ones don't work yet.
 # Feel free to send me patches. :-)

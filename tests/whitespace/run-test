@@ -1,0 +1,21 @@
+#!/bin/sh
+
+# This is an interdiff(1) testcase.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > diff
+--- file1
++++ file1
+@@ -1,2 +1,2 @@
+-A
++a
+
+EOF
+
+# When detecting whitespace damage in the input, an error should be
+# written and the program should terminate with a non-zero exit code.
+
+${INTERDIFF} -qp1 diff diff 2>errors && exit 1
+[ -s errors ] || exit 1
