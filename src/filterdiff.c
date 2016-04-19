@@ -423,8 +423,13 @@ do_unified (FILE *f, char **header, unsigned int num_headers,
 							 " Hunk #%lu, %s",
 							 hunknum, bestname);
 
-					fputs (clean_comments ? "\n" : trailing,
-					       output_to);
+					if (clean_comments)
+						fputs ("\n", output_to);
+					else {
+						int idx = trailing - *line;
+						fwrite (trailing, (size_t) got-idx,
+							1, output_to);
+					}
 					break;
 				case Before:
 					// Note the initial line number
