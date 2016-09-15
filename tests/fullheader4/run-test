@@ -1,0 +1,30 @@
+#!/bin/sh
+
+# This is a filterdiff(1) testcase.
+# Handle git format-patch output when stripping pathname components
+# From: https://github.com/twaugh/patchutils/issues/12
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat <<"EOF" > git-output
+diff --git a/test.txt b/test.txt
+index 257cc56..5716ca5 100644
+--- a/test.txt
++++ b/test.txt
+@@ -1 +1 @@
+-foo
++bar
+EOF
+
+${FILTERDIFF} --strip=1 git-output 2>errors >output || { cat errors; exit 1; }
+[ -s errors ] && { cat errors; exit 1; }
+cmp output <<"EOF" || exit 1
+diff --git a/test.txt b/test.txt
+index 257cc56..5716ca5 100644
+--- test.txt
++++ test.txt
+@@ -1 +1 @@
+-foo
++bar
+EOF
+exit 0
