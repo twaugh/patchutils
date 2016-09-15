@@ -39,6 +39,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <ctype.h>
 
 #include "util.h"
 #include "diff.h"
@@ -155,27 +156,64 @@ static int file_exists (const char *name, const char *timestamp)
 static int output_header_line (const char *line)
 {
 	char *fn;
-	int h = strcspn (line + 4, "\t\n");
 
-	fwrite (line, 1, 4, stdout);
+	if (strncmp(line, "diff", 4) == 0 && isspace(line[4])) {
+		size_t		args = 0;
+		const char	*end = line + 5, *begin = end, *ws = end;;
+		printf ("%.5s", line);
+		while (*end != 0) {
+			if (isspace(*begin))
+				begin = end;
+			if (isspace(*end)) {
+				if (*begin == '-') {
+					if (isspace(begin[1]))
+						++args;
+					printf ("%.*s", (int)(end - ws), ws);
+				} else {
+					printf ("%.*s", (int)(begin - ws), ws);
+					if (args == 0 && old_prefix_to_add)
+						fputs (old_prefix_to_add,
+						       stdout);
+					if (args == 1 && new_prefix_to_add)
+						fputs (new_prefix_to_add,
+						       stdout);
+					++args;
+					fn = xstrndup(begin, end - begin);
+					fputs (stripped (fn,
+							 strip_components),
+					       stdout);
+					free (fn);
+				}
+				ws = begin = end;
+			}
+			++end;
+		}
+		printf ("%.*s", (int)(end - ws), ws);
+	} else if (strncmp(line, "---", 3) == 0 ||
+		   strncmp(line, "+++", 3) == 0) {
 
-	if (prefix_to_add)
-		fputs (prefix_to_add, stdout);
-	else {
-		if (old_prefix_to_add && strncmp (line, "---", 3) == 0)
-			fputs (old_prefix_to_add, stdout);
-		if (new_prefix_to_add && strncmp (line, "+++", 3) == 0)
-			fputs (new_prefix_to_add, stdout);
-	}
+		int h = strcspn (line + 4, "\t\n");
+		fwrite (line, 1, 4, stdout);
 
-	fn = xstrndup (line + 4, h);
-	fputs (stripped (fn, strip_components), stdout);
-	if (removing_timestamp)
-		putchar ('\n');
-	else
-		fputs (line + 4 + h, stdout);
+		if (prefix_to_add)
+			fputs (prefix_to_add, stdout);
+		else {
+			if (old_prefix_to_add && strncmp (line, "---", 3) == 0)
+				fputs (old_prefix_to_add, stdout);
+			if (new_prefix_to_add && strncmp (line, "+++", 3) == 0)
+				fputs (new_prefix_to_add, stdout);
+		}
 
-	free (fn);
+		fn = xstrndup (line + 4, h);
+		fputs (stripped (fn, strip_components), stdout);
+		if (removing_timestamp)
+			putchar ('\n');
+		else
+			fputs (line + 4 + h, stdout);
+
+		free (fn);
+	} else
+		fputs (line, stdout);
 	return 0;
 }
 

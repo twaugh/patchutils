@@ -228,8 +228,7 @@ TESTS = tests/newline1/run-test \
 # Feel free to send me patches. :-)
 XFAIL_TESTS = \
 	tests/delhunk5/run-test \
-	tests/delhunk6/run-test \
-	tests/fullheader4/run-test
+	tests/delhunk6/run-test
 
 distclean-local:
 	-rm -rf $(top_builddir)/test-arena

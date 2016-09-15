@@ -19,7 +19,7 @@ EOF
 ${FILTERDIFF} --strip=1 git-output 2>errors >output || { cat errors; exit 1; }
 [ -s errors ] && { cat errors; exit 1; }
 cmp output <<"EOF" || exit 1
-diff --git a/test.txt b/test.txt
+diff --git test.txt test.txt
 index 257cc56..5716ca5 100644
 --- test.txt
 +++ test.txt
