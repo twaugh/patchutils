@@ -157,16 +157,16 @@ static int output_header_line (const char *line)
 {
 	char *fn;
 
-	if (strncmp(line, "diff", 4) == 0 && isspace(line[4])) {
+	if (strncmp (line, "diff", 4) == 0 && isspace (line[4])) {
 		size_t		args = 0;
-		const char	*end = line + 5, *begin = end, *ws = end;;
+		const char	*end = line + 5, *begin = end, *ws = end;
 		printf ("%.5s", line);
 		while (*end != 0) {
-			if (isspace(*begin))
+			if (isspace (*begin))
 				begin = end;
-			if (isspace(*end)) {
+			if (isspace (*end)) {
 				if (*begin == '-') {
-					if (isspace(begin[1]))
+					if (isspace (begin[1]))
 						++args;
 					printf ("%.*s", (int)(end - ws), ws);
 				} else {
@@ -178,7 +178,7 @@ static int output_header_line (const char *line)
 						fputs (new_prefix_to_add,
 						       stdout);
 					++args;
-					fn = xstrndup(begin, end - begin);
+					fn = xstrndup (begin, end - begin);
 					fputs (stripped (fn,
 							 strip_components),
 					       stdout);
@@ -189,8 +189,8 @@ static int output_header_line (const char *line)
 			++end;
 		}
 		printf ("%.*s", (int)(end - ws), ws);
-	} else if (strncmp(line, "---", 3) == 0 ||
-		   strncmp(line, "+++", 3) == 0) {
+	} else if (strncmp (line, "---", 3) == 0 ||
+		   strncmp (line, "+++", 3) == 0) {
 
 		int h = strcspn (line + 4, "\t\n");
 		fwrite (line, 1, 4, stdout);
