@@ -1406,7 +1406,7 @@ read_regex_file (const char *file)
 			char errstr[300];
 			regerror (err, &regex[num_regex - 1], errstr,
 				  sizeof (errstr));
-			error (EXIT_FAILURE, 0, errstr);
+			error (EXIT_FAILURE, 0, "%s", errstr);
 			exit (1);
 		}
 	}
@@ -1664,7 +1664,7 @@ int main (int argc, char *argv[])
 			char errstr[300];
 			regerror (err, &regex[num_regex - 1], errstr,
 				  sizeof (errstr));
-			error (EXIT_FAILURE, 0, errstr);
+			error (EXIT_FAILURE, 0, "%s", errstr);
 			exit (1);
 		}
 	}
