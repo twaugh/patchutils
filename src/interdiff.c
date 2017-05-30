@@ -319,7 +319,7 @@ create_orig (FILE *f, struct lines_info *file,
 	size_t linelen = 0;
 	int last_was_add;
 	long pos = ftell (f);
-	unsigned long min_context = 3;
+	unsigned long min_context = (unsigned long) -1;
 
 	do {
 		if (getline (&line, &linelen, f) == -1)
@@ -399,7 +399,9 @@ create_orig (FILE *f, struct lines_info *file,
 				if (leading_context) context++;
 				if (new_lines) new_lines--;
 			case '-':
-				leading_context = 0;
+				if (first_char == '-')
+				    leading_context = 0;
+
 				if (orig_lines) orig_lines--;
 				if (!file_is_removed)
 					if (add_line (file, line + 1,
