@@ -147,6 +147,7 @@ TESTS = tests/newline1/run-test \
 	tests/fuzz1/run-test \
 	tests/U0/run-test \
 	tests/U3/run-test \
+	tests/U5/run-test \
 	tests/grepdiff1/run-test \
 	tests/grepdiff2/run-test \
 	tests/grepdiff3/run-test \
@@ -227,6 +228,7 @@ TESTS = tests/newline1/run-test \
 # These ones don't work yet.
 # Feel free to send me patches. :-)
 XFAIL_TESTS = \
+	tests/U5/run-test \
 	tests/delhunk5/run-test \
 	tests/delhunk6/run-test
 

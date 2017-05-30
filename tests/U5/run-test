@@ -1,0 +1,48 @@
+#!/bin/sh
+#
+# This is an interdiff(1) test case.
+# Test: -U5 works correctly.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > file.orig
+one
+two
+three
+four
+five
+six
+seven
+eight
+nine
+ten
+eleven
+twelve
+EOF
+cat << EOF > file
+one
+two
+three
+four
+five
+six
+add some stuff
+to the file
+which had 3 lines
+seven
+eight
+nine
+ten
+eleven
+twelve
+EOF
+${DIFF} -U99 file.orig file > patch
+${INTERDIFF} -U5 /dev/null patch 2>errors > interdiffed || exit 1
+[ -s errors ] && exit 1
+# Should be 5 context lines before and after
+grep -q one interdiffed && exit 1
+grep -q two interdiffed || exit 1
+grep -q eleven interdiffed || exit 1
+grep -q twelve interdiffed && exit 1
+exit 0
