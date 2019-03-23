@@ -1803,6 +1803,7 @@ done)]]></screen></para>
 	    <arg>--no-filename</arg>
 	  </group>
 	  <arg choice="opt">--output-matching=<replaceable>WHAT</replaceable></arg>
+	  <arg choice="opt">--only-match=<replaceable>WHAT</replaceable></arg>
 	  <group choice="req">
 	    <arg><replaceable>REGEX</replaceable></arg>
 	    <arg>-f <replaceable>FILE</replaceable></arg>
@@ -2096,6 +2097,14 @@ done)]]></screen></para>
 	    <listitem>
 	      <para>Display the matching hunk-level or file-level
 	       diffs.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--only-match</option>=rem|removals|add|additions|mod|modifications|all</term>
+	    <listitem>
+	      <para>Limit regex matching to removals, additions, modifications or
+            the whole hunk.</para>
 	    </listitem>
 	  </varlistentry>
 

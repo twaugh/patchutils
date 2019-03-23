@@ -62,6 +62,13 @@ enum {
 	output_file
 } output_matching = output_none;
 
+enum {
+	only_match_all = 0,
+	only_match_rem,
+	only_match_add,
+	only_match_mod  /* bitwise rem | add */
+} only_matching = only_match_all;
+
 static struct patlist *pat_include = NULL;
 static struct patlist *pat_exclude = NULL;
 static struct range *hunks = NULL;
@@ -504,6 +511,10 @@ do_unified (FILE *f, char **header, unsigned int num_headers,
 		}
 
 		if (hunk_match && mode == mode_grep &&
+		    (only_matching == only_match_all
+		     || (**line == '-' && only_matching & only_match_rem)
+		    || (**line == '+' && only_matching & only_match_add)
+		    ) &&
 		    !regexecs (regex, num_regex, *line + 1, 0, NULL, 0)) {
 			if (output_matching == output_none) {
 				if (!displayed_filename) {
@@ -822,6 +833,10 @@ do_context (FILE *f, char **header, unsigned int num_headers,
 		while ((line_count == 0 && **line == '\\') ||
 		       line_count--) {
 			if (hunk_match && mode == mode_grep &&
+			    (only_matching == only_match_all
+			     || (**line != ' ' && i == 0 && only_matching & only_match_rem)
+			     || (**line != ' ' && i == 1 && only_matching & only_match_add)
+			    ) &&
 			    !regexecs (regex, num_regex, *line + 2,
 				       0, NULL, 0)) {
 				if (output_matching == output_none) {
@@ -1205,6 +1220,9 @@ const char * syntax_str =
 "            set output format (filterdiff, grepdiff)\n"
 "  --output-matching=hunk|file (grepdiff)\n"
 "            show matching hunks or file-level diffs (grepdiff)\n"
+"  --only-match=rem|removals|add|additions|mod|modifications|all (grepdiff)\n"
+"            regex will only match removals, additions, modifications or (grepdiff)\n"
+"            the whole hunk (grepdiff)\n"
 "  --remove-timestamps (filterdiff, grepdiff)\n"
 "            don't show timestamps from output (filterdiff, grepdiff)\n"
 "  --clean (filterdiff)\n"
@@ -1443,6 +1461,7 @@ int main (int argc, char *argv[])
 			{"annotate", 0, 0, 1000 + 'a'},
 			{"format", 1, 0, 1000 + 'F'},
 			{"output-matching", 1, 0, 1000 + 'o'},
+			{"only-match", 1, 0, 1000 + 'm'},
 			{"remove-timestamps", 0, 0, 1000 + 'r'},
 			{"with-filename", 0, 0, 'H'},
 			{"no-filename", 0, 0, 'h'},
@@ -1610,6 +1629,20 @@ int main (int argc, char *argv[])
 				output_matching = output_file;
 			else syntax (1);
 			break;
+		case 1000 + 'm':
+			if (!strncmp (optarg, "all", 3))
+				only_matching = only_match_all;
+			else if (!strncmp (optarg, "rem", 3) ||
+			         !strncmp (optarg, "removals", 8))
+				only_matching = only_match_rem;
+			else if (!strncmp (optarg, "add", 3) ||
+			         !strncmp (optarg, "additions", 9))
+				only_matching = only_match_add;
+			else if (!strncmp (optarg, "mod", 3) ||
+			         !strncmp (optarg, "modifications", 13))
+				only_matching = only_match_mod;
+			else syntax (1);
+			break;
 		case 1000 + 'r':
 			removing_timestamp = 1;
 			break;
@@ -1633,6 +1666,10 @@ int main (int argc, char *argv[])
 
 	if (mode != mode_grep && output_matching != output_none)
 		error (EXIT_FAILURE, 0, "--output-matching only applies to "
+		       "grep mode");
+
+	if (mode != mode_grep && only_matching != only_match_all)
+		error (EXIT_FAILURE, 0, "--only-match only applies to "
 		       "grep mode");
 
 	if (numbering &&
