@@ -29,7 +29,7 @@ cat << EOF > patch2
 EOF
 
 ${FLIPDIFF} patch1 patch2 > patch-flipped || exit 1
-sed -e "s/$(/bin/echo -ne '\t').*$//" patch-flipped > patch-cmp
+sed -e "s/$(printf '\t').*$//" patch-flipped > patch-cmp
 cmp - patch-cmp << EOF || exit 1
 --- file.orig
 +++ file
