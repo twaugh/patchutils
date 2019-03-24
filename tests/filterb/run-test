@@ -6,7 +6,7 @@
 
 . ${top_srcdir-.}/tests/common.sh
 
-/usr/bin/echo -ne "\
+printf "\
 --- a/file1
 +++ b/file1
 @@ -1 +1,2 @@ The '\0' (NUL) character
