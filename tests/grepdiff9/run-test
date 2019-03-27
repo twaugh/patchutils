@@ -1,0 +1,49 @@
+#!/bin/sh
+
+# This is a grepdiff(1) testcase.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > diff
+*** file1
+--- file1
+***************
+*** 1,2 ****
+  context
+- a
+--- 1,2 ----
+  context
++ b
+*** file2
+--- file2
+***************
+*** 1 ****
+- bx
+--- 1 ----
++ a
+EOF
+
+${GREPDIFF} --only-match=rem 'a' diff 2>errors >rem || exit 1
+${GREPDIFF} --only-match=add 'a' diff 2>>errors >add || exit 1
+${GREPDIFF} --only-match=mod 'x' diff 2>>errors >mod || exit 1
+${GREPDIFF} --only-match=all 'x' diff 2>>errors >all || exit 1
+
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - rem || exit 1
+file1
+EOF
+
+cat << EOF | cmp - add || exit 1
+file2
+EOF
+
+cat << EOF | cmp - mod || exit 1
+file2
+EOF
+
+cat << EOF | cmp - all || exit 1
+file1
+file2
+EOF
