@@ -141,6 +141,8 @@ TESTS = tests/newline1/run-test \
 	tests/grepdiff5/run-test \
 	tests/grepdiff6/run-test \
 	tests/grepdiff7/run-test \
+	tests/grepdiff8/run-test \
+	tests/grepdiff9/run-test \
 	tests/number1/run-test \
 	tests/number2/run-test \
 	tests/number3/run-test \
