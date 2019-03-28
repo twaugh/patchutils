@@ -34,7 +34,11 @@
 #include <fnmatch.h>
 #include <getopt.h>
 #include <locale.h>
-#include <regex.h>
+#ifdef HAVE_PCRE2POSIX_H
+# include <pcre2posix.h>
+#else
+# include <regex.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
