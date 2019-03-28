@@ -56,6 +56,29 @@ AC_CHECK_FUNCS(getopt_long , , [
   AC_LIBOBJ([getopt1])
 ])
 
+dnl Check pcre2 availability
+AC_MSG_CHECKING([whether PCRE2 support is requested])
+AC_ARG_WITH([pcre2],
+            [AS_HELP_STRING([--with-pcre2],
+                            [use pcre2 regex library @<:@default=check@:>@])],
+            [], [with_pcre2=check])
+LIBPCRE2=
+AS_IF([test "x$with_pcre2" != xno],
+      [
+       AC_MSG_RESULT($with_pcre2)
+       AC_CHECK_HEADERS([pcre2posix.h], [], [LIBPCRE2=_missing_header])
+       AC_CHECK_LIB([pcre2-posix${LIBPCRE2}], [regexec],
+                    [],
+                    [if test "x$with_pcre2" != xcheck; then
+                     AC_MSG_FAILURE(
+                       [--with-pcre2 was given, but test for pcre2-posix failed])
+                     fi]
+                    )
+      ],
+      AC_MSG_RESULT(no)
+)
+
+dnl Check diff/patch programs
 AC_MSG_CHECKING(for diff program)
 DIFF=diff
 AC_ARG_WITH(diff, [  --with-diff=DIFF        name of the diff program],
