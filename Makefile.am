@@ -62,20 +62,6 @@ uninstall-hook:
 CLEANFILES=src/combinediff src/flipdiff src/lsdiff src/grepdiff
 MAINTAINERCLEANFILES=$(man_MANS)
 
-tests/newline1/run-test: src/combinediff$(EXEEXT) src/flipdiff$(EXEEXT) \
-		src/lsdiff$(EXEEXT) src/grepdiff$(EXEEXT) \
-		scripts/splitdiff
-	for script in $(bin_SCRIPTS); do \
-		if [ -f $(top_builddir)/$$script ]; then \
-			chmod a+x $(top_builddir)/$$script; \
-		else \
-			chmod a+x $(top_srcdir)/$$script; \
-		fi \
-	done
-	for test in $(TESTS); do \
-		chmod a+x $(top_srcdir)/$$test; \
-	done
-
 # Regression tests.
 TESTS_ENVIRONMENT = top_srcdir=$(top_srcdir) top_builddir=$(top_builddir) \
 	ARENA=$(top_builddir)/test-arena \
@@ -230,6 +216,22 @@ TESTS = tests/newline1/run-test \
 XFAIL_TESTS = \
 	tests/delhunk5/run-test \
 	tests/delhunk6/run-test
+
+test-perms: src/combinediff$(EXEEXT) src/flipdiff$(EXEEXT) \
+		src/lsdiff$(EXEEXT) src/grepdiff$(EXEEXT) \
+		scripts/splitdiff
+	for script in $(bin_SCRIPTS); do \
+		if [ -f $(top_builddir)/$$script ]; then \
+			chmod a+x $(top_builddir)/$$script; \
+		else \
+			chmod a+x $(top_srcdir)/$$script; \
+		fi \
+	done
+	for test in $(TESTS); do \
+		chmod a+x $(top_srcdir)/$$test; \
+	done
+
+$(TESTS): test-perms
 
 distclean-local:
 	-rm -rf $(top_builddir)/test-arena

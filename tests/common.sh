@@ -1,5 +1,8 @@
 [ -n "$VERBOSE" ] && set -x
-rm -rf ${ARENA:=test-arena}
+${ARENA:=test-arena}
+THISDIR=$(dirname $0)
+ARENA=${ARENA}/${THISDIR##*/}
+rm -rf $ARENA
 mkdir -p $ARENA
 top_builddir=`cd ${top_builddir-.}; pwd`
 INTERDIFF=${top_builddir}/src/interdiff
