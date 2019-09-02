@@ -10,23 +10,10 @@ rm -f install-sh mkinstalldirs missing stamp*
 rm -f interdiff filterdiff combinediff
 rm -f compile depcomp
 rm -f *~
-rm -rf autom4te-2.53.cache
+rm -rf autom4te.cache/
+rm -f INSTALL
+rm -f test-driver
 
-# add files 'config.guess', 'config.sub', 'ltconfig', 'ltmain.sh'
-#libtoolize --automake --force || exit 1
+autoreconf --install --verbose
 
-# generate 'aclocal.m4', and use our macros in ./m4
-aclocal || exit 1
-
-autoheader || exit 1
-
-#  generate Makefile.in's from Makefile.am's
-automake --add-missing || exit 1
-
-# generate configure from configure.in
-autoconf || exit 1
-
-echo "Now run ./configure"
-
-#./configure "$@" || exit 1
-#make
+echo "Now you may run ./configure"
