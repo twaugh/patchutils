@@ -1,0 +1,3 @@
+#!/usr/bin/bash
+
+interdiff - /dev/null | tail -n+2
