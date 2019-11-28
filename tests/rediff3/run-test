@@ -1,0 +1,46 @@
+#!/bin/sh
+
+# This is a rediff(1) testcase.
+# Test: Adjust offsets correctly
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << "EOF" > patch.orig
+--- /tmp/a	2019-11-28 12:34:20.222622166 +0000
++++ /tmp/b	2019-11-28 12:34:51.932803492 +0000
+@@ -1,7 +1,7 @@
+ 1
+-2
++3
+ 3
+ 4
+ 5
+ 6
+-7
++8
+EOF
+
+cat << "EOF" > patch.mod
+--- /tmp/a	2019-11-28 12:34:20.222622166 +0000
++++ /tmp/b	2019-11-28 12:34:51.932803492 +0000
+@@ -1,7 +1,7 @@
+ 4
+ 5
+ 6
+-7
++8
+EOF
+
+${REDIFF} patch.orig patch.mod > patch-rediffed || exit 1
+cmp - patch-rediffed << "EOF" || exit 1
+--- /tmp/a	2019-11-28 12:34:20.222622166 +0000
++++ /tmp/b	2019-11-28 12:34:51.932803492 +0000
+@@ -4,4 +4,4 @@
+ 4
+ 5
+ 6
+-7
++8
+EOF
+
