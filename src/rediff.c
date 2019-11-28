@@ -1,6 +1,6 @@
 /*
  * rediff - fix offset and counts of a hand-edited diff
- * Copyright (C) 2001, 2002, 2004, 2009, 2011 Tim Waugh <twaugh@redhat.com>
+ * Copyright (C) 2001, 2002, 2004, 2009, 2011, 2019 Tim Waugh <twaugh@redhat.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -511,7 +511,7 @@ static long show_modified_hunk (struct hunk **hunkp, long line_offset,
 
 	do {
 		/* Lines before the modification are unaltered. */
-		int trim = 0;
+                int trim = 0, skip_trim;
 		if (morig_offset < hunk->line_in_diff)
 			error (EXIT_FAILURE, errno, "Invalid changes made");
 
@@ -547,6 +547,7 @@ static long show_modified_hunk (struct hunk **hunkp, long line_offset,
 		}
 
 		while (morig_count || mnew_count) {
+                        skip_trim = 0;
 			if (getline (&line, &linelen, modify) == -1)
 				break;
 
@@ -564,7 +565,7 @@ static long show_modified_hunk (struct hunk **hunkp, long line_offset,
 				case '+':
 					this_offset--;
 					calc_new_count--;
-					trim = 0;
+					skip_trim = 1;
 					break;
 				case '-':
 					this_offset++;
@@ -582,7 +583,7 @@ static long show_modified_hunk (struct hunk **hunkp, long line_offset,
 					       line[0], line[1]);
 				}
 
-				if (trim) {
+				if (trim && !skip_trim) {
 					orig_offset++;
 					calc_new_offset++;
 				}
