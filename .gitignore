@@ -25,6 +25,7 @@ src/grepdiff
 src/interdiff
 src/lsdiff
 src/rediff
+src/patchview
 
 # These are generated from *.in files
 /patchutils.spec

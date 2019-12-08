@@ -33,7 +33,7 @@ $(man_MANS): doc/patchutils.xml
 	$(XMLTO) man -o doc $<
 endif
 
-# Special rules for combinediff, flipdiff, lsdiff and grepdiff, which are
+# Special rules for combinediff, flipdiff, lsdiff, grepdiff and patchview, which are
 # just symlinks.
 src/combinediff$(EXEEXT): src/interdiff$(EXEEXT)
 	ln -sf $(notdir $<) $@
@@ -47,19 +47,24 @@ src/lsdiff$(EXEEXT): src/filterdiff$(EXEEXT)
 src/grepdiff$(EXEEXT): src/filterdiff$(EXEEXT)
 	ln -sf $(notdir $<) $@
 
+src/patchview$(EXEEXT): src/filterdiff$(EXEEXT)
+	ln -sf $(notdir $<) $@
+
 install-exec-hook:
 	ln -sf "`echo interdiff|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo combinediff|sed '$(transform)'`"
 	ln -sf "`echo interdiff|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo flipdiff|sed '$(transform)'`"
 	ln -sf "`echo filterdiff|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo lsdiff|sed '$(transform)'`"
 	ln -sf "`echo filterdiff|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo grepdiff|sed '$(transform)'`"
+	ln -sf "`echo filterdiff|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo patchview|sed '$(transform)'`"
 
 uninstall-hook:
 	rm -f $(DESTDIR)$(bindir)/"`echo combinediff|sed '$(transform)'`"
 	rm -f $(DESTDIR)$(bindir)/"`echo flipdiff|sed '$(transform)'`"
 	rm -f $(DESTDIR)$(bindir)/"`echo lsdiff|sed '$(transform)'`"
 	rm -f $(DESTDIR)$(bindir)/"`echo grepdiff|sed '$(transform)'`"
+	rm -f $(DESTDIR)$(bindir)/"`echo patchview|sed '$(transform)'`"
 
-CLEANFILES=src/combinediff src/flipdiff src/lsdiff src/grepdiff
+CLEANFILES=src/combinediff src/flipdiff src/lsdiff src/grepdiff src/patchview
 MAINTAINERCLEANFILES=$(man_MANS)
 
 # Regression tests.
@@ -221,7 +226,7 @@ XFAIL_TESTS = \
 	tests/delhunk6/run-test
 
 test-perms: src/combinediff$(EXEEXT) src/flipdiff$(EXEEXT) \
-		src/lsdiff$(EXEEXT) src/grepdiff$(EXEEXT) \
+		src/lsdiff$(EXEEXT) src/grepdiff$(EXEEXT) src/patchview$(EXEEXT) \
 		scripts/splitdiff
 	for script in $(bin_SCRIPTS); do \
 		if [ -f $(top_builddir)/$$script ]; then \
