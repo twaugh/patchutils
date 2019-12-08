@@ -1368,6 +1368,13 @@ static void set_filter (void)
 	mode = mode_filter;
 }
 
+static void set_view (void)
+{
+	/* This is patchview. */
+	set_progname ("patchview");
+	mode = mode_filter;
+}
+
 static void set_grep (void)
 {
 	/* This is grepdiff. */
@@ -1377,7 +1384,7 @@ static void set_grep (void)
 
 static void determine_mode_from_name (const char *argv0)
 {
-	/* This is filterdiff, unless it is named 'lsdiff' or 'grepdiff'. */
+	/* This is filterdiff, unless it is named 'lsdiff', 'grepdiff' or 'patchview'. */
 	const char *p = strrchr (argv0, '/');
 	if (!p++)
 		p = argv0;
@@ -1385,6 +1392,9 @@ static void determine_mode_from_name (const char *argv0)
 		set_list ();
 	else if (strstr (p, "grepdiff"))
 		set_grep ();
+	else if (strstr (p, "patchview")) {
+		set_view ();
+	}
 	else
 		set_filter ();
 }
@@ -1443,6 +1453,7 @@ int main (int argc, char *argv[])
 	FILE *f = stdin;
 	char format = '\0';
 	int regex_file_specified = 0;
+	int have_switches = 0;
 
 	setlocale (LC_TIME, "C");
 	determine_mode_from_name (argv[0]);
@@ -1492,6 +1503,7 @@ int main (int argc, char *argv[])
 		if (c == -1)
 			break;
 		
+		have_switches = 1;
 		switch (c) {
 		case 'g':
 			set_grep ();
@@ -1657,6 +1669,10 @@ int main (int argc, char *argv[])
 			syntax(1);
 		}
 	}
+    if (have_switches == 0 && strcmp (progname, "patchview") == 0) {
+        mode = mode_list;
+        number_files = 1;
+    }
 
 	/* Preserve the old semantics of -p. */
 	if (mode != mode_filter && ignore_components && !strip_components &&
