@@ -842,7 +842,7 @@ apply_patch (FILE *patch, const char *file, int reverted)
 	    basename = file;
 
 	w = xpipe(PATCH, &child, "w", (char **) (const char *[]) { PATCH,
-		  reverted ? "-Rsp0" : "-sp0", file, NULL });
+		  reverted ? "-Rsp0" : "-lsp0", file, NULL });
 
 	fprintf (w, "--- %s\n+++ %s\n", basename, basename);
 	line = NULL;
