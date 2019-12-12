@@ -246,7 +246,7 @@ FILE *xopen_unzip (const char *name, const char *mode)
 	
 	buffer = xmalloc (buflen);
 	fo = xtmpfile();
-	fi = xpipe(zprog, &pid, "r", zprog, name, NULL);
+	fi = xpipe(zprog, &pid, "r", (char **) (const char *[]) { zprog, name, NULL });
 	
 	while (!feof (fi)) {
 		size_t count = fread (buffer, 1, buflen, fi);
@@ -280,26 +280,14 @@ FILE *xopen_unzip (const char *name, const char *mode)
 }
 
 /* safe pipe/popen.  mode is either "r" or "w" */
-FILE * xpipe(const char * cmd, pid_t *pid, const char *mode, ...)
+FILE * xpipe(const char * cmd, pid_t *pid, const char *mode, char *const argv[])
 {
-	va_list ap;
 	int fildes[2];
 	int child;
-	int nargs = 0;
-	char *argv[128], *arg;
 	FILE *res;
 	
 	if (!mode || (*mode != 'r' && *mode != 'w'))
 		error (EXIT_FAILURE, 0, "xpipe: bad mode: %s", mode);
-	
-	va_start(ap, mode);
-	do {
-		arg = va_arg(ap, char *);
-		argv[nargs++] = arg;
-		if (nargs >= 128)
-			error (EXIT_FAILURE, 0, "xpipe: too many args");
-	} while (arg != NULL);
-	va_end(ap);
 	
 	fflush (NULL);
 	if (pipe (fildes) == -1)

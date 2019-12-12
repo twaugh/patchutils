@@ -906,8 +906,8 @@ static int rediff (const char *original, const char *edited, FILE *out)
 	last->num_lines = linenum - last->line_in_diff + 1;
 
 	/* Run diff between original and edited. */
-	diff_pipe = xpipe (DIFF, &child, "r", DIFF, "-U0",
-		   original, edited, NULL);
+	diff_pipe = xpipe (DIFF, &child, "r", (char **) (const char*[]) {DIFF, "-U0",
+		   original, edited, NULL });
 	m = xtmpfile ();
 	if (m) {
 		size_t buffer_size = 10000;

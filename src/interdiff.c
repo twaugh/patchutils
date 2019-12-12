@@ -770,7 +770,7 @@ output_patch1_only (FILE *p1, FILE *out, int not_reverted)
 	clear_lines_info (&file_new);
 
 	fflush (NULL);
-	in = xpipe (DIFF, &child, "r", DIFF, options, tmpp1, tmpp2, NULL);
+	in = xpipe (DIFF, &child, "r", (char **) (const char *[]) { DIFF, options, tmpp1, tmpp2, NULL });
 
 	/* Eat the first line */
 	for (;;) {
@@ -836,8 +836,8 @@ apply_patch (FILE *patch, const char *file, int reverted)
 	else
 	    basename = file;
 
-	w = xpipe(PATCH, &child, "w", PATCH,
-		  reverted ? "-Rsp0" : "-sp0", file, NULL);
+	w = xpipe(PATCH, &child, "w", (char **) (const char *[]) { PATCH,
+		  reverted ? "-Rsp0" : "-sp0", file, NULL });
 
 	fprintf (w, "--- %s\n+++ %s\n", basename, basename);
 	line = NULL;
@@ -1102,7 +1102,7 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 
 	fflush (NULL);
 
-	in = xpipe(DIFF, &child, "r", DIFF, options, tmpp1, tmpp2, NULL);
+	in = xpipe(DIFF, &child, "r", (char **) (const char *[]) { DIFF, options, tmpp1, tmpp2, NULL });
 	
 	/* Eat the first line */
 	for (;;) {
@@ -1507,7 +1507,7 @@ take_diff (const char *f1, const char *f2, char *headers[2],
 	if (debug)
 		printf ("+ " DIFF " %s %s %s\n", options, f1, f2);
 
-	in = xpipe (DIFF, &child, "r", DIFF, options, f1, f2, NULL);
+	in = xpipe (DIFF, &child, "r", (char **) (const char *[]) { DIFF, options, f1, f2, NULL });
 
 	/* Eat the first line */
 	for (;;) {
