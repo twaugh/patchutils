@@ -90,7 +90,8 @@ struct lines_info {
 };
 
 static int human_readable = 1;
-static char diff_opts[4];
+static char *diff_opts[100];
+static int num_diff_opts = 0;
 static unsigned int max_context_real = 3, max_context = 3;
 static int context_specified = 0;
 static int ignore_components = 0;
@@ -708,7 +709,7 @@ output_patch1_only (FILE *p1, FILE *out, int not_reverted)
 	int diff_is_empty = 1;
 	unsigned int use_context = max_context;
 
-	if (diff_opts[0] == '\0' && !context_specified)
+	if (!num_diff_opts && !context_specified)
 		return do_output_patch1_only (p1, out, not_reverted);
 
 	/* We want to redo the diff using the supplied options. */
@@ -757,9 +758,9 @@ output_patch1_only (FILE *p1, FILE *out, int not_reverted)
 		use_context = file_orig.min_context;
 
 	if (use_context == 3)
-		sprintf(options, "-%su", diff_opts);
+		strcpy (options, "-u");
 	else
-		sprintf (options, "-%sU%d", diff_opts, use_context);
+		sprintf (options, "-U%d", use_context);
 
 	/* Write it out. */
 	write_file (&file_orig, tmpp1fd);
@@ -770,7 +771,11 @@ output_patch1_only (FILE *p1, FILE *out, int not_reverted)
 	clear_lines_info (&file_new);
 
 	fflush (NULL);
-	in = xpipe (DIFF, &child, "r", (char **) (const char *[]) { DIFF, options, tmpp1, tmpp2, NULL });
+	char *argv[2 + num_diff_opts + 2 + 1];
+	memcpy (argv, (const char *[]) { DIFF, options }, 2 * sizeof (char *));
+	memcpy (argv + 2, diff_opts, num_diff_opts * sizeof (char *));
+	memcpy (argv + 2 + num_diff_opts, (char *[]) { tmpp1, tmpp2, NULL }, (2 + 1) * sizeof (char *));
+	in = xpipe (DIFF, &child, "r", argv);
 
 	/* Eat the first line */
 	for (;;) {
@@ -1043,9 +1048,9 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 	memcpy (tmpp2 + tmplen, tail2, sizeof (tail2));
 
 	if (max_context == 3)
-		sprintf(options, "-%su", diff_opts);
+		strcpy (options, "-u");
 	else
-		sprintf (options, "-%sU%d", diff_opts, max_context);
+		sprintf (options, "-U%d", max_context);
 
 	tmpp1fd = xmkstemp (tmpp1);
 	tmpp2fd = xmkstemp (tmpp2);
@@ -1102,7 +1107,11 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 
 	fflush (NULL);
 
-	in = xpipe(DIFF, &child, "r", (char **) (const char *[]) { DIFF, options, tmpp1, tmpp2, NULL });
+	char *argv[2 + num_diff_opts + 2 + 1];
+	memcpy (argv, (const char *[]) { DIFF, options }, 2 * sizeof (char *));
+	memcpy (argv + 2, diff_opts, num_diff_opts * sizeof (char *));
+	memcpy (argv + 2 + num_diff_opts, (char *[]) { tmpp1, tmpp2, NULL }, (2 + 1) * sizeof (char *));
+	in = xpipe (DIFF, &child, "r", argv);
 	
 	/* Eat the first line */
 	for (;;) {
@@ -1500,14 +1509,23 @@ take_diff (const char *f1, const char *f2, char *headers[2],
 	FILE *in;
 
 	if (max_context == 3)
-		sprintf (options, "-%su", diff_opts);
+		strcpy (options, "-u");
 	else
-		sprintf (options, "-%sU%d", diff_opts, max_context);
+		sprintf (options, "-U%d", max_context);
 
-	if (debug)
-		printf ("+ " DIFF " %s %s %s\n", options, f1, f2);
+	char *argv[2 + num_diff_opts + 2 + 1];
+	memcpy (argv, (const char *[]) { DIFF, options }, 2 * sizeof (char *));
+	memcpy (argv + 2, diff_opts, num_diff_opts * sizeof (char *));
+	memcpy (argv + 2 + num_diff_opts, (const char *[]) { f1, f2, NULL }, (2 + 1) * sizeof (char *));
+	if (debug) {
+		fputs ("+", stdout);
+		for (int i = 0; argv[i]; i++) {
+			printf (" %s", argv[i]);
+		}
+		puts ("");
+	}
 
-	in = xpipe (DIFF, &child, "r", (char **) (const char *[]) { DIFF, options, f1, f2, NULL });
+	in = xpipe (DIFF, &child, "r", argv);
 
 	/* Eat the first line */
 	for (;;) {
@@ -1996,6 +2014,9 @@ syntax (int err)
 "                  ignore changes in the amount of whitespace\n"
 "  -B, --ignore-blank-lines\n"
 "                  ignore changes whose lines are all blank\n"
+"      --color[=WHEN]\n"
+"                  colorize the output; WHEN can be 'never', 'always',\n"
+"                    or 'auto' (the default)\n"
 "  -p N, --strip-match=N\n"
 "                  pathname components to ignore\n"
 "  -q, --quiet\n"
@@ -2061,11 +2082,9 @@ int
 main (int argc, char *argv[])
 {
 	FILE *p1, *p2;
-	int num_diff_opts = 0;
 	int ret;
 
 	get_mode_from_name (argv[0]);
-	diff_opts[0] = '\0';
 	for (;;) {
 		static struct option long_options[] = {
 			{"help", 0, 0, 1000 + 'H'},
@@ -2083,6 +2102,7 @@ main (int argc, char *argv[])
 			{"ignore-space-change", 0, 0, 'b'},
 			{"ignore-case", 0, 0, 'i'},
 			{"ignore-all-space", 0, 0, 'w'},
+			{"color", 2, 0, 1000 + 'c'},
 			{"decompress", 0, 0, 'z'},
 			{"quiet", 0, 0, 'q'},
 			{0, 0, 0, 0}
@@ -2127,9 +2147,13 @@ main (int argc, char *argv[])
 		case 'b':
 		case 'i':
 		case 'w':
-			if (!memchr (diff_opts, c, num_diff_opts)) {
-				diff_opts[num_diff_opts++] = c;
-				diff_opts[num_diff_opts] = '\0';
+			asprintf (diff_opts + num_diff_opts++, "-%c", c);
+			break;
+		case 1000 + 'c':
+			if (optarg) {
+				asprintf (diff_opts + num_diff_opts++, "--color=%s", optarg);
+			} else {
+				diff_opts[num_diff_opts++] = "--color";
 			}
 			break;
 		case 1000 + 'I':
