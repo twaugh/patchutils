@@ -1,0 +1,20 @@
+#!/bin/sh
+
+# This is a patchview(1) testcase.
+# Test: Handle binary diff chunk headers
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+/usr/bin/echo -ne "\
+--- a/file1
++++ b/file1
+@@ -1 +1,2 @@ The '\0' (NUL) character
+ a
++b
+" >diff
+
+${PATCHVIEW} diff --filter 2>errors >filtered || exit 1
+[ -s errors ] && exit 1
+
+cmp diff filtered || exit 1

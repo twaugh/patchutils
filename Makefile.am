@@ -135,6 +135,8 @@ TESTS = tests/newline1/run-test \
 	tests/lsdiff13/run-test \
 	tests/lsdiff14/run-test \
 	tests/lsdiff15/run-test \
+	tests/patchview1/run-test \
+	tests/patchview2/run-test \
 	tests/fuzz1/run-test \
 	tests/U0/run-test \
 	tests/U3/run-test \
