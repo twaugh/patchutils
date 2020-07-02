@@ -964,7 +964,7 @@ static int filterdiff (FILE *f, const char *patchname)
 {
 	static unsigned long linenum = 1;
 	char *names[2];
-	char *header[MAX_HEADERS] = { NULL, NULL };
+	char *header[MAX_HEADERS + 2] = { NULL, NULL };
         unsigned int num_headers = 0;
 	char *line = NULL;
 	size_t linelen = 0;
@@ -1054,7 +1054,7 @@ static int filterdiff (FILE *f, const char *patchname)
                                         break;
 
                                 /* Drop excess header lines */
-                                if (num_headers >= MAX_HEADERS - 2)
+                                if (num_headers > MAX_HEADERS )
                                         free (header[--num_headers]);
 
                                 header[num_headers++] = xstrdup (line);
