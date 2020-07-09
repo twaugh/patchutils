@@ -20,7 +20,7 @@ cat << EOF > diff
 +b
 EOF
 
-${GREPDIFF} '+a' diff 2>errors >index || exit 1
+${GREPDIFF} '\+a' diff 2>errors >index || exit 1
 [ -s errors ] && exit 1
 
 cat << EOF | cmp - index || exit 1
