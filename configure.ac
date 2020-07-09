@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 
-AC_INIT([patchutils],[0.3.4])
+AC_INIT([patchutils],[0.4.0])
 AC_CONFIG_SRCDIR(patchutils.spec.in)
 AC_CONFIG_HEADERS(config.h)
 
