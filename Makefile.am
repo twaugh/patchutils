@@ -27,7 +27,7 @@ if HAVE_XMLTO
 man_MANS = doc/interdiff.1 doc/filterdiff.1 doc/fixcvsdiff.1 doc/rediff.1 \
 	doc/editdiff.1 doc/combinediff.1 doc/lsdiff.1 doc/splitdiff.1 \
 	doc/grepdiff.1 doc/recountdiff.1 doc/unwrapdiff.1 doc/dehtmldiff.1 \
-	doc/flipdiff.1 doc/espdiff.1
+	doc/flipdiff.1 doc/espdiff.1 doc/patchview.1
 
 $(man_MANS): doc/patchutils.xml
 	$(XMLTO) man -o doc $<

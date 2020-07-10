@@ -999,6 +999,9 @@ patch.file]]></screen></para>
 	  </citerefentry>, <citerefentry>
 	    <refentrytitle>grepdiff</refentrytitle>
 	    <manvolnum>1</manvolnum>
+	  </citerefentry>, <citerefentry>
+	    <refentrytitle>patchview</refentrytitle>
+	    <manvolnum>1</manvolnum>
 	  </citerefentry></para>
       </refsect1>
     </refentry>
@@ -1424,6 +1427,9 @@ patch.file]]></screen></para>
 	  </citerefentry>, <citerefentry>
 	    <refentrytitle>grepdiff</refentrytitle>
 	    <manvolnum>1</manvolnum>
+	  </citerefentry>, <citerefentry>
+	    <refentrytitle>patchview</refentrytitle>
+	    <manvolnum>1</manvolnum>
 	  </citerefentry></para>
       </refsect1>
 
@@ -1449,7 +1455,386 @@ done)]]></screen></para>
       </refsect1>
 
     </refentry>
+    <refentry id="patchview">
+      <refentryinfo>
+	<productname>patchutils</productname>
+	<date>02 Jul 2020</date>
+      </refentryinfo>
 
+      <refmeta>
+	<refentrytitle>patchview</refentrytitle>
+	<manvolnum>1</manvolnum>
+      </refmeta>
+
+      <refnamediv>
+	<refname>patchview</refname>
+	<refpurpose>Without options, show numbered files modified by the patch. With options, behave as filterdiff.</refpurpose>
+      </refnamediv>
+
+      <refsynopsisdiv>
+	<cmdsynopsis>
+	  <command>patchview</command>
+	  <group choice="opt">
+	    <arg>-n</arg>
+	    <arg>--line-number</arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-p <replaceable>n</replaceable></arg>
+	    <arg>--strip-match=<replaceable>n</replaceable></arg>
+	  </group>
+	  <arg choice="opt">--strip=<replaceable>n</replaceable></arg>
+	  <arg choice="opt">--addprefix=<replaceable>PREFIX</replaceable></arg>
+	  <group choice="opt">
+	    <arg>-s</arg>
+	    <arg>--status</arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-E</arg>
+	    <arg>--empty-files-as-removed</arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-i <replaceable>PATTERN</replaceable></arg>
+	    <arg>--include=<replaceable>PATTERN</replaceable></arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-x <replaceable>PATTERN</replaceable></arg>
+	    <arg>--exclude=<replaceable>PATTERN</replaceable></arg>
+	  </group>
+	  <group>
+	    <arg>-z</arg>
+	    <arg>--decompress</arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-# <replaceable>RANGE</replaceable></arg>
+	    <arg>--hunks=<replaceable>RANGE</replaceable></arg>
+	  </group>
+	  <arg choice="opt">--lines=<replaceable>RANGE</replaceable></arg>
+	  <group choice="opt">
+	    <arg>-F<replaceable>RANGE</replaceable></arg>
+	    <arg>--files=<replaceable>RANGE</replaceable></arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-H</arg>
+	    <arg>--with-filename</arg>
+	  </group>
+	  <group choice="opt">
+	    <arg>-h</arg>
+	    <arg>--no-filename</arg>
+	  </group>
+	  <group choice="opt" rep="repeat">
+	    <arg>-v</arg>
+	    <arg>--verbose</arg>
+	  </group>
+	  <arg choice="opt" rep="repeat"><replaceable>file</replaceable></arg>
+	</cmdsynopsis>
+
+	<cmdsynopsis>
+	  <command>patchview</command>
+	  <group choice="req">
+	    <arg>--help</arg>
+	    <arg>--version</arg>
+	    <arg>--filter ...</arg>
+	    <arg>--grep ...</arg>
+	  </group>
+	</cmdsynopsis>
+      </refsynopsisdiv>
+
+      <refsect1>
+	<title>Description</title>
+
+	<para>So what is patchview? It is a wrapper of filterdiff for use with numbered files.
+
+    <screen>patchview</screen>
+    (without args)
+    
+is equivalent to: lsdiff --number
+	</para>
+	<para>
+    <screen>patchview -F2-</screen>
+    (or with any other args)
+    
+is equivalent to: filterdiff -F2- (or whatever arguments are supplied)
+	</para>
+	<para>
+There are two scripts for working with git (gitdiff and gitdiffview) and two for svn (svndiff and svndiffview).
+
+    <screen>svndiff</screen>
+    <screen>gitdiff</screen>
+    (without args)
+    
+will give the list of files modified
+	</para>
+	<para>
+    <screen>svndiff -F1</screen>
+    <screen>gitdiff -F1</screen>
+    
+will show the patch of file #1
+	</para>
+	<para>
+    <screen>svndiffview</screen>
+    <screen>gitdiffview</screen>
+    
+pipe all patches through filterdiff to vim - -R (in read-only mode, easy to quit), showing complete patch with color.
+	</para>
+	<para>
+    <screen>svndiffview -F2</screen>
+    <screen>gitdiffview -F2</screen>
+    (or any other args)
+
+will pipe patch of file #2 to vim - -R
+	</para>
+
+      </refsect1>
+
+      <refsect1>
+	<title>Options</title>
+
+	<variablelist>
+	  <varlistentry>
+	    <term><option>-n</option>, <option>--line-number</option></term>
+	    <listitem>
+	      <para>Display the line number that each patch begins at.
+	        If verbose output is requested (using
+	        <option>-nv</option>), each hunk of each patch is
+	        listed as well.</para>
+
+	      <para>For each file that is modified, a line is
+	        generated containing the line number of the beginning
+	        of the patch, followed by a <keycode>Tab</keycode>
+	        character, followed by the name of the file that is
+	        modified.  If <option>-v</option> is given once,
+	        following each of these lines will be one line for
+	        each hunk, consisting of a <keycode>Tab</keycode>
+	        character, the line number that the hunk begins at,
+	        another <keycode>Tab</keycode> character, the string
+	        <quote>Hunk #</quote>, and the hunk number (starting
+	        at 1).</para>
+
+	      <para>If the <option>-v</option> is given twice in
+	        conjunction with <option>-n</option>
+	        (i.e. <option>-nvv</option>), the format is slightly
+	        different: hunk-level descriptive text
+	        is shown after each hunk number, and the
+	        <option>--number-files</option> option is
+	        enabled.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-N</option>, <option>--number-files</option></term>
+	    <listitem>
+	      <para>File numbers are listed, beginning at 1, before
+	      each filename.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-#</option> <replaceable>RANGE</replaceable>,
+	    <option>--hunks</option>=<replaceable>RANGE</replaceable></term>
+	    <listitem>
+	      <para>Only list hunks within the specified
+	        <replaceable>RANGE</replaceable>.  Hunks are numbered
+	        from 1, and the range is a comma-separated list of
+	        numbers or <quote>first-last</quote> spans,
+		optionally preceded by a modifier 'x' which inverts
+		the entire range; either the first or the last in the
+		span may be omitted to indicate no limit in that
+	        direction.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--lines</option>=<replaceable>RANGE</replaceable></term>
+	    <listitem>
+	      <para>Only list hunks that contain lines from the
+	        original file that lie within the specified
+	        <replaceable>RANGE</replaceable>.  Lines are numbered
+	        from 1, and the range is a comma-separated list of
+	        numbers or <quote>first-last</quote> spans,
+		optionally preceded by a modifier 'x' which inverts
+		the entire range; either the first or the last in the
+		span may be omitted to indicate no limit in that
+	        direction.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-F</option>=<replaceable>RANGE</replaceable>,
+	    <option>--files</option>=<replaceable>RANGE</replaceable></term>
+	    <listitem>
+	      <para>Only list files indicated by the specified
+	        <replaceable>RANGE</replaceable>.  Files are numbered
+	        from 1 in the order they appear in the patch input,
+	        and the range is a comma-separated list of numbers or
+	        <quote>first-last</quote> spans, optionally preceded by a
+		modifier 'x' which inverts the entire range; either
+		the first or the last in the span may be omitted to
+	        indicate no limit in that direction.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-p</option> <replaceable>n</replaceable>,
+	    <option>--strip-match=<replaceable>n</replaceable></option></term>
+	    <listitem>
+	      <para>When matching, ignore the first
+	        <replaceable>n</replaceable> components of the
+	        pathname.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--strip</option>=<replaceable>n</replaceable></term>
+	    <listitem>
+	      <para>Remove the first <replaceable>n</replaceable>
+	        components of the pathname before displaying
+	        it.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--addprefix</option>=<replaceable>PREFIX</replaceable></term>
+	    <listitem>
+	      <para>Prefix the pathname with
+	        <replaceable>PREFIX</replaceable> before displaying
+	        it.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-s</option>, <option>--status</option></term>
+	    <listitem>
+	      <para>Show file additions, modifications and removals.
+	       A file addition is indicated by a <quote>+</quote>, a
+	       removal by a <quote>-</quote>, and a modification by a
+	       <quote>!</quote>.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-E</option>,
+	    <option>--empty-files-as-removed</option></term>
+	    <listitem>
+	      <para>Treat empty files as absent for the purpose of
+	      displaying file additions, modifications and
+	      removals.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-i</option> <replaceable>PATTERN</replaceable>,
+	    <option>--include=<replaceable>PATTERN</replaceable></option></term>
+	    <listitem>
+	      <para>Include only files matching
+	        <replaceable>PATTERN</replaceable>.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-x</option> <replaceable>PATTERN</replaceable>,
+	    <option>--exclude=<replaceable>PATTERN</replaceable></option></term>
+	    <listitem>
+	      <para>Exclude files matching
+	        <replaceable>PATTERN</replaceable>.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-z</option>,
+	    <option>--decompress</option></term>
+	    <listitem>
+	      <para>Decompress files with extensions .gz and .bz2.
+              </para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-H</option>, <option>--with-filename</option></term>
+	    <listitem>
+	      <para>Print the name of the patch file containing each
+	        patch.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-h</option>, <option>--no-filename</option></term>
+	    <listitem>
+	      <para>Suppress the name of the patch file containing each
+	        patch.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>-v</option>, <option>--verbose</option></term>
+	    <listitem>
+	      <para>Verbose output.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--help</option></term>
+	    <listitem>
+	      <para>Display a short usage message.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--version</option></term>
+	    <listitem>
+	      <para>Display the version number of patchview.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--filter</option></term>
+	    <listitem>
+	      <para>Behave like <citerefentry>
+		  <refentrytitle>filterdiff</refentrytitle>
+		  <manvolnum>1</manvolnum>
+		</citerefentry> instead.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--grep</option></term>
+	    <listitem>
+	      <para>Behave like <citerefentry>
+		  <refentrytitle>grepdiff</refentrytitle>
+		  <manvolnum>1</manvolnum>
+		</citerefentry> instead.</para>
+	    </listitem>
+	  </varlistentry>
+	</variablelist>
+      </refsect1>
+
+      <refsect1>
+	<title>See also</title>
+
+	<para><citerefentry>
+	    <refentrytitle>lsdiff</refentrytitle>
+	    <manvolnum>1</manvolnum>
+	  </citerefentry>,<citerefentry>
+	    <refentrytitle>filterdiff</refentrytitle>
+	    <manvolnum>1</manvolnum>
+	  </citerefentry>, <citerefentry>
+	    <refentrytitle>grepdiff</refentrytitle>
+	    <manvolnum>1</manvolnum>
+	  </citerefentry></para>
+      </refsect1>
+
+      <refsect1>
+	<title>Examples</title>
+	<para>We can make the following one-line script with the name difftotrunk.sh, to view the differences of two directories or svn repos (trunk and .)
+		<screen><![CDATA[diff ../trunk . -ru -x .svn | patchview "$@"]]></screen></para>
+    <para>
+		<screen>./difftotrunk.sh , will show all different files and his number.</screen>
+		<screen>./difftotrunk.sh -F3,4 , will show the differences of files #3 and #4 only.</screen>
+		<screen>./difftotrunk.sh -F3 -#1 , will show only hunk #1 of file #3.</screen>
+		<screen>./difftotrunk.sh -F3 -#x1 , will show the differences of files #3 without hunk #1 (x means that exclude). </screen>
+    </para>
+	 </refsect1>
+
+    </refentry>
     <refentry id="splitdiff">
       <refentryinfo>
 	<productname>patchutils</productname>
@@ -2152,6 +2537,9 @@ done)]]></screen></para>
 	    <manvolnum>1</manvolnum>
 	  </citerefentry>, <citerefentry>
 	    <refentrytitle>lsdiff</refentrytitle>
+	    <manvolnum>1</manvolnum>
+	  </citerefentry>, <citerefentry>
+	    <refentrytitle>patchview</refentrytitle>
 	    <manvolnum>1</manvolnum>
 	  </citerefentry></para>
       </refsect1>
