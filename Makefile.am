@@ -10,6 +10,12 @@ bin_SCRIPTS = \
 	scripts/dehtmldiff \
 	scripts/espdiff
 
+dist_bin_SCRIPTS = \
+	patchview/gitdiff \
+	patchview/gitdiffview \
+	patchview/svndiff \
+	patchview/svndiffview
+
 AM_CFLAGS = -I$(srcdir)/src
 src_interdiff_SOURCES = src/interdiff.c src/util.c src/util.h src/diff.c \
 		src/diff.h src/myerror.c
