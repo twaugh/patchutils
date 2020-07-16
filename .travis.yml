@@ -1,6 +1,6 @@
 language: c
 compiler: gcc
-sudo: false
+os: linux
 script: ./bootstrap &&
         ./configure &&
         make distcheck
