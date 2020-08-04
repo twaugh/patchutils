@@ -26,14 +26,14 @@ make check
 
 %install
 rm -rf %{buildroot}
-%makeinstall
+%make_install
 
 %clean
 rm -rf %{buildroot}
 
 %files
 %defattr(-,root,root)
-%doc AUTHORS ChangeLog README COPYING BUGS NEWS
+%doc AUTHORS ChangeLog README COPYING BUGS NEWS patchview/README.patchview
 %{_bindir}/*
 %{_mandir}/*/*
 
