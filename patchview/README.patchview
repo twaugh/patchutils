@@ -10,7 +10,9 @@ is equivalent to: lsdiff --number
     
 is equivalent to: filterdiff -F2- (or whatever arguments are supplied)
 
-There are two scripts for working with git (gitdiff and gitdiffview) and two for svn (svndiff and svndiffview).
+There are 4 scripts for working with git (gitdiff, gitdiffview, gitshow and gitshowview) and two for svn (svndiff and svndiffview).
+Also these scripts have option -v which shows the full command that is which is being executed.
+
 
     $ svndiff
     $ gitdiff
@@ -33,6 +35,9 @@ pipe all patches through filterdiff to `vim - -R` (in read-only mode, easy to qu
     (or any other args)
 
 will pipe patch of file #2 to `vim - -R`
+
+gitshow and gitshowview instead use git diff, use git show .
+
 
 Example:
 We can make the following one-line script with the name difftotrunk.sh, to view the differences of two directories or svn repos (trunk and .)
