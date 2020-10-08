@@ -262,6 +262,7 @@ EXTRA_DIST = $(man_MANS) \
 	bootstrap \
 	patchutils.spec \
 	doc/patchutils.xml \
+	patchview/README.patchview \
 	src/getopt.h \
 	scripts/move-to-front
 
