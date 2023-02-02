@@ -1058,7 +1058,7 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 		if (getline (&oldname, &namelen, p1) < 0)
 			error (EXIT_FAILURE, errno, "Bad patch #1");
 
-	} while (strncmp (oldname, "+++ ", 4));
+	} while (strncmp (oldname, "--- ", 4));
 	oldname[strlen (oldname) - 1] = '\0';
 
 	do {
