@@ -228,7 +228,8 @@ TESTS = tests/newline1/run-test \
 	tests/fullheader2/run-test \
 	tests/fullheader3/run-test \
 	tests/fullheader4/run-test \
-	tests/whitespace/run-test
+	tests/whitespace/run-test \
+	tests/crlf/run-test
 
 # These ones don't work yet.
 # Feel free to send me patches. :-)
