@@ -1,0 +1,72 @@
+#!/bin/sh
+
+# This is a test case for handling CRLF line endings in filenames
+# Test: Ensure lsdiff and filterdiff correctly handle CRLF in filenames and headers
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Create some patches for adding and removing file cases
+cat <<"EOF" > create.patch
+diff --git a/test.txt b/test.txt
+new file mode 100644
+index 0000000..257cc56
+--- /dev/null
++++ b/test.txt
+@@ -0,0 +1 @@
++foo
+diff --git a/a/b/c/test_indir.txt b/a/test_indir.txt
+new file mode 100644
+index 0000000..257cc56
+--- /dev/null
++++ b/a/test_indir.txt
+@@ -0,0 +1 @@
++foo
+EOF
+
+cat <<"EOF" > remove.patch
+diff --git a/test.txt b/test.txt
+deleted file mode 100644
+index 257cc56..0000000
+--- a/test.txt
++++ /dev/null
+@@ -1 +0,0 @@
+-foo
+diff --git a/a/b/c/test_indir.txt b/a/b/c/test_indir.txt
+deleted file mode 100644
+index 257cc56..0000000
+--- a/a/b/c/test_indir.txt
++++ /dev/null
+@@ -1 +0,0 @@
+-foo
+EOF
+
+# Convert these patches to use CRLF line endings
+sed 's/$/\r/' create.patch > create.patch.crlf
+mv create.patch.crlf create.patch
+
+sed 's/$/\r/' remove.patch > remove.patch.crlf
+mv remove.patch.crlf remove.patch
+
+# Verify test.txt is in the lsdiff output
+${LSDIFF} create.patch > created_file 2>errors || exit 1
+[ -s errors ] && exit 1
+grep -F "test.txt" created_file || exit 1
+grep -F "test_indir.txt" created_file || exit 1
+
+${LSDIFF} remove.patch > removed_file 2>errors || exit 1
+[ -s errors ] && exit 1
+grep -F "test.txt" removed_file || exit 1
+grep -F "test_indir.txt" removed_file || exit 1
+
+# Verify the diff remains after filtering
+${FILTERDIFF} --include="*test*" create.patch > create_filter.patch 2>errors || exit 1
+[ -s errors ] && exit 1
+grep -F "test.txt" create_filter.patch || exit 1
+grep -F "test_indir.txt" create_filter.patch || exit 1
+
+${FILTERDIFF} --include="*test*" remove.patch > remove_filter.patch 2>errors || exit 1
+[ -s errors ] && exit 1
+grep -F "test.txt" remove_filter.patch || exit 1
+grep -F "test_indir.txt" remove_filter.patch || exit 1
+
+exit 0
