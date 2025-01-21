@@ -1092,7 +1092,7 @@ read_timestamp (const char *timestamp, struct tm *result, long *zone)
 char *
 filename_from_header (const char *header)
 {
-	int first_space = strcspn (header, " \t\n");
+	int first_space = strcspn (header, " \t\n\r");
 	int h = first_space;
 	while (header[h] == ' ') {
 		int i;
@@ -1102,10 +1102,10 @@ filename_from_header (const char *header)
 		if (!read_timestamp (header + h + i, NULL, NULL))
 			break;
 		h += i + 1;
-		h += strcspn (header + h, " \t\n");
+		h += strcspn (header + h, " \t\n\r");
 	}
 
-	if (header[h] == '\n' && h > first_space)
+	if ((header[h] == '\n' || header[h] == '\r') && h > first_space)
 		/* If we couldn't see a date we recognized, but did see
 		   at least one space, split at the first. */
 		h = first_space;
