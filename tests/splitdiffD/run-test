@@ -3,6 +3,8 @@
 # This is a splitdiff(1) testcase.
 # Test: See if -D works.
 
+# Set LC_ALL to avoid perl locale warnings
+export LC_ALL=C
 
 . ${top_srcdir-.}/tests/common.sh
 
