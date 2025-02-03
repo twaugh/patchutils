@@ -13,6 +13,8 @@ bin_SCRIPTS = \
 dist_bin_SCRIPTS = \
 	patchview/gitdiff \
 	patchview/gitdiffview \
+	patchview/gitshow \
+	patchview/gitshowview \
 	patchview/svndiff \
 	patchview/svndiffview
 
