@@ -46,7 +46,7 @@ FILE *xtmpfile (void);
 FILE *xopen(const char *file, const char *mode);
 FILE *xopen_seekable(const char *file, const char *mode);
 FILE *xopen_unzip(const char *file, const char *mode);
-FILE *xpipe(const char *cmd, pid_t *pid, const char *mode, ...);
+FILE *xpipe(const char *cmd, pid_t *pid, const char *mode, char *const argv[]);
 
 struct patlist;
 
