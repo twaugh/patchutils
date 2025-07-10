@@ -1059,7 +1059,7 @@ static int filterdiff (FILE *f, const char *patchname)
                                 else if (strncmp (line, "old mode ", 9) &&
                                     strncmp (line, "new mode ", 9) &&
                                     strncmp (line, "deleted file mode ", 18) &&
-                                    strncmp (line, "new file mode ", 15) &&
+                                    strncmp (line, "new file mode ", 14) &&
                                     strncmp (line, "copy from ", 10) &&
                                     strncmp (line, "copy to ", 8) &&
                                     strncmp (line, "rename from ", 12) &&
