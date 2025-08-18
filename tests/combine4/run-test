@@ -1,0 +1,46 @@
+#!/bin/bash
+
+# This is a combinediff(1) testcase.
+# Bug report: combinediff produces incorrect file path prefixes
+# Expected: diff -u a/file.c a/file.c
+# Actual:   diff -u b/file.c b/file.c
+#
+# This test expects the correct behavior and will fail until the bug is fixed.
+# It's added to XFAIL_TESTS to mark it as an expected failure.
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Create the patch files from the bug report
+cat << EOF > first.patch
+--- a/file.c
++++ b/file.c
+@@ -0,0 +1,3 @@
++a
++b
++c
+EOF
+
+cat << EOF > second.patch
+--- a/file.c
++++ b/file.c
+@@ -1,3 +1,2 @@
+ a
+ b
+-c
+EOF
+
+# Run combinediff with -p1 as mentioned in the bug report
+${COMBINEDIFF} -p1 first.patch second.patch 2>errors >combined.patch || exit 1
+[ -s errors ] && exit 1
+
+# Check that the combined patch exists and is not empty
+[ -s combined.patch ] || exit 1
+
+# Check that the combined patch has the correct header format
+head -3 combined.patch > header
+cat << EOF > expected
+diff -u a/file.c b/file.c
+--- a/file.c
++++ b/file.c
+EOF
+cmp header expected || exit 1

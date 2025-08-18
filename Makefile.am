@@ -113,6 +113,7 @@ TESTS = tests/newline1/run-test \
 	tests/combine1/run-test \
 	tests/combine2/run-test \
 	tests/combine3/run-test \
+	tests/combine4/run-test \
 	tests/gendiff1/run-test \
 	tests/gendiff2/run-test \
 	tests/comma/run-test \
@@ -235,7 +236,8 @@ TESTS = tests/newline1/run-test \
 # Feel free to send me patches. :-)
 XFAIL_TESTS = \
 	tests/delhunk5/run-test \
-	tests/delhunk6/run-test
+	tests/delhunk6/run-test \
+	tests/combine4/run-test
 
 test-perms: src/combinediff$(EXEEXT) src/flipdiff$(EXEEXT) \
 		src/lsdiff$(EXEEXT) src/grepdiff$(EXEEXT) src/patchview$(EXEEXT) \
