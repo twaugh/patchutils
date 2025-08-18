@@ -1055,16 +1055,31 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 	tmpp1fd = xmkstemp (tmpp1);
 	tmpp2fd = xmkstemp (tmpp2);
 
-	do {
-		if (oldname) {
-			free (oldname);
-			oldname = NULL;
-		}
-		if (getline (&oldname, &namelen, p1) < 0)
-			error (EXIT_FAILURE, errno, "Bad patch #1");
+	if (mode == mode_combine) {
+		/* For combinediff, we want the --- line from patch1 (original file) */
+		do {
+			if (oldname) {
+				free (oldname);
+				oldname = NULL;
+			}
+			if (getline (&oldname, &namelen, p1) < 0)
+				error (EXIT_FAILURE, errno, "Bad patch #1");
 
-	} while (strncmp (oldname, "+++ ", 4));
-	oldname[strlen (oldname) - 1] = '\0';
+		} while (strncmp (oldname, "--- ", 4));
+		oldname[strlen (oldname) - 1] = '\0';
+	} else {
+		/* For interdiff, use +++ line from patch1 */
+		do {
+			if (oldname) {
+				free (oldname);
+				oldname = NULL;
+			}
+			if (getline (&oldname, &namelen, p1) < 0)
+				error (EXIT_FAILURE, errno, "Bad patch #1");
+
+		} while (strncmp (oldname, "+++ ", 4));
+		oldname[strlen (oldname) - 1] = '\0';
+	}
 
 	do {
 		if (newname) {
