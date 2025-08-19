@@ -803,7 +803,8 @@ static int rediff (const char *original, const char *edited, FILE *out)
 	pid_t child;
 	FILE *o;
 	FILE *m;
-	FILE *t = NULL;
+	FILE *diff_pipe = NULL;
+	FILE *meta_hunks = NULL;
 	char *line = NULL;
 	size_t linelen = 0;
 	unsigned long linenum = 0;
@@ -905,17 +906,17 @@ static int rediff (const char *original, const char *edited, FILE *out)
 	last->num_lines = linenum - last->line_in_diff + 1;
 
 	/* Run diff between original and edited. */
-	t = xpipe (DIFF, &child, "r", DIFF, "-U0",
+	diff_pipe = xpipe (DIFF, &child, "r", DIFF, "-U0",
 		   original, edited, NULL);
 	m = xtmpfile ();
 	if (m) {
 		size_t buffer_size = 10000;
 		char *buffer = xmalloc (buffer_size);
-		while (!feof (t)) {
-			size_t got = fread (buffer, 1, buffer_size, t);
+		while (!feof (diff_pipe)) {
+			size_t got = fread (buffer, 1, buffer_size, diff_pipe);
 			fwrite (buffer, 1, got, m);
 		}
-		fclose (t);
+		fclose (diff_pipe);
 		waitpid (child, NULL, 0);
 		rewind (m);
 		free (buffer);
@@ -978,7 +979,7 @@ static int rediff (const char *original, const char *edited, FILE *out)
 			if (current_hunk) {
 				line_offset += show_modified_hunk
 					(&current_hunk, line_offset,
-					 t, o, out);
+					 meta_hunks, o, out);
 				current_hunk = current_hunk->next;
 			}
 
@@ -989,26 +990,26 @@ static int rediff (const char *original, const char *edited, FILE *out)
 
 			/* This meta hunk is the first pertaining to
 			 * the hunk in the original. */
-			t = xtmpfile ();
+			meta_hunks = xtmpfile ();
 		}
 
 		current_hunk = which;
 
 		/* Append the meta hunk to a temporary file. */
-		fputs (line, t);
+		fputs (line, meta_hunks);
 		while (!feof (m)) {
 			if (getline (&line, &linelen, m) == -1)
 				break;
 			if (!strncmp (line, "@@ ", 3))
 				break;
-			fputs (line, t);
+			fputs (line, meta_hunks);
 		}
 	}
 
 	/* Now display the remaining hunks, adjusting offsets. */
 	if (current_hunk) {
 		line_offset += show_modified_hunk (&current_hunk, line_offset,
-						   t, o, out);
+						   meta_hunks, o, out);
 		current_hunk = current_hunk->next;
 		if (current_hunk)
 			copy_to (current_hunk, NULL, &line_offset, o, out, 0);
