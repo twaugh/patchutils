@@ -24,7 +24,8 @@ jobs:
           patch \
           diffutils \
           xmlto \
-          libpcre2-dev
+          libpcre2-dev \
+          gnulib
 
     - name: Bootstrap
       run: ./bootstrap
@@ -66,7 +67,8 @@ jobs:
           perl \
           patch \
           diffutils \
-          xmlto
+          xmlto \
+          gnulib
 
     - name: Bootstrap
       run: ./bootstrap
@@ -96,7 +98,8 @@ jobs:
           patch \
           diffutils \
           xmlto \
-          libpcre2-dev
+          libpcre2-dev \
+          gnulib
 
     - name: Bootstrap
       run: ./bootstrap
