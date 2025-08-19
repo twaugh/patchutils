@@ -1572,15 +1572,19 @@ flipdiff (FILE *p1, FILE *p2, FILE *flip1, FILE *flip2)
 	/* Read headers. */
 	header1[0] = header1[1] = NULL;
 	linelen = 0;
-	getline (&header1[0], &linelen, p1);
+	if (getline (&header1[0], &linelen, p1) == -1)
+		error (EXIT_FAILURE, errno, "Failed to read patch header from first file");
 	linelen = 0;
-	getline (&header1[1], &linelen, p1);
+	if (getline (&header1[1], &linelen, p1) == -1)
+		error (EXIT_FAILURE, errno, "Failed to read patch header from first file");
 
 	header2[0] = header2[1] = NULL;
 	linelen = 0;
-	getline (&header2[0], &linelen, p2);
+	if (getline (&header2[0], &linelen, p2) == -1)
+		error (EXIT_FAILURE, errno, "Failed to read patch header from second file");
 	linelen = 0;
-	getline (&header2[1], &linelen, p2);
+	if (getline (&header2[1], &linelen, p2) == -1)
+		error (EXIT_FAILURE, errno, "Failed to read patch header from second file");
 	linelen = 0;
 
 	fgetpos (p1, &at1);
