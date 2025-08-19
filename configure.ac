@@ -29,6 +29,8 @@ AC_CHECK_PROGS(DEFAULT_EDITOR, sensible-editor editor vim vi, vi)
 CPPFLAGS="$CPPFLAGS -D_GNU_SOURCE"
 if test x"$GCC" = xyes; then
 	CFLAGS="$CFLAGS -Wall"
+	dnl Enable _FORTIFY_SOURCE for additional security and warnings
+	CPPFLAGS="$CPPFLAGS -D_FORTIFY_SOURCE=2"
 fi
 
 dnl Checks for libraries.
