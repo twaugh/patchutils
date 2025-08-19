@@ -400,6 +400,7 @@
 	    <arg>-w</arg>
 	    <arg>--ignore-all-space</arg>
 	  </group>
+	  <arg choice="opt">--color=<replaceable>WHEN</replaceable></arg>
 	  <group choice="opt">
 	    <arg>--interpolate</arg>
 	    <arg>--combine</arg>
@@ -536,6 +537,14 @@
 	    <option>--ignore-blank-lines</option></term>
 	    <listitem>
 	      <para>Ignore changes whose lines are all blank.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--color=<replaceable>WHEN</replaceable></option></term>
+	    <listitem>
+	      <para>colorize the output; <replaceable>WHEN</replaceable>
+		can be 'never', 'always', or 'auto' (default: auto, use 'never' to disable)</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -2866,6 +2875,7 @@ will pipe patch of file #2 to vim - -R
 	    <arg>-w</arg>
 	    <arg>--ignore-all-space</arg>
 	  </group>
+	  <arg choice="opt">--color=<replaceable>WHEN</replaceable></arg>
 	  <arg choice="opt">--in-place</arg>
 	  <arg choice="plain"><replaceable>diff1</replaceable></arg>
 	  <arg choice="plain"><replaceable>diff2</replaceable></arg>
@@ -2984,6 +2994,14 @@ will pipe patch of file #2 to vim - -R
 	    <option>--ignore-blank-lines</option></term>
 	    <listitem>
 	      <para>Ignore changes whose lines are all blank.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--color=<replaceable>WHEN</replaceable></option></term>
+	    <listitem>
+	      <para>colorize the output; <replaceable>WHEN</replaceable>
+		can be 'never', 'always', or 'auto' (default: auto, use 'never' to disable)</para>
 	    </listitem>
 	  </varlistentry>
 
