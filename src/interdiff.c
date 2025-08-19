@@ -2151,7 +2151,8 @@ main (int argc, char *argv[])
 		case 'b':
 		case 'i':
 		case 'w':
-			asprintf (diff_opts + num_diff_opts++, "-%c", c);
+			if (asprintf (diff_opts + num_diff_opts++, "-%c", c) < 0)
+				error (EXIT_FAILURE, errno, "Memory allocation failed");
 			break;
 		case 1000 + 'c': {
 			/* Determine the color mode: default to "auto" if no argument given */
@@ -2162,7 +2163,8 @@ main (int argc, char *argv[])
 				color_mode = isatty(STDOUT_FILENO) ? "always" : "never";
 			}
 
-			asprintf (diff_opts + num_diff_opts++, "--color=%s", color_mode);
+			if (asprintf (diff_opts + num_diff_opts++, "--color=%s", color_mode) < 0)
+				error (EXIT_FAILURE, errno, "Memory allocation failed");
 			break;
 		}
 		case 1000 + 'I':
