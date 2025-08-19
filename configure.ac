@@ -5,9 +5,11 @@ AC_CONFIG_SRCDIR(patchutils.spec.in)
 AC_CONFIG_HEADERS(config.h)
 
 AM_INIT_AUTOMAKE([dist-xz dist-bzip2 subdir-objects 1.6])
+AC_CONFIG_MACRO_DIRS([m4])
 
 dnl Checks for programs.
 AC_PROG_CC
+gl_EARLY
 AM_PROG_CC_C_O
 AC_PROG_CPP
 AC_PROG_INSTALL
@@ -49,13 +51,7 @@ AC_FUNC_ALLOCA
 AC_FUNC_FNMATCH
 AC_CHECK_FUNCS(strcspn strspn strtoul getline error)
 
-AC_CONFIG_LIBOBJ_DIR([src])
-
-dnl Check for long getopt
-AC_CHECK_FUNCS(getopt_long , , [
-  AC_LIBOBJ([getopt])
-  AC_LIBOBJ([getopt1])
-])
+dnl gnulib will handle getopt and error functions
 
 dnl Check pcre2 availability
 AC_MSG_CHECKING([whether PCRE2 support is requested])
@@ -106,8 +102,11 @@ AC_MSG_RESULT(yes)
 AC_DEFINE_UNQUOTED(PATCH, "$PATCH", How patch(1) is called)
 AC_DEFINE_UNQUOTED(DIFF, "$DIFF", How diff(1) is called)
 
+gl_INIT
+
 AC_CONFIG_FILES([
 Makefile
+lib/Makefile
 scripts/splitdiff
 scripts/editdiff
 scripts/fixcvsdiff

@@ -1,3 +1,6 @@
+ACLOCAL_AMFLAGS = -I m4
+SUBDIRS = lib
+
 DISTCLEANFILES = src/stamp-h[0-9]* src/config.h
 
 bin_PROGRAMS = src/interdiff src/filterdiff src/rediff
@@ -16,17 +19,16 @@ dist_bin_SCRIPTS = \
 	patchview/svndiff \
 	patchview/svndiffview
 
-AM_CFLAGS = -I$(srcdir)/src
+AM_CFLAGS = -I$(srcdir)/src -I$(top_builddir)/lib -I$(top_srcdir)/lib
 src_interdiff_SOURCES = src/interdiff.c src/util.c src/util.h src/diff.c \
-		src/diff.h src/myerror.c
+		src/diff.h
 src_filterdiff_SOURCES = src/filterdiff.c src/util.c src/util.h src/diff.c \
-		src/diff.h src/myerror.c
-src_rediff_SOURCES = src/rediff.c src/util.c src/util.h src/diff.c src/diff.h \
-		src/myerror.c
+		src/diff.h
+src_rediff_SOURCES = src/rediff.c src/util.c src/util.h src/diff.c src/diff.h
 
-src_interdiff_LDADD = @LIBOBJS@
-src_filterdiff_LDADD = @LIBOBJS@
-src_rediff_LDADD = @LIBOBJS@
+src_interdiff_LDADD = lib/libgnu.a @LIBOBJS@
+src_filterdiff_LDADD = lib/libgnu.a @LIBOBJS@
+src_rediff_LDADD = lib/libgnu.a @LIBOBJS@
 
 if HAVE_XMLTO
 # The man pages are generated from DocBook XML.
@@ -256,10 +258,22 @@ test-perms: src/combinediff$(EXEEXT) src/flipdiff$(EXEEXT) \
 		chmod a+x $(top_srcdir)/$$test; \
 	done
 
-$(TESTS): test-perms
+# Only require test-perms when actually running tests, not for distribution
+check-local: test-perms
+$(TESTS): | test-perms
+
+# Ensure subdirectories are built before distribution
+BUILT_SOURCES = lib-built
+
+lib-built: lib/libgnu.a
+	touch lib-built
+
+lib/libgnu.a:
+	$(MAKE) $(AM_MAKEFLAGS) -C lib all
 
 distclean-local:
 	-rm -rf $(top_builddir)/test-arena
+	-rm -f lib-built
 
 EXTRA_DIST = $(man_MANS) \
 	tests/common.sh tests/soak-test \
@@ -269,8 +283,8 @@ EXTRA_DIST = $(man_MANS) \
 	patchutils.spec \
 	doc/patchutils.xml \
 	patchview/README.patchview \
-	src/getopt.h \
-	scripts/move-to-front
+	scripts/move-to-front \
+	m4/gnulib-cache.m4
 
 tag:
 	cvs tag -c `echo V@VERSION@ | tr . _`
