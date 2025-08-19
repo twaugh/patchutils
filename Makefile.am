@@ -230,7 +230,11 @@ TESTS = tests/newline1/run-test \
 	tests/fullheader3/run-test \
 	tests/fullheader4/run-test \
 	tests/whitespace/run-test \
-	tests/crlf/run-test
+	tests/crlf/run-test \
+	tests/whitespace-regression/run-test \
+	tests/interdiff-whitespace-w/run-test \
+	tests/patch-ignore-whitespace/run-test \
+	tests/whitespace-w/run-test
 
 # These ones don't work yet.
 # Feel free to send me patches. :-)

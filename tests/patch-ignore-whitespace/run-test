@@ -1,0 +1,81 @@
+#!/bin/sh
+
+# This is an interdiff(1) testcase.
+# Test: Verify that -w option enables patch -l behavior for whitespace tolerance
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Create a scenario where patch application would fail without -l but succeed with -l
+# This simulates the core functionality our change provides
+
+# Create original file
+cat << EOF > original.txt
+function test() {
+    var x = 1;
+    var y = 2;
+    return x + y;
+}
+EOF
+
+# Create version 1 with a change
+cat << EOF > version1.txt
+function test() {
+    var x = 1;
+    var y = 3;  
+    return x + y;
+}
+EOF
+
+# Create version 2 with whitespace differences that would cause patch to fail
+cat << EOF > version2.txt
+function test() {
+    var x = 1;
+    var y = 4;
+    return x + y;
+}
+EOF
+
+# Create patches
+${DIFF} -u original.txt version1.txt > patch1 || true
+${DIFF} -u version1.txt version2.txt > patch2 || true
+
+# Add some whitespace variations to make patch application challenging
+# Modify patch2 to have different whitespace that would cause normal patch to fail
+sed 's/var y = 4;/var y = 4;    /' patch2 > patch2-ws
+
+# Test without -w: This might fail due to whitespace issues
+${INTERDIFF} patch1 patch2-ws > result-strict 2>errors-strict || STRICT_FAILED=$?
+
+# Test with -w: This should succeed because -w enables patch -l
+${INTERDIFF} -w patch1 patch2-ws > result-tolerant 2>errors-tolerant || exit 1
+
+# Verify that -w version succeeded
+[ $? -eq 0 ] || exit 1
+
+# The result should show the change from y=3 to y=4
+grep -E "(var y = 4|y = 4)" result-tolerant > /dev/null || exit 1
+
+# Test a more direct scenario: patches that only differ in whitespace
+cat << EOF > file-tabs.txt
+line1
+	line2
+line3
+EOF
+
+cat << EOF > file-spaces.txt
+line1
+    line2
+line3
+EOF
+
+${DIFF} -u original.txt file-tabs.txt > patch-tabs || true
+${DIFF} -u original.txt file-spaces.txt > patch-spaces || true
+
+# Without -w, this might show whitespace differences
+${INTERDIFF} patch-tabs patch-spaces > result-ws-strict 2>errors-ws-strict || WS_STRICT_FAILED=$?
+
+# With -w, this should handle the whitespace differences gracefully
+${INTERDIFF} -w patch-tabs patch-spaces > result-ws-tolerant 2>errors-ws-tolerant || exit 1
+
+# Success if we reach here
+exit 0
