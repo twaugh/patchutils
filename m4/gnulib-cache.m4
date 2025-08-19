@@ -33,7 +33,7 @@
 #  --m4-base=m4 \
 #  --doc-base=doc \
 #  --tests-base=tests \
-#  --aux-dir=build-aux \
+#  --aux-dir=. \
 #  --no-conditional-dependencies \
 #  --no-libtool \
 #  --macro-prefix=gl \
