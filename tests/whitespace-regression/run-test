@@ -1,0 +1,53 @@
+#!/bin/sh
+
+# This is an interdiff(1) testcase.
+# Test: Regression test to ensure existing behavior without -w is preserved
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Create a simple scenario that should work the same way as before
+cat << EOF > file1.txt
+line1
+line2
+line3
+EOF
+
+cat << EOF > file2.txt
+line1
+line2 changed
+line3
+EOF
+
+cat << EOF > file3.txt
+line1
+line2 changed again
+line3
+EOF
+
+# Create patches
+${DIFF} -u file1.txt file2.txt > patch1 || true
+${DIFF} -u file2.txt file3.txt > patch2 || true
+
+# Test without any whitespace options - should work as before
+${INTERDIFF} patch1 patch2 > result-baseline 2>errors-baseline || exit 1
+
+# Verify the result contains expected changes
+grep "line2 changed again" result-baseline > /dev/null || exit 1
+
+# Test with -b option (should still work)
+${INTERDIFF} -b patch1 patch2 > result-b 2>errors-b || exit 1
+
+# Test with -B option (should still work)
+${INTERDIFF} -B patch1 patch2 > result-B 2>errors-B || exit 1
+
+# Test with -i option (should still work)
+${INTERDIFF} -i patch1 patch2 > result-i 2>errors-i || exit 1
+
+# All tests should produce similar results for this simple case
+[ -s result-baseline ] || exit 1
+[ -s result-b ] || exit 1
+[ -s result-B ] || exit 1
+[ -s result-i ] || exit 1
+
+# Success - existing behavior is preserved
+exit 0

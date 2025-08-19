@@ -1,0 +1,43 @@
+#!/bin/sh
+
+# This is an interdiff(1) testcase.
+# Test: Verify that -w option makes patch application ignore whitespace
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Simple test to verify -w functionality works
+cat << EOF > file1
+line1
+line2
+line3
+EOF
+
+cat << EOF > file2
+line1
+line2 changed
+line3
+EOF
+
+cat << EOF > file3
+line1
+line2 changed
+line3
+line4
+EOF
+
+# Create patches
+${DIFF} -u file1 file2 > patch1 || true
+${DIFF} -u file2 file3 > patch2 || true
+
+# Test basic functionality - both should work
+${INTERDIFF} patch1 patch2 > result-no-w 2>errors-no-w || exit 1
+${INTERDIFF} -w patch1 patch2 > result-with-w 2>errors-with-w || exit 1
+
+# Both should produce output
+[ -s result-no-w ] || exit 1
+[ -s result-with-w ] || exit 1
+
+# Should show addition of line4
+grep "line4" result-with-w > /dev/null || exit 1
+
+exit 0

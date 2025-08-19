@@ -219,7 +219,8 @@
 	    <term><option>-w</option>,
 	    <option>--ignore-all-space</option></term>
 	    <listitem>
-	      <para>Ignore whitespace changes in patches.</para>
+	      <para>Ignore whitespace changes in patches. Also makes patch
+                application ignore whitespace when reconstructing files.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -520,7 +521,8 @@
 	    <term><option>-w</option>,
 	    <option>--ignore-all-space</option></term>
 	    <listitem>
-	      <para>Ignore whitespace changes in patches.</para>
+	      <para>Ignore whitespace changes in patches. Also makes patch
+                application ignore whitespace when reconstructing files.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -2977,7 +2979,8 @@ will pipe patch of file #2 to vim - -R
 	    <term><option>-w</option>,
 	    <option>--ignore-all-space</option></term>
 	    <listitem>
-	      <para>Ignore whitespace changes in patches.</para>
+	      <para>Ignore whitespace changes in patches. Also makes patch
+                application ignore whitespace when reconstructing files.</para>
 	    </listitem>
 	  </varlistentry>
 

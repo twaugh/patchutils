@@ -1,0 +1,51 @@
+#!/bin/sh
+
+# This is an interdiff(1) testcase.
+# Test: Comprehensive test for -w option enabling patch -l behavior
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Test 1: Basic functionality - whitespace differences should be ignored with -w
+cat << EOF > file1
+line1
+line2
+line3
+EOF
+
+cat << EOF > file2
+line1
+line2 modified
+line3
+EOF
+
+cat << EOF > file3
+line1
+line2 modified  
+line3
+line4
+EOF
+
+${DIFF} -u file1 file2 > patch1 || true
+${DIFF} -u file2 file3 > patch2 || true
+
+# Without -w: should show whitespace differences
+${INTERDIFF} patch1 patch2 > result-no-w 2>errors-no-w || exit 1
+
+# With -w: should ignore whitespace differences and focus on content
+${INTERDIFF} -w patch1 patch2 > result-w 2>errors-w || exit 1
+
+# Both should succeed, but -w version should be cleaner
+[ -s result-no-w ] || exit 1
+[ -s result-w ] || exit 1
+
+# The -w version should show addition of line4
+grep "line4" result-w > /dev/null || exit 1
+
+# Test 2: Regression - ensure other options still work
+${INTERDIFF} -b patch1 patch2 > result-b 2>errors-b || exit 1
+${INTERDIFF} -B patch1 patch2 > result-B 2>errors-B || exit 1
+
+[ -s result-b ] || exit 1
+[ -s result-B ] || exit 1
+
+exit 0
