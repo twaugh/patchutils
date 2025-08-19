@@ -2020,7 +2020,7 @@ syntax (int err)
 "                  ignore changes whose lines are all blank\n"
 "      --color[=WHEN]\n"
 "                  colorize the output; WHEN can be 'never', 'always',\n"
-"                    or 'auto' (the default)\n"
+"                    or 'auto' (default: auto, use 'never' to disable)\n"
 "  -p N, --strip-match=N\n"
 "                  pathname components to ignore\n"
 "  -q, --quiet\n"
@@ -2196,6 +2196,19 @@ main (int argc, char *argv[])
 		error (EXIT_FAILURE, 0,
 		       "-z and --in-place are mutually exclusive.");
 	
+	/* Add default color=always if no color option was specified and we're in a terminal */
+	int has_color_option = 0;
+	for (int i = 0; i < num_diff_opts; i++) {
+		if (strncmp(diff_opts[i], "--color", 7) == 0) {
+			has_color_option = 1;
+			break;
+		}
+	}
+	if (!has_color_option && isatty(STDOUT_FILENO)) {
+		if (asprintf (diff_opts + num_diff_opts++, "--color=always") < 0)
+			error (EXIT_FAILURE, errno, "Memory allocation failed");
+	}
+
 	if (optind + 2 != argc)
 		syntax (1);
 	

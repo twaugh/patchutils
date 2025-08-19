@@ -243,7 +243,7 @@
 	    <term><option>--color=<replaceable>WHEN</replaceable></option></term>
 	    <listitem>
 	      <para>colorize the output; <replaceable>WHEN</replaceable>
-		can be 'never', 'always', or 'auto' (the default)</para>
+		can be 'never', 'always', or 'auto' (default: auto, use 'never' to disable)</para>
 	    </listitem>
 	  </varlistentry>
 
