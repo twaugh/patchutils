@@ -2153,13 +2153,18 @@ main (int argc, char *argv[])
 		case 'w':
 			asprintf (diff_opts + num_diff_opts++, "-%c", c);
 			break;
-		case 1000 + 'c':
-			if (optarg) {
-				asprintf (diff_opts + num_diff_opts++, "--color=%s", optarg);
-			} else {
-				diff_opts[num_diff_opts++] = "--color";
+		case 1000 + 'c': {
+			/* Determine the color mode: default to "auto" if no argument given */
+			const char *color_mode = optarg ? optarg : "auto";
+
+			/* Handle auto mode: check if stdout is a terminal */
+			if (strcmp(color_mode, "auto") == 0) {
+				color_mode = isatty(STDOUT_FILENO) ? "always" : "never";
 			}
+
+			asprintf (diff_opts + num_diff_opts++, "--color=%s", color_mode);
 			break;
+		}
 		case 1000 + 'I':
 			set_interdiff ();
 			break;
