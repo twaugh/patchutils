@@ -302,7 +302,8 @@ FILE * xpipe(const char * cmd, pid_t *pid, const char *mode, ...)
 	va_end(ap);
 	
 	fflush (NULL);
-	pipe (fildes);
+	if (pipe (fildes) == -1)
+		error (EXIT_FAILURE, errno, "pipe failed");
 	child = fork ();
 	if (child == -1) {
 		perror ("fork");
@@ -312,14 +313,17 @@ FILE * xpipe(const char * cmd, pid_t *pid, const char *mode, ...)
 		if (*mode == 'r') {
 			close (fildes[0]);
 			close (1);
-			dup (fildes[1]);
+			if (dup (fildes[1]) == -1)
+				error (EXIT_FAILURE, errno, "dup failed");
 			close (fildes[1]);
 		} else {
 			close (fildes[1]);
 			close (1);
-			dup(2);
+			if (dup(2) == -1)
+				error (EXIT_FAILURE, errno, "dup failed");
 			close (0);
-			dup (fildes[0]);
+			if (dup (fildes[0]) == -1)
+				error (EXIT_FAILURE, errno, "dup failed");
 			close (fildes[0]);
 		}
 		execvp (cmd, argv);
