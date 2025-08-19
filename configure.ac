@@ -36,7 +36,6 @@ fi
 dnl Checks for libraries.
 
 dnl Checks for header files.
-AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS(sys/types.h unistd.h error.h)
 
