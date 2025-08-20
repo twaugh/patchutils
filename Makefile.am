@@ -146,6 +146,7 @@ TESTS = tests/newline1/run-test \
 	tests/combine-devnull-p/run-test \
 	tests/combine-no-match/run-test \
 	tests/interdiff-devnull/run-test \
+	tests/interdiff-reverse-issue18/run-test \
 	tests/flipdiff-devnull/run-test \
 	tests/gendiff1/run-test \
 	tests/gendiff2/run-test \

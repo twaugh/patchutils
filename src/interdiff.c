@@ -658,9 +658,24 @@ do_output_patch1_only (FILE *p1, FILE *out, int not_reverted)
 			orig_lines = new_num_lines (d2);
 		} else {
 			/* Interdiff: revert patch */
-			if (!no_revert_omitted)
-				fprintf (out, "@@ -%s +%s @@\n",
-					 d2 + 1, d1 + 1);
+			if (!no_revert_omitted) {
+				/* When reversing, we need to swap the line counts too */
+				unsigned long orig_offset, orig_count, new_offset, new_count;
+				if (read_atatline (line, &orig_offset, &orig_count, &new_offset, &new_count) == 0) {
+					/* Swap the offsets and counts for the reversed patch */
+					fprintf (out, "@@ -%lu", new_offset);
+					if (new_count != 1)
+						fprintf (out, ",%lu", new_count);
+					fprintf (out, " +%lu", orig_offset);
+					if (orig_count != 1)
+						fprintf (out, ",%lu", orig_count);
+					fprintf (out, " @@\n");
+				} else {
+					/* Fallback to the old method if parsing fails */
+					fprintf (out, "@@ -%s +%s @@\n",
+						 d2 + 1, d1 + 1);
+				}
+			}
 			orig_lines = orig_num_lines (d1);
 			new_lines = new_num_lines (d2);
 		}

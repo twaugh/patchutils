@@ -1,0 +1,335 @@
+#!/bin/sh
+
+# Test for GitHub issue #18: interdiff does not reverse a patch correctly
+# According to man interdiff: "To reverse a patch, use /dev/null for diff2."
+# However, interdiff file.patch /dev/null does not always produce a valid reversed patch.
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Test 1: Simple case
+echo "Testing simple patch reversal..."
+
+# Create test files
+cat << 'EOF' > file1.php
+<?php
+// Original file content
+function example() {
+    $var = "original";
+    return $var;
+}
+
+class TestClass {
+    public function method1() {
+        return "original method";
+    }
+}
+?>
+EOF
+
+cat << 'EOF' > file2.php
+<?php
+// Modified file content
+function example() {
+    $var = "modified";
+    $extra = "new variable";
+    return $var . $extra;
+}
+
+class TestClass {
+    public function method1() {
+        return "modified method";
+    }
+
+    public function method2() {
+        return "new method";
+    }
+}
+?>
+EOF
+
+# Create forward patch (file1.php -> file2.php)
+diff -u file1.php file2.php > forward.patch
+
+# Generate reversed patch using interdiff with /dev/null
+${INTERDIFF} forward.patch /dev/null > reversed.patch 2>errors || exit 1
+[ -s errors ] && exit 1
+
+# Copy file2.php to test file for applying the reversed patch
+cp file2.php test_file.php
+
+# Apply the reversed patch to file2.php - this should give us file1.php
+${PATCH} -p0 test_file.php < reversed.patch 2>patch_errors
+
+# Check if patch application succeeded
+if [ $? -ne 0 ]; then
+    echo "ERROR: Simple reversed patch failed to apply cleanly" >&2
+    echo "Patch errors:" >&2
+    cat patch_errors >&2
+    echo "Generated reversed patch:" >&2
+    cat reversed.patch >&2
+    exit 1
+fi
+
+# Check if the result matches the original file1.php
+if ! diff -q file1.php test_file.php > /dev/null; then
+    echo "ERROR: Simple reversed patch did not produce the original file" >&2
+    echo "Expected (file1.php):" >&2
+    cat file1.php >&2
+    echo "Got (test_file.php after applying reversed patch):" >&2
+    cat test_file.php >&2
+    echo "Differences:" >&2
+    diff -u file1.php test_file.php >&2
+    exit 1
+fi
+
+echo "Simple test passed."
+
+# Test 2: Complex case with more intricate changes
+echo "Testing complex patch reversal..."
+
+# Create complex test files inline
+cat << 'EOF' > complex_orig.php
+<?php
+/**
+ * Original complex file
+ */
+
+class DatabaseManager {
+    private $connection;
+    private $host = 'localhost';
+    private $database = 'test_db';
+
+    public function __construct() {
+        $this->connection = null;
+    }
+
+    public function connect() {
+        try {
+            $this->connection = new PDO(
+                "mysql:host={$this->host};dbname={$this->database}",
+                'user',
+                'password'
+            );
+            return true;
+        } catch (PDOException $e) {
+            error_log("Connection failed: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function query($sql) {
+        if (!$this->connection) {
+            return false;
+        }
+
+        $stmt = $this->connection->prepare($sql);
+        return $stmt->execute();
+    }
+}
+
+function helper_function($data) {
+    return array_map('trim', $data);
+}
+?>
+EOF
+
+cat << 'EOF' > complex_modified.php
+<?php
+/**
+ * Modified complex file with various changes
+ */
+
+class DatabaseManager {
+    private $connection;
+    private $host = 'production_host';
+    private $database = 'production_db';
+    private $timeout = 30;
+
+    public function __construct($config = []) {
+        $this->connection = null;
+        if (isset($config['host'])) {
+            $this->host = $config['host'];
+        }
+        if (isset($config['database'])) {
+            $this->database = $config['database'];
+        }
+    }
+
+    public function connect() {
+        try {
+            $dsn = "mysql:host={$this->host};dbname={$this->database};timeout={$this->timeout}";
+            $this->connection = new PDO(
+                $dsn,
+                'production_user',
+                'secure_password',
+                [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+            );
+            return true;
+        } catch (PDOException $e) {
+            error_log("Database connection failed: " . $e->getMessage());
+            throw new Exception("Cannot connect to database");
+        }
+    }
+
+    public function query($sql, $params = []) {
+        if (!$this->connection) {
+            throw new Exception("No database connection");
+        }
+
+        $stmt = $this->connection->prepare($sql);
+        if (!empty($params)) {
+            return $stmt->execute($params);
+        }
+        return $stmt->execute();
+    }
+
+    public function disconnect() {
+        $this->connection = null;
+    }
+}
+
+function helper_function($data) {
+    // Enhanced helper with validation
+    if (!is_array($data)) {
+        return [];
+    }
+    return array_map(function($item) {
+        return trim($item);
+    }, $data);
+}
+
+function new_helper($input) {
+    return strtolower(trim($input));
+}
+?>
+EOF
+
+# Create forward patch for complex files
+diff -u complex_orig.php complex_modified.php > complex_forward.patch
+
+# Generate reversed patch using interdiff with /dev/null
+${INTERDIFF} complex_forward.patch /dev/null > complex_reversed.patch 2>complex_errors || exit 1
+[ -s complex_errors ] && exit 1
+
+# Copy complex_modified.php to test file for applying the reversed patch
+cp complex_modified.php complex_test.php
+
+# Apply the reversed patch - this should give us complex_orig.php
+${PATCH} -p0 complex_test.php < complex_reversed.patch 2>complex_patch_errors
+
+# Check if patch application succeeded
+if [ $? -ne 0 ]; then
+    echo "ERROR: Complex reversed patch failed to apply cleanly" >&2
+    echo "Patch errors:" >&2
+    cat complex_patch_errors >&2
+    echo "Generated reversed patch:" >&2
+    cat complex_reversed.patch >&2
+    exit 1
+fi
+
+# Check if the result matches the original complex_orig.php
+if ! diff -q complex_orig.php complex_test.php > /dev/null; then
+    echo "ERROR: Complex reversed patch did not produce the original file" >&2
+    echo "Expected (complex_orig.php):" >&2
+    cat complex_orig.php >&2
+    echo "Got (complex_test.php after applying reversed patch):" >&2
+    cat complex_test.php >&2
+    echo "Differences:" >&2
+    diff -u complex_orig.php complex_test.php >&2
+    exit 1
+fi
+
+echo "Complex test passed."
+
+# Test 3: Check that the reversed patch is actually the inverse
+echo "Testing patch inversion correctness..."
+
+# Apply forward patch to original to get modified
+cp file1.php forward_test.php
+${PATCH} -p0 forward_test.php < forward.patch 2>/dev/null
+
+# Apply reversed patch to the result to get back to original
+${PATCH} -p0 forward_test.php < reversed.patch 2>/dev/null
+
+# This should match the original
+if ! diff -q file1.php forward_test.php > /dev/null; then
+    echo "ERROR: Forward + reversed patch sequence did not return to original" >&2
+    echo "Expected (file1.php):" >&2
+    cat file1.php >&2
+    echo "Got (forward_test.php after forward+reverse):" >&2
+    cat forward_test.php >&2
+    exit 1
+fi
+
+echo "Patch inversion test passed."
+
+# If we get here, all tests passed
+# Test 4: Multi-hunk patch test with proper format
+echo "Testing multi-hunk patch reversal..."
+
+# Create a simple multi-hunk patch to test the fix
+cat << 'EOF' > simple_orig.txt
+line1
+line2
+line3
+
+section2_line1
+section2_line2
+section2_line3
+EOF
+
+cat << 'EOF' > simple_modified.txt
+line1
+modified_line2
+line3
+
+section2_line1
+modified_section2_line2
+new_line
+section2_line3
+EOF
+
+# Create the forward patch
+diff -u simple_orig.txt simple_modified.txt > simple_multi_hunk.patch
+
+# Generate reversed patch using interdiff with /dev/null
+${INTERDIFF} --quiet simple_multi_hunk.patch /dev/null > simple_reversed.patch 2>simple_errors || {
+    echo "ERROR: interdiff failed to generate reversed patch" >&2
+    cat simple_errors >&2
+    exit 1
+}
+
+# Check if there were errors
+if [ -s simple_errors ]; then
+    echo "ERROR: interdiff reported errors:" >&2
+    cat simple_errors >&2
+    exit 1
+fi
+
+echo "Generated reversed patch:"
+cat simple_reversed.patch
+
+# Apply the reversed patch to the modified file to get back the original
+cp simple_modified.txt test_simple_reversed.txt
+${PATCH} -p0 test_simple_reversed.txt < simple_reversed.patch 2>simple_patch_errors || {
+    echo "ERROR: Failed to apply reversed patch" >&2
+    cat simple_patch_errors >&2
+    exit 1
+}
+
+# Check if the result matches the original
+if ! diff -q simple_orig.txt test_simple_reversed.txt > /dev/null; then
+    echo "ERROR: Multi-hunk reversed patch did not correctly restore original file" >&2
+    echo "Expected:" >&2
+    cat simple_orig.txt >&2
+    echo "Got:" >&2
+    cat test_simple_reversed.txt >&2
+    echo "Differences:" >&2
+    diff -u simple_orig.txt test_simple_reversed.txt >&2
+    exit 1
+fi
+
+echo "Multi-hunk test passed."
+
+echo "All tests passed: interdiff correctly reverses patches"
+exit 0
