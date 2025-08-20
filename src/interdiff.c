@@ -2095,13 +2095,13 @@ interdiff (FILE *p1, FILE *p2, const char *patch1, const char *patch2)
 		rewind (flip2);
 
 		if (flipdiff_inplace) {
-			FILE *pp1 = xopen (patch1, "wb");
-			FILE *pp2 = xopen (patch2, "wb");
-
-			copy (flip1, pp2);
-			copy (flip2, pp1);
-                        fclose (pp1);
-                        fclose (pp2);
+			/* Use atomic in-place writing for safety */
+			if (write_file_inplace(patch2, flip1) != 0) {
+				error (EXIT_FAILURE, errno, "failed to write %s", patch2);
+			}
+			if (write_file_inplace(patch1, flip2) != 0) {
+				error (EXIT_FAILURE, errno, "failed to write %s", patch1);
+			}
 		} else {
 			copy (flip1, stdout);
 			puts ("\n=== 8< === cut here === 8< ===\n");

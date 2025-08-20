@@ -670,6 +670,7 @@
 	    <arg>--verbose</arg>
 	  </group>
 	  <arg choice="opt">--clean</arg>
+	  <arg choice="opt">--in-place</arg>
 	  <group choice="opt">
 	    <arg>-z</arg>
 	    <arg>--decompress</arg>
@@ -922,6 +923,15 @@
 	    <listitem>
 	      <para>Always remove all non-diff lines from the
 	        output. Even when excluding a filename pattern.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--in-place</option></term>
+	    <listitem>
+	      <para>Write output to the original input files instead of
+	        standard output. This allows filtering multiple patch files
+	        without manual redirection loops.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -2009,12 +2019,14 @@ will pipe patch of file #2 to vim - -R
       <refsynopsisdiv>
 	<cmdsynopsis>
 	  <command>rediff</command>
+	  <arg choice="opt">--in-place</arg>
 	  <arg choice="plain"><replaceable>ORIGINAL</replaceable></arg>
 	  <arg choice="plain"><replaceable>EDITED</replaceable></arg>
 	</cmdsynopsis>
 
 	<cmdsynopsis>
 	  <command>rediff</command>
+	  <arg choice="opt">--in-place</arg>
 	  <arg choice="plain"><replaceable>EDITED</replaceable></arg>
 	</cmdsynopsis>
 
@@ -2096,6 +2108,15 @@ will pipe patch of file #2 to vim - -R
 	<title>Options</title>
 
 	<variablelist>
+
+	  <varlistentry>
+	    <term><option>--in-place</option></term>
+	    <listitem>
+	      <para>Write output to the original edited file instead of
+	        standard output. When used with two arguments, the result
+	        is written back to the EDITED file.</para>
+	    </listitem>
+	  </varlistentry>
 
 	  <varlistentry>
 	    <term><option>--help</option></term>

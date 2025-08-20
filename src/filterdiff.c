@@ -1231,6 +1231,8 @@ const char * syntax_str =
 "            don't show timestamps from output (filterdiff, patchview, grepdiff)\n"
 "  --clean (filterdiff)\n"
 "            remove all comments (non-diff lines) from output (filterdiff)\n"
+"  --in-place (filterdiff)\n"
+"            write output to the original input files (filterdiff)\n"
 "  -z, --decompress\n"
 "            decompress .gz and .bz2 files\n"
 "  -n, --line-number (lsdiff, grepdiff)\n"
@@ -1454,6 +1456,7 @@ int main (int argc, char *argv[])
 	char format = '\0';
 	int regex_file_specified = 0;
 	int have_switches = 0;
+	int inplace_mode = 0;
 
 	setlocale (LC_TIME, "C");
 	determine_mode_from_name (argv[0]);
@@ -1495,6 +1498,7 @@ int main (int argc, char *argv[])
 			{"extended-regexp", 0, 0, 'E'},
 			{"empty-files-as-removed", 0, 0, 'E'},
 			{"file", 1, 0, 'f'},
+			{"in-place", 0, 0, 1000 + 'w'},
 			{0, 0, 0, 0}
 		};
 		char *end;
@@ -1665,6 +1669,9 @@ int main (int argc, char *argv[])
 		case 1000 + 'c':
 			clean_comments = 1;
 			break;
+		case 1000 + 'w':
+			inplace_mode = 1;
+			break;
 		default:
 			syntax(1);
 		}
@@ -1708,6 +1715,14 @@ int main (int argc, char *argv[])
 		error (EXIT_FAILURE, 0, "can't use --verbose and "
 		       "--clean options simultaneously");
 
+	if (inplace_mode && unzip)
+		error (EXIT_FAILURE, 0,
+		       "--in-place and --decompress are mutually exclusive");
+
+	if (inplace_mode && mode != mode_filter)
+		error (EXIT_FAILURE, 0,
+		       "--in-place only applies to filter mode");
+
 	if (mode == mode_grep && !regex_file_specified) {
 		int err;
 
@@ -1739,6 +1754,10 @@ int main (int argc, char *argv[])
 			print_patchnames = 0;
 	}
 
+	if (inplace_mode && optind == argc)
+		error (EXIT_FAILURE, 0,
+		       "--in-place cannot be used with standard input");
+
 	if (optind == argc) {
 		f = convert_format (stdin, format);
 		filterdiff (f, "(standard input)");
@@ -1752,7 +1771,28 @@ int main (int argc, char *argv[])
 			}
 
 			f = convert_format (f, format);
-			filterdiff (f, argv[i]);
+
+			if (inplace_mode) {
+				/* Redirect stdout to temporary file for in-place processing */
+				FILE *temp_output = xtmpfile();
+				FILE *old_stdout = stdout;
+				stdout = temp_output;
+
+				filterdiff (f, argv[i]);
+
+				/* Restore stdout */
+				stdout = old_stdout;
+
+				/* Write temp file contents back to original file */
+				if (write_file_inplace(argv[i], temp_output) != 0) {
+					error (EXIT_FAILURE, errno, "failed to write %s", argv[i]);
+				}
+
+				fclose (temp_output);
+			} else {
+				filterdiff (f, argv[i]);
+			}
+
 			fclose (f);
 		}
 	}

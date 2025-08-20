@@ -7,7 +7,7 @@ _patchutils_common_opts() {
 }
 
 _patchutils_filter_opts() {
-    echo "--exclude -x --exclude-from-file -X --include -i --include-from-file -I --hunks -# --lines --files -F --annotate --as-numbered-lines --format --remove-timestamps --clean --decompress -z --strip-match -p --strip --addprefix --addoldprefix --addnewprefix"
+    echo "--exclude -x --exclude-from-file -X --include -i --include-from-file -I --hunks -# --lines --files -F --annotate --as-numbered-lines --format --remove-timestamps --clean --in-place --decompress -z --strip-match -p --strip --addprefix --addoldprefix --addnewprefix"
 }
 
 _patchutils_list_opts() {
@@ -214,7 +214,7 @@ _rediff() {
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
-    opts="--help --version"
+    opts="--help --version --in-place"
 
     if [[ ${cur} == -* ]]; then
         COMPREPLY=($(compgen -W "${opts}" -- ${cur}))
