@@ -334,49 +334,7 @@ FILE * xpipe(const char * cmd, pid_t *pid, const char *mode, char *const argv[])
 	return res;
 }
 
-/*
- * stuff needed for non-GNU systems
- */
 
-#ifndef HAVE_GETLINE
-#define GLSTEP 512
-
-/* suboptimal implementation of glibc's getline() */
-ssize_t getline(char **line, size_t *n, FILE *f)
-{
-	char *p;
-	size_t len;
-	
-	if (*line == NULL || *n < 2) {
-		p = realloc(*line, GLSTEP);
-		if (!p)
-			return -1;
-		*line = p;
-		*n = GLSTEP;
-	}
-	
-	p = fgets(*line, *n, f);
-	if (!p)
-		return -1;
-	
-	len = strlen(p);
-	while ((*line)[len - 1] != '\n') {
-		p = realloc(*line, *n + GLSTEP);
-		if (!p)
-			return -1;
-		*line = p;
-		*n += GLSTEP;
-		
-		p = fgets(p + len, *n - len, f);
-		if (!p)
-			break;
-
-		len = len + strlen(p);
-	}
-	return (ssize_t) len;
-}
-
-#endif
 
 char *progname = "(null)"; /* for error() */
 void set_progname(const char *s)
