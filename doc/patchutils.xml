@@ -162,7 +162,11 @@
                 <option>-p</option> option to GNU <citerefentry>
 		  <refentrytitle>patch</refentrytitle>
 		  <manvolnum>1</manvolnum>
-		</citerefentry>.)</para>
+		</citerefentry>.) If this option is not specified,
+		<command>interdiff</command> will automatically
+		determine the optimal number of path components to
+		strip by finding the smallest value where at least
+		one file matches between the two patches.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -464,7 +468,11 @@
                 <option>-p</option> option to GNU <citerefentry>
 		  <refentrytitle>patch</refentrytitle>
 		  <manvolnum>1</manvolnum>
-		</citerefentry>.)</para>
+		</citerefentry>.) If this option is not specified,
+		<command>combinediff</command> will automatically
+		determine the optimal number of path components to
+		strip by finding the smallest value where at least
+		one file matches between the two patches.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -2922,7 +2930,11 @@ will pipe patch of file #2 to vim - -R
                 <option>-p</option> option to GNU <citerefentry>
 		  <refentrytitle>patch</refentrytitle>
 		  <manvolnum>1</manvolnum>
-		</citerefentry>.)</para>
+		</citerefentry>.) If this option is not specified,
+		<command>flipdiff</command> will automatically
+		determine the optimal number of path components to
+		strip by finding the smallest value where at least
+		one file matches between the two patches.</para>
 	    </listitem>
 	  </varlistentry>
 
