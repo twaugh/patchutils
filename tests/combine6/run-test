@@ -1,0 +1,35 @@
+#!/bin/sh
+
+# Test combinediff with file deletion (regular file to /dev/null)
+# This tests /dev/null handling in the reverse direction
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Create first patch that creates a file
+cat << EOF > patch1
+--- /dev/null
++++ b/tempfile.txt
+@@ -0,0 +1,3 @@
++temporary
++content
++here
+EOF
+
+# Create second patch that deletes the same file
+cat << EOF > patch2
+--- a/tempfile.txt
++++ /dev/null
+@@ -1,3 +0,0 @@
+-temporary
+-content
+-here
+EOF
+
+# Run combinediff
+${COMBINEDIFF} patch1 patch2 2>errors >actual || exit 1
+[ -s errors ] && exit 1
+
+# Expected combined output should be empty (create then delete = no change)
+diff -u /dev/null actual || exit 1
+
+exit 0

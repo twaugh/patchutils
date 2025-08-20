@@ -1,0 +1,49 @@
+#!/bin/sh
+
+# Test interdiff with /dev/null automatic -p detection
+# This tests that interdiff can auto-detect -p values when dealing with /dev/null
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Create first patch (creates a file with initial content)
+cat << EOF > patch1
+--- /dev/null
++++ b/newfile.txt
+@@ -0,0 +1,3 @@
++line one
++line two
++line three
+EOF
+
+# Create second patch (creates the same file with different content)
+cat << EOF > patch2
+--- /dev/null
++++ a/newfile.txt
+@@ -0,0 +1,4 @@
++line one
++inserted line
++line two
++line three
+EOF
+
+# Expected interdiff output (should auto-detect -p1)
+# This shows what needs to change to go from patch1's result to patch2's result
+cat << EOF > expected
+diff -u b/newfile.txt a/newfile.txt
+--- b/newfile.txt
++++ a/newfile.txt
+@@ -1,3 +1,4 @@
+ line one
++inserted line
+ line two
+ line three
+EOF
+
+# Run interdiff
+${INTERDIFF} patch1 patch2 2>errors >actual || exit 1
+[ -s errors ] && exit 1
+
+# Compare the actual output with expected
+diff -u expected actual || exit 1
+
+exit 0

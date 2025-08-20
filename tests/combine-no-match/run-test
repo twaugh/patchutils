@@ -1,0 +1,37 @@
+#!/bin/sh
+
+# Test combinediff when no files match at any -p level
+# Should fall back to showing separate patches
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Create first patch with one file
+cat << EOF > patch1
+--- /dev/null
++++ b/file1.txt
+@@ -0,0 +1,2 @@
++content1
++line2
+EOF
+
+# Create second patch with completely different file
+cat << EOF > patch2
+--- a/completely/different/file2.txt
++++ b/completely/different/file2.txt
+@@ -1,1 +1,2 @@
+ existing
++new line
+EOF
+
+# Run combinediff - should show separate patches since no files match
+${COMBINEDIFF} patch1 patch2 2>errors >actual || exit 1
+[ -s errors ] && exit 1
+
+# Should show "only in patch2:" indicating patches weren't combined
+grep -q "only in patch2:" actual || exit 1
+
+# Should contain both patches
+grep -q "file1.txt" actual || exit 1
+grep -q "file2.txt" actual || exit 1
+
+exit 0
