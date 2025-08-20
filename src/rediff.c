@@ -1023,8 +1023,8 @@ static int rediff (const char *original, const char *edited, FILE *out)
 
 	return 0;
 }
-static char * syntax_str = "usage: %s ORIGINAL EDITED\n"
-                           "       %s EDITED\n";
+static char * syntax_str = "usage: %s [--in-place] ORIGINAL EDITED\n"
+                           "       %s [--in-place] EDITED\n";
 
 NORETURN
 static void syntax (int err)
@@ -1037,11 +1037,13 @@ int main (int argc, char *argv[])
 {
 	/* name to use in error messages */
 	set_progname ("rediff");
-	
+	int inplace_mode = 0;
+
 	while (1) {
 		static struct option long_options[] = {
 	       		{"help", 0, 0, 'h'},
 			{"version", 0, 0, 'v'},
+			{"in-place", 0, 0, 1000 + 'w'},
 			{0, 0, 0, 0}
 		};
 		int c = getopt_long (argc, argv, "vh",
@@ -1056,6 +1058,9 @@ int main (int argc, char *argv[])
 		case 'h':
 			syntax (0);
 			break;
+		case 1000 + 'w':
+			inplace_mode = 1;
+			break;
 		default:
 			syntax(1);
 		}
@@ -1066,35 +1071,55 @@ int main (int argc, char *argv[])
 		syntax (1);
 
 	if (argc - optind == 1) {
-		char *p = xmalloc (strlen (argv[0]) +
-				   strlen ("recountdiff") + 1);
-		char *f;
-		char **const new_argv = xmalloc (sizeof (char *) * (argc + 1));
-		memcpy (new_argv, argv, sizeof (char *) * (argc + 1));
-		new_argv[0] = p;
-		strcpy (p, argv[0]);
-		f = strrchr (p, '/');
-		if (!f)
-			f = p;
-		else f++;
-		strcpy (f, "recountdiff");
-		execvp (new_argv[0], new_argv);
-		p = xstrdup (new_argv[0]);
-		f = strstr (p, "src/");
-		if (f) {
-			while (*(f + 4)) {
-				*f = *(f + 4);
-				f++;
-			}
-			*f = '\0';
+		if (inplace_mode) {
+			/* For single argument with --in-place, we need to handle recountdiff differently */
+			error (EXIT_FAILURE, 0, "--in-place with single argument not yet implemented");
+		} else {
+			char *p = xmalloc (strlen (argv[0]) +
+					   strlen ("recountdiff") + 1);
+			char *f;
+			char **const new_argv = xmalloc (sizeof (char *) * (argc + 1));
+			memcpy (new_argv, argv, sizeof (char *) * (argc + 1));
 			new_argv[0] = p;
-			execv (new_argv[0], new_argv);
+			strcpy (p, argv[0]);
+			f = strrchr (p, '/');
+			if (!f)
+				f = p;
+			else f++;
+			strcpy (f, "recountdiff");
+			execvp (new_argv[0], new_argv);
+			p = xstrdup (new_argv[0]);
+			f = strstr (p, "src/");
+			if (f) {
+				while (*(f + 4)) {
+					*f = *(f + 4);
+					f++;
+				}
+				*f = '\0';
+				new_argv[0] = p;
+				execv (new_argv[0], new_argv);
+			}
+			error (EXIT_FAILURE, 0, "couldn't execute recountdiff");
 		}
-		error (EXIT_FAILURE, 0, "couldn't execute recountdiff");
 	}
 
 	if (access (argv[optind + 1], R_OK))
 		error (EXIT_FAILURE, errno, "can't read edited file");
 
-	return rediff (argv[optind], argv[optind + 1], stdout);
+	if (inplace_mode) {
+		/* For in-place mode, write result back to the edited file */
+		FILE *temp_output = xtmpfile();
+		int result = rediff (argv[optind], argv[optind + 1], temp_output);
+
+		if (result == 0) {
+			if (write_file_inplace(argv[optind + 1], temp_output) != 0) {
+				error (EXIT_FAILURE, errno, "failed to write %s", argv[optind + 1]);
+			}
+		}
+
+		fclose (temp_output);
+		return result;
+	} else {
+		return rediff (argv[optind], argv[optind + 1], stdout);
+	}
 }

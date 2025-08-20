@@ -342,3 +342,74 @@ void set_progname(const char *s)
 	progname = xstrdup(s);
 }
 
+/* Safe in-place file writing using atomic rename */
+int write_file_inplace(const char *filename, FILE *content)
+{
+	char *temp_name = NULL;
+	FILE *temp_file = NULL;
+	int temp_fd = -1;
+	int ret = -1;
+	size_t filename_len;
+	const char temp_suffix[] = ".tmp.XXXXXX";
+
+	if (!filename || !content) {
+		error(0, 0, "write_file_inplace: invalid arguments");
+		return -1;
+	}
+
+	/* Create temporary filename */
+	filename_len = strlen(filename);
+	temp_name = xmalloc(filename_len + sizeof(temp_suffix));
+	strcpy(temp_name, filename);
+	strcat(temp_name, temp_suffix);
+
+	/* Create temporary file */
+	temp_fd = xmkstemp(temp_name);
+	temp_file = fdopen(temp_fd, "w");
+	if (!temp_file) {
+		error(0, errno, "failed to open temporary file %s", temp_name);
+		close(temp_fd);
+		unlink(temp_name);
+		goto cleanup;
+	}
+
+	/* Copy content to temporary file */
+	rewind(content);
+	while (!feof(content)) {
+		int ch = fgetc(content);
+		if (ch == EOF)
+			break;
+		if (fputc(ch, temp_file) == EOF) {
+			error(0, errno, "failed to write to temporary file %s", temp_name);
+			goto cleanup;
+		}
+	}
+
+	/* Ensure all data is written */
+	if (fflush(temp_file) != 0) {
+		error(0, errno, "failed to flush temporary file %s", temp_name);
+		goto cleanup;
+	}
+
+	fclose(temp_file);
+	temp_file = NULL;
+
+	/* Atomically replace original file */
+	if (rename(temp_name, filename) != 0) {
+		error(0, errno, "failed to rename %s to %s", temp_name, filename);
+		goto cleanup;
+	}
+
+	ret = 0; /* success */
+
+cleanup:
+	if (temp_file)
+		fclose(temp_file);
+	if (temp_name) {
+		if (ret != 0)
+			unlink(temp_name); /* cleanup on failure */
+		free(temp_name);
+	}
+	return ret;
+}
+

@@ -48,6 +48,9 @@ FILE *xopen_seekable(const char *file, const char *mode);
 FILE *xopen_unzip(const char *file, const char *mode);
 FILE *xpipe(const char *cmd, pid_t *pid, const char *mode, char *const argv[]);
 
+/* safe in-place file writing */
+int write_file_inplace(const char *filename, FILE *content);
+
 struct patlist;
 
 /* create a new item */
