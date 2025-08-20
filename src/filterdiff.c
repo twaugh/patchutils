@@ -233,7 +233,7 @@ file_matches (void)
 {
 	int f = 0;
 	struct range *r;
-	
+
 	// See if the file range list includes this file.  -1UL is a
 	// wildcard.
 	for (r = files; r; r = r->next)
@@ -1502,7 +1502,7 @@ int main (int argc, char *argv[])
 				     long_options, NULL);
 		if (c == -1)
 			break;
-		
+
 		have_switches = 1;
 		switch (c) {
 		case 'g':

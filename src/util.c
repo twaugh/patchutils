@@ -140,7 +140,7 @@ void patlist_add_file(struct patlist **dst, const char *fn)
 	char *line = NULL;
 	size_t linelen = 0;
 	size_t len;
-	
+
 	fd = fopen (fn, "r");
 	if (NULL == fd)
 		return;
@@ -158,7 +158,7 @@ void patlist_add_file(struct patlist **dst, const char *fn)
 			line[len - 1] = '\0';
 		}
 		patlist_add (dst, line);
-	} 
+	}
 	fclose (fd);
 }
 
@@ -243,11 +243,11 @@ FILE *xopen_unzip (const char *name, const char *mode)
 	}
 	if (zprog == NULL)
 		return xopen_seekable (name, mode);
-	
+
 	buffer = xmalloc (buflen);
 	fo = xtmpfile();
 	fi = xpipe(zprog, &pid, "r", (char **) (const char *[]) { zprog, name, NULL });
-	
+
 	while (!feof (fi)) {
 		size_t count = fread (buffer, 1, buflen, fi);
 		if (ferror (fi)) {
@@ -256,17 +256,17 @@ FILE *xopen_unzip (const char *name, const char *mode)
 		}
 		if (count < 1)
 			break;
-		
+
 		fwrite (buffer, count, 1, fo);
 		if (ferror (fo))
 			error (EXIT_FAILURE, errno, "writing temp file");
 
 		any_data = 1;
 	}
-	
+
 	free (buffer);
 	fclose (fi);
-	
+
 	waitpid (pid, &status, 0);
 	if (any_data == 0 && WEXITSTATUS (status) != 0)
 	{
@@ -285,10 +285,10 @@ FILE * xpipe(const char * cmd, pid_t *pid, const char *mode, char *const argv[])
 	int fildes[2];
 	int child;
 	FILE *res;
-	
+
 	if (!mode || (*mode != 'r' && *mode != 'w'))
 		error (EXIT_FAILURE, 0, "xpipe: bad mode: %s", mode);
-	
+
 	fflush (NULL);
 	if (pipe (fildes) == -1)
 		error (EXIT_FAILURE, errno, "pipe failed");
@@ -320,7 +320,7 @@ FILE * xpipe(const char * cmd, pid_t *pid, const char *mode, char *const argv[])
 	}
 	if (pid != NULL)
 		*pid = child;
-	
+
 	if (*mode == 'r') {
 		close (fildes[1]);
 		res = fdopen (fildes[0], "r");
