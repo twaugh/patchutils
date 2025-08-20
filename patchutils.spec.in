@@ -33,7 +33,7 @@ rm -rf %{buildroot}
 
 %files
 %defattr(-,root,root)
-%doc AUTHORS ChangeLog README COPYING BUGS NEWS patchview/README.patchview
+%doc AUTHORS ChangeLog README.md COPYING BUGS NEWS patchview/README.patchview
 %{_bindir}/*
 %{_mandir}/*/*
 

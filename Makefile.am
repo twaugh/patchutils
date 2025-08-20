@@ -312,7 +312,7 @@ distclean-local:
 EXTRA_DIST = $(man_MANS) \
 	tests/common.sh tests/soak-test \
 	$(TESTS) $(XFAIL_TESTS) \
-	BUGS COPYING TODO ChangeLog \
+	README.md BUGS COPYING TODO ChangeLog \
 	bootstrap \
 	patchutils.spec \
 	doc/patchutils.xml \
