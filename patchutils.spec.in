@@ -35,7 +35,10 @@ rm -rf %{buildroot}
 %defattr(-,root,root)
 %doc AUTHORS ChangeLog README.md COPYING BUGS NEWS patchview/README.patchview
 %{_bindir}/*
+%{_datadir}/bash-completion/completions/*
+%if 0%{?have_xmlto}
 %{_mandir}/*/*
+%endif
 
 %changelog
 * Tue Jan  6 2004 Tim Waugh <twaugh@redhat.com>
