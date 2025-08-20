@@ -1,0 +1,36 @@
+#!/bin/sh
+
+# This is a filterdiff(1) testcase.
+# Test: --in-place option with --include filter
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << "EOF" > test.patch
+--- a/file1.txt	2023-01-01 00:00:00.000000000 +0000
++++ b/file1.txt	2023-01-01 00:00:01.000000000 +0000
+@@ -1,3 +1,3 @@
+ line 1
+-line 2
++line 2 modified
+ line 3
+--- a/file2.txt	2023-01-01 00:00:00.000000000 +0000
++++ b/file2.txt	2023-01-01 00:00:01.000000000 +0000
+@@ -1,2 +1,2 @@
+-old content
++new content
+ another line
+EOF
+
+# Test --in-place with --include
+${FILTERDIFF} --include="*file1*" --in-place test.patch || exit 1
+
+# Check that file was modified in place and contains only file1.txt
+cmp - test.patch << "EOF" || exit 1
+--- a/file1.txt	2023-01-01 00:00:00.000000000 +0000
++++ b/file1.txt	2023-01-01 00:00:01.000000000 +0000
+@@ -1,3 +1,3 @@
+ line 1
+-line 2
++line 2 modified
+ line 3
+EOF

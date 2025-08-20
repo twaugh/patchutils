@@ -268,7 +268,9 @@ TESTS = tests/newline1/run-test \
 	tests/whitespace-regression/run-test \
 	tests/interdiff-whitespace-w/run-test \
 	tests/patch-ignore-whitespace/run-test \
-	tests/whitespace-w/run-test
+	tests/whitespace-w/run-test \
+	tests/filterdiff-inplace1/run-test \
+	tests/rediff-inplace1/run-test
 
 # These ones don't work yet.
 # Feel free to send me patches. :-)
