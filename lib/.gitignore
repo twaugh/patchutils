@@ -71,3 +71,5 @@
 /verify.h
 /warn-on-use.h
 /xalloc-oversized.h
+/getdelim.c
+/getline.c

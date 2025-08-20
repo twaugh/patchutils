@@ -47,6 +47,7 @@
 #  --no-libtool \
 #  --macro-prefix=gl \
 #  error \
+#  getline \
 #  getopt-gnu
 
 
@@ -133,18 +134,20 @@ host_triplet = x86_64-pc-linux-gnu
 #am__append_3 = error.c
 am__append_4 = fcntl.c
 #am__append_5 = fstat.c
-#am__append_6 = getdtablesize.c
-#am__append_7 = getopt.c getopt1.c
-am__append_8 = getprogname.c
-#am__append_9 = lstat.c
-#am__append_10 = msvc-inval.c
-#am__append_11 = msvc-nothrow.c
-#am__append_12 = open.c
-#am__append_13 = stat.c
-#am__append_14 = stdio-read.c
-#am__append_15 = stdio-write.c
-#am__append_16 = strerror.c
-#am__append_17 = strerror-override.c
+#am__append_6 = getdelim.c
+#am__append_7 = getdtablesize.c
+#am__append_8 = getline.c
+#am__append_9 = getopt.c getopt1.c
+am__append_10 = getprogname.c
+#am__append_11 = lstat.c
+#am__append_12 = msvc-inval.c
+#am__append_13 = msvc-nothrow.c
+#am__append_14 = open.c
+#am__append_15 = stat.c
+#am__append_16 = stdio-read.c
+#am__append_17 = stdio-write.c
+#am__append_18 = strerror.c
+#am__append_19 = strerror-override.c
 subdir = lib
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/00gnulib.m4 \
@@ -158,7 +161,8 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/00gnulib.m4 \
 	$(top_srcdir)/m4/extensions.m4 \
 	$(top_srcdir)/m4/extern-inline.m4 $(top_srcdir)/m4/fcntl-o.m4 \
 	$(top_srcdir)/m4/fcntl.m4 $(top_srcdir)/m4/fcntl_h.m4 \
-	$(top_srcdir)/m4/fstat.m4 $(top_srcdir)/m4/getdtablesize.m4 \
+	$(top_srcdir)/m4/fstat.m4 $(top_srcdir)/m4/getdelim.m4 \
+	$(top_srcdir)/m4/getdtablesize.m4 $(top_srcdir)/m4/getline.m4 \
 	$(top_srcdir)/m4/getopt.m4 $(top_srcdir)/m4/getprogname.m4 \
 	$(top_srcdir)/m4/gnulib-common.m4 \
 	$(top_srcdir)/m4/gnulib-comp.m4 \
@@ -202,43 +206,47 @@ libgnu_a_AR = $(AR) $(ARFLAGS)
 libgnu_a_RANLIB = $(RANLIB)
 am__DEPENDENCIES_1 =
 am__libgnu_a_SOURCES_DIST = basename-lgpl.c cloexec.c close.c dup2.c \
-	error.c fcntl.c fd-hook.c fstat.c getdtablesize.c getopt.c \
-	getopt1.c getprogname.c gettext.h idx.h lstat.c malloca.c \
-	msvc-inval.c msvc-nothrow.c open.c stat.c stat-time.c \
-	stdio-read.c stdio-write.c stdlib.c strerror.c \
+	error.c fcntl.c fd-hook.c fstat.c getdelim.c getdtablesize.c \
+	getline.c getopt.c getopt1.c getprogname.c gettext.h idx.h \
+	lstat.c malloca.c msvc-inval.c msvc-nothrow.c open.c stat.c \
+	stat-time.c stdio-read.c stdio-write.c stdlib.c strerror.c \
 	strerror-override.c unistd.c
 #am__objects_1 = libgnu_a-close.$(OBJEXT)
 #am__objects_2 = libgnu_a-dup2.$(OBJEXT)
 #am__objects_3 = libgnu_a-error.$(OBJEXT)
 am__objects_4 = libgnu_a-fcntl.$(OBJEXT)
 #am__objects_5 = libgnu_a-fstat.$(OBJEXT)
-#am__objects_6 = libgnu_a-getdtablesize.$(OBJEXT)
-#am__objects_7 = libgnu_a-getopt.$(OBJEXT) \
+#am__objects_6 =  \
+#	libgnu_a-getdelim.$(OBJEXT)
+#am__objects_7 = libgnu_a-getdtablesize.$(OBJEXT)
+#am__objects_8 = libgnu_a-getline.$(OBJEXT)
+#am__objects_9 = libgnu_a-getopt.$(OBJEXT) \
 #	libgnu_a-getopt1.$(OBJEXT)
-am__objects_8 =  \
+am__objects_10 =  \
 	libgnu_a-getprogname.$(OBJEXT)
-#am__objects_9 = libgnu_a-lstat.$(OBJEXT)
-#am__objects_10 =  \
+#am__objects_11 = libgnu_a-lstat.$(OBJEXT)
+#am__objects_12 =  \
 #	libgnu_a-msvc-inval.$(OBJEXT)
-#am__objects_11 = libgnu_a-msvc-nothrow.$(OBJEXT)
-#am__objects_12 = libgnu_a-open.$(OBJEXT)
-#am__objects_13 = libgnu_a-stat.$(OBJEXT)
-#am__objects_14 =  \
-#	libgnu_a-stdio-read.$(OBJEXT)
-#am__objects_15 =  \
-#	libgnu_a-stdio-write.$(OBJEXT)
+#am__objects_13 = libgnu_a-msvc-nothrow.$(OBJEXT)
+#am__objects_14 = libgnu_a-open.$(OBJEXT)
+#am__objects_15 = libgnu_a-stat.$(OBJEXT)
 #am__objects_16 =  \
+#	libgnu_a-stdio-read.$(OBJEXT)
+#am__objects_17 =  \
+#	libgnu_a-stdio-write.$(OBJEXT)
+#am__objects_18 =  \
 #	libgnu_a-strerror.$(OBJEXT)
-#am__objects_17 = libgnu_a-strerror-override.$(OBJEXT)
+#am__objects_19 = libgnu_a-strerror-override.$(OBJEXT)
 am_libgnu_a_OBJECTS = libgnu_a-basename-lgpl.$(OBJEXT) \
 	libgnu_a-cloexec.$(OBJEXT) $(am__objects_1) $(am__objects_2) \
 	$(am__objects_3) $(am__objects_4) libgnu_a-fd-hook.$(OBJEXT) \
 	$(am__objects_5) $(am__objects_6) $(am__objects_7) \
-	$(am__objects_8) $(am__objects_9) libgnu_a-malloca.$(OBJEXT) \
-	$(am__objects_10) $(am__objects_11) $(am__objects_12) \
-	$(am__objects_13) libgnu_a-stat-time.$(OBJEXT) \
-	$(am__objects_14) $(am__objects_15) libgnu_a-stdlib.$(OBJEXT) \
-	$(am__objects_16) $(am__objects_17) libgnu_a-unistd.$(OBJEXT)
+	$(am__objects_8) $(am__objects_9) $(am__objects_10) \
+	$(am__objects_11) libgnu_a-malloca.$(OBJEXT) $(am__objects_12) \
+	$(am__objects_13) $(am__objects_14) $(am__objects_15) \
+	libgnu_a-stat-time.$(OBJEXT) $(am__objects_16) \
+	$(am__objects_17) libgnu_a-stdlib.$(OBJEXT) $(am__objects_18) \
+	$(am__objects_19) libgnu_a-unistd.$(OBJEXT)
 libgnu_a_OBJECTS = $(am_libgnu_a_OBJECTS)
 AM_V_P = $(am__v_P_$(V))
 am__v_P_ = $(am__v_P_$(AM_DEFAULT_VERBOSITY))
@@ -259,9 +267,10 @@ am__depfiles_remade = ./$(DEPDIR)/libgnu_a-basename-lgpl.Po \
 	./$(DEPDIR)/libgnu_a-cloexec.Po ./$(DEPDIR)/libgnu_a-close.Po \
 	./$(DEPDIR)/libgnu_a-dup2.Po ./$(DEPDIR)/libgnu_a-error.Po \
 	./$(DEPDIR)/libgnu_a-fcntl.Po ./$(DEPDIR)/libgnu_a-fd-hook.Po \
-	./$(DEPDIR)/libgnu_a-fstat.Po \
+	./$(DEPDIR)/libgnu_a-fstat.Po ./$(DEPDIR)/libgnu_a-getdelim.Po \
 	./$(DEPDIR)/libgnu_a-getdtablesize.Po \
-	./$(DEPDIR)/libgnu_a-getopt.Po ./$(DEPDIR)/libgnu_a-getopt1.Po \
+	./$(DEPDIR)/libgnu_a-getline.Po ./$(DEPDIR)/libgnu_a-getopt.Po \
+	./$(DEPDIR)/libgnu_a-getopt1.Po \
 	./$(DEPDIR)/libgnu_a-getprogname.Po \
 	./$(DEPDIR)/libgnu_a-lstat.Po ./$(DEPDIR)/libgnu_a-malloca.Po \
 	./$(DEPDIR)/libgnu_a-msvc-inval.Po \
@@ -503,13 +512,13 @@ GL_GNULIB_FZPRINTF = 0
 GL_GNULIB_GETC = 1
 GL_GNULIB_GETCHAR = 1
 GL_GNULIB_GETCWD = 0
-GL_GNULIB_GETDELIM = 0
+GL_GNULIB_GETDELIM = 1
 GL_GNULIB_GETDOMAINNAME = 0
 GL_GNULIB_GETDTABLESIZE = 1
 GL_GNULIB_GETENTROPY = 0
 GL_GNULIB_GETGROUPS = 0
 GL_GNULIB_GETHOSTNAME = 0
-GL_GNULIB_GETLINE = 0
+GL_GNULIB_GETLINE = 1
 GL_GNULIB_GETLOADAVG = 0
 GL_GNULIB_GETLOCALENAME_L = 0
 GL_GNULIB_GETLOCALENAME_L_UNSAFE = 0
@@ -1340,10 +1349,11 @@ AM_CFLAGS =
 libgnu_a_SOURCES = basename-lgpl.c cloexec.c $(am__append_1) \
 	$(am__append_2) $(am__append_3) $(am__append_4) fd-hook.c \
 	$(am__append_5) $(am__append_6) $(am__append_7) \
-	$(am__append_8) gettext.h idx.h $(am__append_9) malloca.c \
-	$(am__append_10) $(am__append_11) $(am__append_12) \
-	$(am__append_13) stat-time.c $(am__append_14) $(am__append_15) \
-	stdlib.c $(am__append_16) $(am__append_17) unistd.c
+	$(am__append_8) $(am__append_9) $(am__append_10) gettext.h \
+	idx.h $(am__append_11) malloca.c $(am__append_12) \
+	$(am__append_13) $(am__append_14) $(am__append_15) stat-time.c \
+	$(am__append_16) $(am__append_17) stdlib.c $(am__append_18) \
+	$(am__append_19) unistd.c
 libgnu_a_CFLAGS = $(AM_CFLAGS) $(GL_CFLAG_GNULIB_WARNINGS) $(GL_CFLAG_ALLOW_WARNINGS)
 libgnu_a_LIBADD = $(gl_libgnu_LIBOBJS)
 libgnu_a_DEPENDENCIES = $(gl_libgnu_LIBOBJS)
@@ -1455,7 +1465,9 @@ include ./$(DEPDIR)/libgnu_a-error.Po # am--include-marker
 include ./$(DEPDIR)/libgnu_a-fcntl.Po # am--include-marker
 include ./$(DEPDIR)/libgnu_a-fd-hook.Po # am--include-marker
 include ./$(DEPDIR)/libgnu_a-fstat.Po # am--include-marker
+include ./$(DEPDIR)/libgnu_a-getdelim.Po # am--include-marker
 include ./$(DEPDIR)/libgnu_a-getdtablesize.Po # am--include-marker
+include ./$(DEPDIR)/libgnu_a-getline.Po # am--include-marker
 include ./$(DEPDIR)/libgnu_a-getopt.Po # am--include-marker
 include ./$(DEPDIR)/libgnu_a-getopt1.Po # am--include-marker
 include ./$(DEPDIR)/libgnu_a-getprogname.Po # am--include-marker
@@ -1608,6 +1620,20 @@ libgnu_a-fstat.obj: fstat.c
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
 #	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgnu_a_CFLAGS) $(CFLAGS) -c -o libgnu_a-fstat.obj `if test -f 'fstat.c'; then $(CYGPATH_W) 'fstat.c'; else $(CYGPATH_W) '$(srcdir)/fstat.c'; fi`
 
+libgnu_a-getdelim.o: getdelim.c
+	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgnu_a_CFLAGS) $(CFLAGS) -MT libgnu_a-getdelim.o -MD -MP -MF $(DEPDIR)/libgnu_a-getdelim.Tpo -c -o libgnu_a-getdelim.o `test -f 'getdelim.c' || echo '$(srcdir)/'`getdelim.c
+	$(AM_V_at)$(am__mv) $(DEPDIR)/libgnu_a-getdelim.Tpo $(DEPDIR)/libgnu_a-getdelim.Po
+#	$(AM_V_CC)source='getdelim.c' object='libgnu_a-getdelim.o' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgnu_a_CFLAGS) $(CFLAGS) -c -o libgnu_a-getdelim.o `test -f 'getdelim.c' || echo '$(srcdir)/'`getdelim.c
+
+libgnu_a-getdelim.obj: getdelim.c
+	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgnu_a_CFLAGS) $(CFLAGS) -MT libgnu_a-getdelim.obj -MD -MP -MF $(DEPDIR)/libgnu_a-getdelim.Tpo -c -o libgnu_a-getdelim.obj `if test -f 'getdelim.c'; then $(CYGPATH_W) 'getdelim.c'; else $(CYGPATH_W) '$(srcdir)/getdelim.c'; fi`
+	$(AM_V_at)$(am__mv) $(DEPDIR)/libgnu_a-getdelim.Tpo $(DEPDIR)/libgnu_a-getdelim.Po
+#	$(AM_V_CC)source='getdelim.c' object='libgnu_a-getdelim.obj' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgnu_a_CFLAGS) $(CFLAGS) -c -o libgnu_a-getdelim.obj `if test -f 'getdelim.c'; then $(CYGPATH_W) 'getdelim.c'; else $(CYGPATH_W) '$(srcdir)/getdelim.c'; fi`
+
 libgnu_a-getdtablesize.o: getdtablesize.c
 	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgnu_a_CFLAGS) $(CFLAGS) -MT libgnu_a-getdtablesize.o -MD -MP -MF $(DEPDIR)/libgnu_a-getdtablesize.Tpo -c -o libgnu_a-getdtablesize.o `test -f 'getdtablesize.c' || echo '$(srcdir)/'`getdtablesize.c
 	$(AM_V_at)$(am__mv) $(DEPDIR)/libgnu_a-getdtablesize.Tpo $(DEPDIR)/libgnu_a-getdtablesize.Po
@@ -1621,6 +1647,20 @@ libgnu_a-getdtablesize.obj: getdtablesize.c
 #	$(AM_V_CC)source='getdtablesize.c' object='libgnu_a-getdtablesize.obj' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
 #	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgnu_a_CFLAGS) $(CFLAGS) -c -o libgnu_a-getdtablesize.obj `if test -f 'getdtablesize.c'; then $(CYGPATH_W) 'getdtablesize.c'; else $(CYGPATH_W) '$(srcdir)/getdtablesize.c'; fi`
+
+libgnu_a-getline.o: getline.c
+	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgnu_a_CFLAGS) $(CFLAGS) -MT libgnu_a-getline.o -MD -MP -MF $(DEPDIR)/libgnu_a-getline.Tpo -c -o libgnu_a-getline.o `test -f 'getline.c' || echo '$(srcdir)/'`getline.c
+	$(AM_V_at)$(am__mv) $(DEPDIR)/libgnu_a-getline.Tpo $(DEPDIR)/libgnu_a-getline.Po
+#	$(AM_V_CC)source='getline.c' object='libgnu_a-getline.o' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgnu_a_CFLAGS) $(CFLAGS) -c -o libgnu_a-getline.o `test -f 'getline.c' || echo '$(srcdir)/'`getline.c
+
+libgnu_a-getline.obj: getline.c
+	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgnu_a_CFLAGS) $(CFLAGS) -MT libgnu_a-getline.obj -MD -MP -MF $(DEPDIR)/libgnu_a-getline.Tpo -c -o libgnu_a-getline.obj `if test -f 'getline.c'; then $(CYGPATH_W) 'getline.c'; else $(CYGPATH_W) '$(srcdir)/getline.c'; fi`
+	$(AM_V_at)$(am__mv) $(DEPDIR)/libgnu_a-getline.Tpo $(DEPDIR)/libgnu_a-getline.Po
+#	$(AM_V_CC)source='getline.c' object='libgnu_a-getline.obj' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgnu_a_CFLAGS) $(CFLAGS) -c -o libgnu_a-getline.obj `if test -f 'getline.c'; then $(CYGPATH_W) 'getline.c'; else $(CYGPATH_W) '$(srcdir)/getline.c'; fi`
 
 libgnu_a-getopt.o: getopt.c
 	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgnu_a_CFLAGS) $(CFLAGS) -MT libgnu_a-getopt.o -MD -MP -MF $(DEPDIR)/libgnu_a-getopt.Tpo -c -o libgnu_a-getopt.o `test -f 'getopt.c' || echo '$(srcdir)/'`getopt.c
@@ -2097,7 +2137,9 @@ distclean: distclean-recursive
 	-rm -f ./$(DEPDIR)/libgnu_a-fcntl.Po
 	-rm -f ./$(DEPDIR)/libgnu_a-fd-hook.Po
 	-rm -f ./$(DEPDIR)/libgnu_a-fstat.Po
+	-rm -f ./$(DEPDIR)/libgnu_a-getdelim.Po
 	-rm -f ./$(DEPDIR)/libgnu_a-getdtablesize.Po
+	-rm -f ./$(DEPDIR)/libgnu_a-getline.Po
 	-rm -f ./$(DEPDIR)/libgnu_a-getopt.Po
 	-rm -f ./$(DEPDIR)/libgnu_a-getopt1.Po
 	-rm -f ./$(DEPDIR)/libgnu_a-getprogname.Po
@@ -2168,7 +2210,9 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f ./$(DEPDIR)/libgnu_a-fcntl.Po
 	-rm -f ./$(DEPDIR)/libgnu_a-fd-hook.Po
 	-rm -f ./$(DEPDIR)/libgnu_a-fstat.Po
+	-rm -f ./$(DEPDIR)/libgnu_a-getdelim.Po
 	-rm -f ./$(DEPDIR)/libgnu_a-getdtablesize.Po
+	-rm -f ./$(DEPDIR)/libgnu_a-getline.Po
 	-rm -f ./$(DEPDIR)/libgnu_a-getopt.Po
 	-rm -f ./$(DEPDIR)/libgnu_a-getopt1.Po
 	-rm -f ./$(DEPDIR)/libgnu_a-getprogname.Po
