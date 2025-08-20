@@ -19,6 +19,10 @@ dist_bin_SCRIPTS = \
 	patchview/svndiff \
 	patchview/svndiffview
 
+# Bash completion files
+bashcompletiondir = $(datadir)/bash-completion/completions
+dist_bashcompletion_DATA = bash-completion-patchutils
+
 AM_CFLAGS = -I$(srcdir)/src -I$(top_builddir)/lib -I$(top_srcdir)/lib
 src_interdiff_SOURCES = src/interdiff.c src/util.c src/util.h src/diff.c \
 		src/diff.h
@@ -68,12 +72,32 @@ install-exec-hook:
 	ln -sf "`echo filterdiff|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo grepdiff|sed '$(transform)'`"
 	ln -sf "`echo filterdiff|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo patchview|sed '$(transform)'`"
 
+install-data-hook:
+	if [ -d "$(DESTDIR)$(bashcompletiondir)" ]; then \
+		cd "$(DESTDIR)$(bashcompletiondir)" && \
+		mv bash-completion-patchutils patchutils && \
+		for cmd in filterdiff lsdiff grepdiff interdiff combinediff flipdiff rediff \
+		           splitdiff recountdiff unwrapdiff dehtmldiff editdiff espdiff \
+		           fixcvsdiff patchview gitdiff svndiff gitdiffview svndiffview; do \
+			ln -sf patchutils "$$cmd" || true; \
+		done; \
+	fi
+
 uninstall-hook:
 	rm -f $(DESTDIR)$(bindir)/"`echo combinediff|sed '$(transform)'`"
 	rm -f $(DESTDIR)$(bindir)/"`echo flipdiff|sed '$(transform)'`"
 	rm -f $(DESTDIR)$(bindir)/"`echo lsdiff|sed '$(transform)'`"
 	rm -f $(DESTDIR)$(bindir)/"`echo grepdiff|sed '$(transform)'`"
 	rm -f $(DESTDIR)$(bindir)/"`echo patchview|sed '$(transform)'`"
+	if [ -d "$(DESTDIR)$(bashcompletiondir)" ]; then \
+		cd "$(DESTDIR)$(bashcompletiondir)" && \
+		for cmd in filterdiff lsdiff grepdiff interdiff combinediff flipdiff rediff \
+		           splitdiff recountdiff unwrapdiff dehtmldiff editdiff espdiff \
+		           fixcvsdiff patchview gitdiff svndiff gitdiffview svndiffview; do \
+			rm -f "$$cmd"; \
+		done; \
+		rm -f patchutils; \
+	fi
 
 CLEANFILES=src/combinediff src/flipdiff src/lsdiff src/grepdiff src/patchview
 MAINTAINERCLEANFILES=$(man_MANS)
@@ -291,7 +315,8 @@ EXTRA_DIST = $(man_MANS) \
 	doc/patchutils.xml \
 	patchview/README.patchview \
 	scripts/move-to-front \
-	m4/gnulib-cache.m4
+	m4/gnulib-cache.m4 \
+	bash-completion-patchutils
 
 tag:
 	cvs tag -c `echo V@VERSION@ | tr . _`
