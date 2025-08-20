@@ -116,6 +116,8 @@ TESTS = tests/newline1/run-test \
 	tests/combine2/run-test \
 	tests/combine3/run-test \
 	tests/combine4/run-test \
+	tests/combine-devnull/run-test \
+	tests/combine-devnull-p/run-test \
 	tests/gendiff1/run-test \
 	tests/gendiff2/run-test \
 	tests/comma/run-test \

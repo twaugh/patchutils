@@ -95,6 +95,7 @@ static int num_diff_opts = 0;
 static unsigned int max_context_real = 3, max_context = 3;
 static int context_specified = 0;
 static int ignore_components = 0;
+static int ignore_components_specified = 0;
 static int unzip = 0;
 static int no_revert_omitted = 0;
 static int debug = 0;
@@ -103,6 +104,7 @@ static struct patlist *pat_drop_context = NULL;
 
 static struct file_list *files_done = NULL;
 static struct file_list *files_in_patch2 = NULL;
+static struct file_list *files_in_patch1 = NULL;
 
 /* checks whether file needs processing and sets context */
 static int
@@ -145,6 +147,49 @@ file_in_list (struct file_list *list, const char *file)
 		list = list->next;
 	}
 	return -1;
+}
+
+/* Determine the best ignore_components value when none was specified.
+ * Try different values from 0 up to a reasonable maximum, and find the
+ * smallest value where at least one file from patch1 matches a file from patch2.
+ */
+static int
+determine_ignore_components (struct file_list *list1, struct file_list *list2)
+{
+	int max_components = 0;
+	int p;
+
+	/* Find the maximum number of path components in any file */
+	for (struct file_list *l = list1; l; l = l->next) {
+		if (strcmp(l->file, "/dev/null") != 0) {
+			int components = num_pathname_components(l->file);
+			if (components > max_components)
+				max_components = components;
+		}
+	}
+	for (struct file_list *l = list2; l; l = l->next) {
+		if (strcmp(l->file, "/dev/null") != 0) {
+			int components = num_pathname_components(l->file);
+			if (components > max_components)
+				max_components = components;
+		}
+	}
+
+	/* Try different -p values, starting from 0 */
+	for (p = 0; p <= max_components; p++) {
+		for (struct file_list *l1 = list1; l1; l1 = l1->next) {
+			const char *stripped1 = stripped(l1->file, p);
+			for (struct file_list *l2 = list2; l2; l2 = l2->next) {
+				const char *stripped2 = stripped(l2->file, p);
+				if (!strcmp(stripped1, stripped2)) {
+					return p;
+				}
+			}
+		}
+	}
+
+	/* If no match found, return 0 as default */
+	return 0;
 }
 
 static void
@@ -1270,22 +1315,23 @@ copy_residue (FILE *p2, FILE *out)
 	return 0;
 }
 
+/* Generic patch indexing function that can handle both patch1 and patch2 */
 static int
-index_patch2 (FILE *p2)
+index_patch_generic (FILE *patch_file, struct file_list **file_list, int need_skip_content)
 {
 	char *line = NULL;
 	size_t linelen = 0;
 	int is_context = 0;
 	int file_is_empty = 1;
 
-	/* Index patch2 */
-	while (!feof (p2)) {
+	/* Index patch */
+	while (!feof (patch_file)) {
 		unsigned long skip;
 		char *names[2];
 		char *p, *end;
-		long pos = ftell (p2);
+		long pos = ftell (patch_file);
 
-		if (getline (&line, &linelen, p2) == -1)
+		if (getline (&line, &linelen, patch_file) == -1)
 			break;
 
 		file_is_empty = 0;
@@ -1301,7 +1347,7 @@ index_patch2 (FILE *p2)
 
 		names[0] = filename_from_header (line + 4);
 
-		if (getline (&line, &linelen, p2) == -1) {
+		if (getline (&line, &linelen, patch_file) == -1) {
 			free (names[0]);
 			break;
 		}
@@ -1313,38 +1359,44 @@ index_patch2 (FILE *p2)
 
 		names[1] = filename_from_header (line + 4);
 
-		if (getline (&line, &linelen, p2) == -1) {
-			free (names[0]);
-			free (names[1]);
-			break;
-		}
-
-		if (strncmp (line, "@@ ", 3))
-			goto try_next;
-
-		p = strchr (line + 3, '+');
-		if (!p)
-			goto try_next;
-		p = strchr (p, ',');
-		if (p) {
-			/* Like '@@ -1,3 +1,3 @@' */
-			p++;
-			skip = strtoul (p, &end, 10);
-			if (p == end)
-				goto try_next;
-		} else
-			/* Like '@@ -1 +1 @@' */
-			skip = 1;
-
-		add_to_list (&files_in_patch2, best_name (2, names), pos);
-
-		while (skip--) {
-			if (getline (&line, &linelen, p2) == -1)
+		/* For patch2, we need to handle the @@ line and skip content */
+		if (need_skip_content) {
+			if (getline (&line, &linelen, patch_file) == -1) {
+				free (names[0]);
+				free (names[1]);
 				break;
+			}
 
-			if (line[0] == '-')
-				/* Doesn't count towards skip count */
-				skip++;
+			if (strncmp (line, "@@ ", 3))
+				goto try_next;
+
+			p = strchr (line + 3, '+');
+			if (!p)
+				goto try_next;
+			p = strchr (p, ',');
+			if (p) {
+				/* Like '@@ -1,3 +1,3 @@' */
+				p++;
+				skip = strtoul (p, &end, 10);
+				if (p == end)
+					goto try_next;
+			} else
+				/* Like '@@ -1 +1 @@' */
+				skip = 1;
+
+			add_to_list (file_list, best_name (2, names), pos);
+
+			while (skip--) {
+				if (getline (&line, &linelen, patch_file) == -1)
+					break;
+
+				if (line[0] == '-')
+					/* Doesn't count towards skip count */
+					skip++;
+			}
+		} else {
+			/* For patch1, just add to list */
+			add_to_list (file_list, best_name (2, names), pos);
 		}
 
 	try_next:
@@ -1355,10 +1407,16 @@ index_patch2 (FILE *p2)
 	if (line)
 		free (line);
 
-	if (file_is_empty || files_in_patch2)
+	if (file_is_empty || *file_list)
 		return 0;
 	else
 		return 1;
+}
+
+static int
+index_patch2 (FILE *p2)
+{
+	return index_patch_generic (p2, &files_in_patch2, 1);
 }
 
 /* With flipdiff we have two patches we want to reorder.  The
@@ -1909,6 +1967,12 @@ no_patch (const char *f)
 }
 
 static int
+index_patch1 (FILE *p1)
+{
+	return index_patch_generic (p1, &files_in_patch1, 0);
+}
+
+static int
 interdiff (FILE *p1, FILE *p2, const char *patch1, const char *patch2)
 {
 	char *line = NULL;
@@ -1925,6 +1989,20 @@ interdiff (FILE *p1, FILE *p2, const char *patch1, const char *patch2)
 
 	if (index_patch2 (p2))
 		no_patch (patch2);
+
+	/* Index patch1 and determine ignore_components if not specified */
+	if (index_patch1 (p1))
+		no_patch (patch1);
+
+	/* Determine ignore_components automatically if not explicitly specified */
+	if (!ignore_components_specified) {
+		ignore_components = determine_ignore_components (files_in_patch1, files_in_patch2);
+		if (debug)
+			fprintf (stderr, "Auto-determined -p%d\n", ignore_components);
+	}
+
+	/* Reset file pointer for patch1 */
+	rewind (p1);
 
 	/* Search for next file to patch */
 	while (!feof (p1)) {
@@ -2020,6 +2098,7 @@ interdiff (FILE *p1, FILE *p2, const char *patch1, const char *patch2)
 		fclose (flip1);
 	if (flip2)
 		fclose (flip2);
+	free_list (files_in_patch1);
 	free_list (files_in_patch2);
 	free_list (files_done);
 	if (line)
@@ -2163,6 +2242,7 @@ main (int argc, char *argv[])
 			ignore_components = strtoul (optarg, &end, 0);
 			if (optarg == end)
 				syntax (1);
+			ignore_components_specified = 1;
 			break;
 		case 'q':
 			human_readable = 0;

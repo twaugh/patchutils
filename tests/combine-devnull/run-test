@@ -1,0 +1,54 @@
+#!/bin/sh
+
+# This is a combinediff(1) testcase for the /dev/null issue.
+# Issue: https://github.com/twaugh/patchutils/issues/23
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Create the first patch that creates a new file
+cat << EOF > patch1
+--- /dev/null
++++ b/txt
+@@ -0,0 +1,3 @@
++a
++b
++c
+EOF
+
+# Create the second patch that modifies the same file
+cat << EOF > patch2
+--- a/txt
++++ b/txt
+@@ -1,3 +1,2 @@
+ a
+ b
+-c
+EOF
+
+# Expected combined output should be:
+cat << EOF > expected
+diff -u /dev/null b/txt
+--- /dev/null
++++ b/txt
+@@ -0,0 +1,2 @@
++a
++b
+EOF
+
+# Run combinediff
+${COMBINEDIFF} patch1 patch2 2>errors >actual || exit 1
+[ -s errors ] && exit 1
+
+# Compare the actual output with expected
+diff -u expected actual || exit 1
+
+# Test that the combined patch actually works
+rm -f txt
+${PATCH} -p1 < actual || exit 1
+cat << EOF > expected_result
+a
+b
+EOF
+diff -u expected_result txt || exit 1
+
+exit 0
