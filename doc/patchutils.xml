@@ -2266,7 +2266,10 @@ will pipe patch of file #2 to vim - -R
 	<para>The regular expression is treated as POSIX Basic Regular
 	  Expression syntax, unless the <option>-E</option> option is
 	  given in which case POSIX Extended Regular Expression syntax
-	  is used.</para>
+	  is used. When compiled with PCRE2 support, PCRE regular expressions
+	  are used instead of POSIX regular expressions, and the <option>-E</option>
+	  option has no effect since PCRE already supports extended regular
+	  expression features by default.</para>
 
 	<para>For example, to see the patches in
 	  <filename>my.patch</filename> which contain the regular
@@ -2497,7 +2500,9 @@ will pipe patch of file #2 to vim - -R
 	    <option>--extended-regexp</option></term>
 	    <listitem>
 	      <para>Use POSIX Extended Regular Expression
-	        syntax.</para>
+	        syntax. Note: when compiled with PCRE2 support, this option
+	        has no effect as PCRE regular expressions are used by default
+	        and already support extended regular expression features.</para>
 	    </listitem>
 	  </varlistentry>
 

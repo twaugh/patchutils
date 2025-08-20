@@ -1,0 +1,27 @@
+#!/bin/sh
+
+# Test for PCRE2 extended regexp functionality (GitHub issue #60)
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Create a simple test diff with both patterns
+cat << EOF > diff
+--- file1
++++ file1
+@@ -1,2 +1,3 @@
+ context
+-old
++landblockelim
++blockall
+EOF
+
+# Test extended regexp pattern with -E flag
+${GREPDIFF} -E 'landblockelim|blockall' diff 2>errors >output || exit 1
+
+[ -s errors ] && exit 1
+
+# Verify both patterns are found
+if ! grep -q "file1" output; then
+    echo "ERROR: Extended regexp pattern failed to match"
+    exit 1
+fi
