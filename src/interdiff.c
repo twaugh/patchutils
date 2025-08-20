@@ -223,7 +223,7 @@ add_line (struct lines_info *lines, const char *line, size_t length,
 {
 	struct lines *make;
 	struct lines *at;
-	
+
 	make = xmalloc (sizeof *make);
 	make->n = n;
 	make->line = xmalloc (length + 1);
@@ -288,7 +288,7 @@ merge_lines (struct lines_info *lines1, struct lines_info *lines2)
 	struct lines *at, *at_prev, *make;
 
 
-	/* 
+	/*
 	 * Note: we don't care about the tail member here - not needed
 	 * anymore.
 	 */
@@ -664,7 +664,7 @@ do_output_patch1_only (FILE *p1, FILE *out, int not_reverted)
 			orig_lines = orig_num_lines (d1);
 			new_lines = new_num_lines (d2);
 		}
-		
+
 
 		free (d1);
 		free (d2);
@@ -1183,7 +1183,7 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 	memcpy (argv + 2, diff_opts, num_diff_opts * sizeof (char *));
 	memcpy (argv + 2 + num_diff_opts, (char *[]) { tmpp1, tmpp2, NULL }, (2 + 1) * sizeof (char *));
 	in = xpipe (DIFF, &child, "r", argv);
-	
+
 	/* Eat the first line */
 	for (;;) {
 		int ch = fgetc (in);
@@ -1482,7 +1482,7 @@ patch2_removes_line (unsigned long line,	/* line number after patch1 */
 			return 1;
 		}
 	}
-	
+
 	return 0;
 }
 
@@ -2044,7 +2044,7 @@ interdiff (FILE *p1, FILE *p2, const char *patch1, const char *patch2)
 		free (names[0]);
 		free (names[1]);
 		patch_found = 1;
-		
+
 		/* check if we need to process it and init context */
 		if (!check_filename(p)) {
 			add_to_list (&files_done, p, 0);
@@ -2301,7 +2301,7 @@ main (int argc, char *argv[])
 	if (unzip && flipdiff_inplace)
 		error (EXIT_FAILURE, 0,
 		       "-z and --in-place are mutually exclusive.");
-	
+
 	/* Add default color=always if no color option was specified and we're in a terminal */
 	int has_color_option = 0;
 	for (int i = 0; i < num_diff_opts; i++) {
@@ -2317,7 +2317,7 @@ main (int argc, char *argv[])
 
 	if (optind + 2 != argc)
 		syntax (1);
-	
+
 	if (unzip) {
 		p1 = xopen_unzip (argv[optind], "rb");
 		p2 = xopen_unzip (argv[optind + 1], "rb");
