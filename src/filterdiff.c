@@ -1257,7 +1257,11 @@ const char * syntax_str =
 "  -v, --verbose\n"
 "            verbose output -- use more than once for extra verbosity\n"
 "  -E, --extended-regexp (grepdiff)\n"
+#ifdef HAVE_PCRE2POSIX_H
+"            this option has no effect as PCRE regexes are used by default (grepdiff)\n"
+#else
 "            use extended regexps, like egrep (grepdiff)\n"
+#endif
 "  -E, --empty-files-as-absent (lsdiff)\n"
 "            treat empty files as absent (lsdiff)\n"
 "  -f FILE, --file=FILE (grepdiff)\n"

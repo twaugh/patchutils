@@ -56,20 +56,48 @@ dnl gnulib will handle getopt and error functions
 dnl Check pcre2 availability
 AC_MSG_CHECKING([whether PCRE2 support is requested])
 AC_ARG_WITH([pcre2],
-            [AS_HELP_STRING([--with-pcre2],
-                            [use pcre2 regex library @<:@default=check@:>@])],
+            [AS_HELP_STRING([--with-pcre2@<:@=PATH@:>@],
+                            [use pcre2 regex library, optionally from PATH @<:@default=check@:>@])],
             [], [with_pcre2=check])
 LIBPCRE2=
 AS_IF([test "x$with_pcre2" != xno],
       [
        AC_MSG_RESULT($with_pcre2)
+       dnl Handle custom path for PCRE2
+       AS_IF([test "x$with_pcre2" != xyes && test "x$with_pcre2" != xcheck],
+             [
+              dnl Custom path specified
+              PCRE2_CPPFLAGS="-I$with_pcre2/include"
+              PCRE2_LDFLAGS="-L$with_pcre2/lib"
+              save_CPPFLAGS="$CPPFLAGS"
+              save_LDFLAGS="$LDFLAGS"
+              CPPFLAGS="$CPPFLAGS $PCRE2_CPPFLAGS"
+              LDFLAGS="$LDFLAGS $PCRE2_LDFLAGS"
+             ])
        AC_CHECK_HEADERS([pcre2posix.h], [], [LIBPCRE2=_missing_header])
        AC_CHECK_LIB([pcre2-posix${LIBPCRE2}], [regexec],
-                    [],
-                    [if test "x$with_pcre2" != xcheck; then
-                     AC_MSG_FAILURE(
-                       [--with-pcre2 was given, but test for pcre2-posix failed])
-                     fi]
+                    [
+                     dnl Success - add the flags permanently if custom path was used
+                     AS_IF([test "x$with_pcre2" != xyes && test "x$with_pcre2" != xcheck],
+                           [
+                            CPPFLAGS="$save_CPPFLAGS $PCRE2_CPPFLAGS"
+                            LDFLAGS="$save_LDFLAGS $PCRE2_LDFLAGS"
+                           ])
+                     dnl Add the library to LIBS
+                     LIBS="$LIBS -lpcre2-posix${LIBPCRE2}"
+                    ],
+                    [
+                     dnl Failure - restore original flags if custom path was used
+                     AS_IF([test "x$with_pcre2" != xyes && test "x$with_pcre2" != xcheck],
+                           [
+                            CPPFLAGS="$save_CPPFLAGS"
+                            LDFLAGS="$save_LDFLAGS"
+                           ])
+                     if test "x$with_pcre2" != xcheck; then
+                      AC_MSG_FAILURE(
+                        [--with-pcre2 was given, but test for pcre2-posix failed])
+                      fi
+                    ]
                     )
       ],
       AC_MSG_RESULT(no)
