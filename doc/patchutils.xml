@@ -888,7 +888,7 @@
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>--as-numbered-lines</option>=before|after</term>
+	    <term><option>--as-numbered-lines</option>=before|after|original-before|original-after</term>
 	    <listitem>
 	      <para>Instead of a patch fragment, display the lines of
 	        the selected hunks with the line number of the file
@@ -897,6 +897,13 @@
 	        beginning of each line.  Each hunk except the first
 	        will have a line consisting of <quote>...</quote>
 	        before it.</para>
+	      <para>The <literal>before</literal> and <literal>after</literal>
+	        options show line numbers adjusted for any skipped hunks.
+	        The <literal>original-before</literal> and <literal>original-after</literal>
+	        options show line numbers as they appear in the original diff,
+	        preserving the original line number context. This is useful for
+	        CI/CD systems that need to report errors on the exact line numbers
+	        from the original diff.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -1021,6 +1028,12 @@
 
 <screen><![CDATA[filterdiff --as-numbered-lines=before
 patch.file]]></screen></para>
+
+	<para>For CI/CD systems that need line numbers matching the original
+	  diff context (useful for error reporting), use the original-* variants:
+
+<screen><![CDATA[grepdiff pattern --output-matching=hunk \
+  --as-numbered-lines=original-after patch.file]]></screen></para>
 
 	<para>Filterdiff can also be used to convert between unified
 	  and context format diffs:
@@ -2458,7 +2471,7 @@ will pipe patch of file #2 to vim - -R
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>--as-numbered-lines</option>=before|after</term>
+	    <term><option>--as-numbered-lines</option>=before|after|original-before|original-after</term>
 	    <listitem>
 	      <para>Instead of a patch fragment, display the lines of
 	        the selected hunks with the line number of the file
@@ -2467,6 +2480,13 @@ will pipe patch of file #2 to vim - -R
 	        beginning of each line.  Each hunk except the first
 	        will have a line consisting of <quote>...</quote>
 	        before it.</para>
+	      <para>The <literal>before</literal> and <literal>after</literal>
+	        options show line numbers adjusted for any skipped hunks.
+	        The <literal>original-before</literal> and <literal>original-after</literal>
+	        options show line numbers as they appear in the original diff,
+	        preserving the original line number context. This is useful for
+	        CI/CD systems that need to report errors on the exact line numbers
+	        from the original diff.</para>
 	    </listitem>
 	  </varlistentry>
 

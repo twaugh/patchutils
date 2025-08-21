@@ -51,7 +51,7 @@ _filterdiff() {
             return 0
             ;;
         --as-numbered-lines)
-            COMPREPLY=($(compgen -W "before after" -- "$cur"))
+            COMPREPLY=($(compgen -W "before after original-before original-after" -- "$cur"))
             return 0
             ;;
         --format)
@@ -141,7 +141,7 @@ _grepdiff() {
             return 0
             ;;
         --as-numbered-lines)
-            COMPREPLY=($(compgen -W "before after" -- "$cur"))
+            COMPREPLY=($(compgen -W "before after original-before original-after" -- "$cur"))
             return 0
             ;;
         --format)

@@ -57,7 +57,9 @@ struct range {
 enum line_numbering {
 	None = 0,
 	Before,
-	After
+	After,
+	OriginalBefore,
+	OriginalAfter
 };
 
 enum {
@@ -443,9 +445,9 @@ do_unified (FILE *f, char **header, unsigned int num_headers,
                                         unsigned int i;
                                         for (i = 0; i < num_headers - 2; i++)
                                                 output_header_line (header[i]);
-					if (number_lines != After)
+					if (number_lines != After && number_lines != OriginalAfter)
 						output_header_line (header[num_headers - 2]);
-					if (number_lines != Before)
+					if (number_lines != Before && number_lines != OriginalBefore)
 						output_header_line (header[num_headers - 1]);
 					header_displayed = 1;
 				}
@@ -497,6 +499,22 @@ do_unified (FILE *f, char **header, unsigned int num_headers,
 					     hunknum > 1))
 						fputs ("...\n", output_to);
 					break;
+				case OriginalBefore:
+					// Note the initial line number (original, no munge)
+					track_linenum = orig_offset;
+					if (!first_hunk ||
+					    (output_matching == output_file &&
+					     hunknum > 1))
+						fputs ("...\n", output_to);
+					break;
+				case OriginalAfter:
+					// Note the initial line number (original, no munge)
+					track_linenum = new_offset;
+					if (!first_hunk ||
+					    (output_matching == output_file &&
+					     hunknum > 1))
+						fputs ("...\n", output_to);
+					break;
 				}
 			} else if (mode == mode_filter)
 				// We are missing this hunk out, but
@@ -542,9 +560,9 @@ do_unified (FILE *f, char **header, unsigned int num_headers,
                                                 unsigned int i;
                                                 for (i = 0; i < num_headers - 2; i++)
                                                         output_header_line (header[i]);
-                                                if (number_lines != After)
+                                                if (number_lines != After && number_lines != OriginalAfter)
                                                         output_header_line (header[num_headers - 2]);
-                                                if (number_lines != Before)
+                                                if (number_lines != Before && number_lines != OriginalBefore)
                                                         output_header_line (header[num_headers - 1]);
 						header_displayed = 1;
                                         }
@@ -573,7 +591,9 @@ do_unified (FILE *f, char **header, unsigned int num_headers,
 				// Just display each line.
 				fwrite (*line, (size_t) got, 1, output_to);
 			else if ((number_lines == Before && **line != '+') ||
-				 (number_lines == After && **line != '-')) {
+				 (number_lines == After && **line != '-') ||
+				 (number_lines == OriginalBefore && **line != '+') ||
+				 (number_lines == OriginalAfter && **line != '-')) {
 				// Numbered line.
                                 const char *rest = *line;
                                 if (rest[0] != '\n')
@@ -759,9 +779,9 @@ do_context (FILE *f, char **header, unsigned int num_headers,
                                 unsigned int i;
                                 for (i = 0; i < num_headers - 2; i++)
                                         output_header_line (header[i]);
-				if (number_lines != After)
+				if (number_lines != After && number_lines != OriginalAfter)
 					output_header_line (header[num_headers - 2]);
-				if (number_lines != Before)
+				if (number_lines != Before && number_lines != OriginalBefore)
 					output_header_line (header[num_headers - 1]);
 				header_displayed = 1;
 			}
@@ -820,6 +840,30 @@ do_context (FILE *f, char **header, unsigned int num_headers,
 				     hunknum > 1))
 					fputs ("...\n", output_to);
 				break;
+
+			case OriginalBefore:
+				if (i != 0)
+					break;
+
+				// Note the initial line number (original, no munge).
+				track_linenum = line_start;
+				if (!first_hunk ||
+				    (output_matching == output_file &&
+				     hunknum > 1))
+					fputs ("...\n", output_to);
+				break;
+
+			case OriginalAfter:
+				if (i != 1)
+					break;
+
+				// Note the initial line number (original, no munge).
+				track_linenum = line_start;
+				if (!first_hunk ||
+				    (output_matching == output_file &&
+				     hunknum > 1))
+					fputs ("...\n", output_to);
+				break;
 			}
 		}
 
@@ -866,9 +910,9 @@ do_context (FILE *f, char **header, unsigned int num_headers,
                                                 unsigned int i;
                                                 for (i = 0; i < num_headers - 2; i++)
                                                         output_header_line (header[i]);
-						if (number_lines != After)
+						if (number_lines != After && number_lines != OriginalAfter)
 							output_header_line (header[num_headers - 2]);
-						if (number_lines != Before)
+						if (number_lines != Before && number_lines != OriginalBefore)
 							output_header_line (header[num_headers - 1]);
 						header_displayed = 1;
 					}
@@ -927,7 +971,9 @@ do_context (FILE *f, char **header, unsigned int num_headers,
 					fwrite (*line, (size_t) got,
 						1, output_to);
 				else if ((number_lines == Before && !i) ||
-					 (number_lines == After && i)) {
+					 (number_lines == After && i) ||
+					 (number_lines == OriginalBefore && !i) ||
+					 (number_lines == OriginalAfter && i)) {
 					fprintf (output_to, "%lu\t:",
 						 track_linenum++);
 					fwrite (2 + *line, (size_t) got - 2,
@@ -1217,9 +1263,9 @@ const char * syntax_str =
 "            include only files in range F, if range begins with x show all excluding range F\n"
 "  --annotate (filterdiff, patchview, grepdiff)\n"
 "            annotate each hunk with the filename and hunk number (filterdiff, patchview, grepdiff)\n"
-"  --as-numbered-lines=before|after (filterdiff, patchview, grepdiff)\n"
-"            display lines as they would look before, or after, the (filterdiff, patchview, grepdiff)\n"
-"            patch is applied (filterdiff, patchview, grepdiff)\n"
+"  --as-numbered-lines=before|after|original-before|original-after (filterdiff, patchview, grepdiff)\n"
+"            display lines as they would look before, or after, the patch is applied;\n"
+"            or with original line numbers from the diff (original-before/original-after)\n"
 "  --format=context|unified (filterdiff, patchview, grepdiff)\n"
 "            set output format (filterdiff, patchview, grepdiff)\n"
 "  --output-matching=hunk|file (grepdiff)\n"
@@ -1632,6 +1678,10 @@ int main (int argc, char *argv[])
 				number_lines = Before;
 			else if (!strcmp (optarg, "after"))
 				number_lines = After;
+			else if (!strcmp (optarg, "original-before"))
+				number_lines = OriginalBefore;
+			else if (!strcmp (optarg, "original-after"))
+				number_lines = OriginalAfter;
 			else syntax (1);
 			break;
 		case 1000 + 'a':

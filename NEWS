@@ -12,6 +12,11 @@ Patchutils news
 	warnings, unused result warnings, and locale-related test failures.
 	Updated documentation and example spec file.
 
+	Added new --as-numbered-lines options: original-before and original-after.
+	These preserve original line numbers from the diff context, useful for
+	CI/CD systems that need to report errors on exact line numbers from the
+	original diff. Addresses GitHub issue #55.
+
 0.4.2 (stable)
 
 	Build system improvements: only run xmlto once during documentation
