@@ -1,0 +1,75 @@
+#!/bin/sh
+
+# Test for grepdiff --as-numbered-lines=original-* options
+# Tests the new original-before and original-after options that preserve
+# original line numbers from the diff (useful for CI/CD error reporting)
+# Addresses GitHub issue #55
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Create a test diff that reproduces the issue from the GitHub issue
+cat << EOF > diff
+diff --git a/foobar.txt b/foobar.txt
+index 8a19eed..ae745cf 100644
+--- a/foobar.txt
++++ b/foobar.txt
+@@ -0,0 +1,4 @@
++# pre-comment
++# spread over
++# three lines
++
+@@ -8 +12 @@
+-foo()
++foo(bar)
+EOF
+
+# Test --output-matching=hunk (shows adjusted line numbers in hunk headers)
+${GREPDIFF} foo --output-matching=hunk diff 2>errors >hunk_output || exit 1
+[ -s errors ] && exit 1
+
+# The hunk output shows adjusted line numbers (this is the existing behavior)
+cat << EOF | cmp - hunk_output || exit 1
+diff --git a/foobar.txt b/foobar.txt
+index 8a19eed..ae745cf 100644
+--- a/foobar.txt
++++ b/foobar.txt
+@@ -8 +8 @@
+-foo()
++foo(bar)
+EOF
+
+# Test --as-numbered-lines=original-after (the new option for this use case)
+${GREPDIFF} foo --output-matching=hunk --only-match=additions --as-numbered-lines=original-after diff 2>errors2 >numbered_output || exit 1
+[ -s errors2 ] && exit 1
+
+# The expected output should show line 12 (original line number from diff)
+cat << EOF | cmp - numbered_output || exit 1
+diff --git a/foobar.txt b/foobar.txt
+index 8a19eed..ae745cf 100644
++++ b/foobar.txt
+12	:foo(bar)
+EOF
+
+# Test --as-numbered-lines=original-before
+${GREPDIFF} foo --output-matching=hunk --only-match=additions --as-numbered-lines=original-before diff 2>errors3 >numbered_before_output || exit 1
+[ -s errors3 ] && exit 1
+
+# This should show line 8 for the "before" version (original line number from diff)
+cat << EOF | cmp - numbered_before_output || exit 1
+diff --git a/foobar.txt b/foobar.txt
+index 8a19eed..ae745cf 100644
+--- a/foobar.txt
+8	:foo()
+EOF
+
+# Test that regular --as-numbered-lines=after still works with adjusted line numbers
+${GREPDIFF} foo --output-matching=hunk --only-match=additions --as-numbered-lines=after diff 2>errors4 >numbered_adjusted_output || exit 1
+[ -s errors4 ] && exit 1
+
+# This should show line 8 (adjusted line number, old behavior)
+cat << EOF | cmp - numbered_adjusted_output || exit 1
+diff --git a/foobar.txt b/foobar.txt
+index 8a19eed..ae745cf 100644
++++ b/foobar.txt
+8	:foo(bar)
+EOF
