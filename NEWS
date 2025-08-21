@@ -22,6 +22,12 @@ Patchutils news
 	processing patches with multiple files, breaking the patch format.
 	Addresses GitHub issue #48.
 
+	Fixed recountdiff corruption of new file headers when git signature
+	lines are present. Previously, recountdiff would incorrectly change
+	"@@ -0,0 +1,N @@" to "@@ -1 +1,N @@" for new files in patches containing
+	git signature lines (e.g., "-- \n2.50.1"), causing patch application
+	to fail. Addresses GitHub issue #49.
+
 0.4.2 (stable)
 
 	Build system improvements: only run xmlto once during documentation
