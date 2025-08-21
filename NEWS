@@ -1,6 +1,32 @@
 Patchutils news
 ---------------
 
+0.4.3 (stable)
+
+	Added --in-place option to more tools for editing files in place.
+	Added --color option to interdiff with automatic terminal detection.
+	Improved PCRE2 support and fixed various build issues. Added support
+	for CRLF line endings in patch files. Fixed interdiff to reverse line
+	counts correctly when reversing patches. Added bash completions and
+	improved CI testing. Various bug fixes including use-after-free
+	warnings, unused result warnings, and locale-related test failures.
+	Updated documentation and example spec file.
+
+0.4.2 (stable)
+
+	Build system improvements: only run xmlto once during documentation
+	generation.
+
+0.4.0 (stable)
+
+	Added patchview utility for interactive patch viewing. Added PCRE2
+	library support as an alternative to PCRE. Added --only-match option
+	to grepdiff. Improved interdiff to provide more context when requested
+	and better handle whitespace damage. Fixed various issues including
+	hunk trimming, header output, context conversion, and handling of NUL
+	characters in patches. Updated FSF addresses and fixed resource leaks.
+	Improved test suite with parallel testing support.
+
 0.3.4 (stable)
 
 	Some fixes for filterdiff and rediff. The splitdiff utility
