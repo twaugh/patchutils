@@ -51,6 +51,7 @@
 
 struct file_info
 {
+	const char *diff_command;
 	const char *orig_file;
 	const char *new_file;
 	int info_written;
@@ -121,7 +122,7 @@ static unsigned long copy_hunk (FILE *in, FILE *out,
 
 /* Copy hunk from in to out, adjusting offsets by line_offset. */
 static unsigned long adjust_offsets_and_copy (long *offset, FILE *in,
-					      FILE *out)
+					      FILE *out, struct hunk *hunk)
 {
 	char *line = NULL;
 	size_t linelen = 0;
@@ -136,6 +137,8 @@ static unsigned long adjust_offsets_and_copy (long *offset, FILE *in,
 	if (!strncmp (line, "--- ", 4)) {
 		/* This is the first hunk of a group.  Copy the
 		 * file info. */
+		if (hunk && hunk->info && hunk->info->diff_command)
+			fputs (hunk->info->diff_command, out);
 		fputs (line, out);
 		if (getline (&line, &linelen, in) == -1)
 			goto out;
@@ -228,21 +231,35 @@ static void copy_to (struct hunk *from, struct hunk *upto,
 {
 	if (!is_first && from && from->info && !from->info->info_written &&
 	    from->info->info_pending) {
+		if (from->info->diff_command)
+			fputs (from->info->diff_command, out);
 		fputs (from->info->orig_file, out);
 		fputs (from->info->new_file, out);
 		from->info->info_written = 1;
 	}
 
 	if (is_first && from) {
-		/* Copy leading non-diff text. */
+		/* Copy leading non-diff text, but skip diff command lines
+		 * as they will be output by the file info mechanism. */
 		fseek (in, 0, SEEK_SET);
-		copy_lines (in, out, from->line_in_diff - 1);
+		unsigned long lines_to_copy = from->line_in_diff - 1;
+		char *line = NULL;
+		size_t linelen = 0;
+		for (unsigned long i = 0; i < lines_to_copy; i++) {
+			if (getline (&line, &linelen, in) == -1)
+				break;
+			/* Skip diff command lines as they're handled by file info */
+			if (strncmp (line, "diff ", 5) != 0)
+				fputs (line, out);
+		}
+		if (line)
+			free (line);
 	}
 
 	for (; from && from != upto; from = from->next) {
 		unsigned long count;
 		fsetpos (in, &from->filepos);
-		count = adjust_offsets_and_copy (line_offset, in, out);
+		count = adjust_offsets_and_copy (line_offset, in, out, from);
 		copy_trailing (from, in, out, count);
 	}
 }
@@ -358,6 +375,8 @@ static long removed_hunk (const char *meta, FILE *modify, FILE *t,
 
 		/* Display a file name banner. */
 		if (hunk->info && !hunk->info->info_written) {
+			if (hunk->info->diff_command)
+				fputs (hunk->info->diff_command, t);
 			fputs (hunk->info->orig_file, t);
 			fputs (hunk->info->new_file, t);
 			hunk->info->info_written = 1;
@@ -661,6 +680,8 @@ static long show_modified_hunk (struct hunk **hunkp, long line_offset,
 				FILE *write_to;
 				write_to = t_written_to ? t : out;
 				if (hunk->info && !hunk->info->info_written) {
+					if (hunk->info->diff_command)
+						fputs (hunk->info->diff_command, out);
 					fputs (hunk->info->orig_file, out);
 					fputs (hunk->info->new_file, out);
 					hunk->info->info_written = 1;
@@ -759,6 +780,8 @@ static long show_modified_hunk (struct hunk **hunkp, long line_offset,
 #endif /* DEBUG */
 
 	if (hunk->info && !hunk->info->info_written) {
+		if (hunk->info->diff_command)
+			fputs (hunk->info->diff_command, out);
 		fputs (hunk->info->orig_file, out);
 		fputs (hunk->info->new_file, out);
 		hunk->info->info_written = 1;
@@ -818,6 +841,7 @@ static int rediff (const char *original, const char *edited, FILE *out)
 		unsigned long o_count, n_count;
 		struct hunk *newhunk;
 		fpos_t pos;
+		char *diff_cmd = NULL;
 
 		/* Search for start of hunk (or file info). */
 		do {
@@ -830,6 +854,13 @@ static int rediff (const char *original, const char *edited, FILE *out)
 				error (EXIT_FAILURE, errno,
 				       "Don't know how to handle context "
 				       "format yet.");
+
+			/* Capture potential diff command line */
+			if (!strncmp (line, "diff ", 5)) {
+				if (diff_cmd)
+					free (diff_cmd);
+				diff_cmd = xstrdup (line);
+			}
 		} while (strncmp (line, "@@ ", 3) &&
 			 strncmp (line, "--- ", 4));
 
@@ -847,6 +878,7 @@ static int rediff (const char *original, const char *edited, FILE *out)
 		if (!strncmp (line, "--- ", 4)) {
 			struct file_info *info = xmalloc (sizeof *info);
 			info->info_written = info->info_pending = 0;
+			info->diff_command = diff_cmd;
 			info->orig_file = xstrdup (line);
 			if (getline (&line, &linelen, o) == -1)
 				error (EXIT_FAILURE, errno,
@@ -857,7 +889,11 @@ static int rediff (const char *original, const char *edited, FILE *out)
 				error (EXIT_FAILURE, errno,
 				       "Premature end of file");
 			linenum += 2;
-		} else newhunk->info = NULL;
+		} else {
+			newhunk->info = NULL;
+			if (diff_cmd)
+				free (diff_cmd);
+		}
 
 		read_atatline (line, &newhunk->orig_offset,
 			       &newhunk->orig_count,

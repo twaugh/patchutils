@@ -17,6 +17,11 @@ Patchutils news
 	CI/CD systems that need to report errors on exact line numbers from the
 	original diff. Addresses GitHub issue #55.
 
+	Fixed rediff to preserve diff command headers in multi-file patches.
+	Previously, rediff would remove "diff -rpU 3" command lines when
+	processing patches with multiple files, breaking the patch format.
+	Addresses GitHub issue #48.
+
 0.4.2 (stable)
 
 	Build system improvements: only run xmlto once during documentation
