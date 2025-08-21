@@ -1,5 +1,5 @@
 [ -n "$VERBOSE" ] && set -x
-${ARENA:=test-arena}
+: ${ARENA:=test-arena}
 THISDIR=$(dirname $0)
 ARENA=${ARENA}/${THISDIR##*/}
 rm -rf $ARENA
