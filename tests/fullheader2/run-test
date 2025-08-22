@@ -7,6 +7,7 @@
 . ${top_srcdir-.}/tests/common.sh
 
 cat <<"EOF" > git-output
+diff --git a/elf/tst-audit11mod1.c b/elf/tst-audit11mod1.c
 new file mode 100644
 index 0000000..f0c06ab
 --- /dev/null
