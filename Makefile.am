@@ -75,11 +75,11 @@ install-exec-hook:
 install-data-hook:
 	if [ -d "$(DESTDIR)$(bashcompletiondir)" ]; then \
 		cd "$(DESTDIR)$(bashcompletiondir)" && \
-		mv bash-completion-patchutils patchutils && \
-		for cmd in filterdiff lsdiff grepdiff interdiff combinediff flipdiff rediff \
+		mv bash-completion-patchutils interdiff && \
+		for cmd in filterdiff lsdiff grepdiff combinediff flipdiff rediff \
 		           splitdiff recountdiff unwrapdiff dehtmldiff editdiff espdiff \
 		           fixcvsdiff patchview gitdiff svndiff gitdiffview svndiffview; do \
-			ln -sf patchutils "$$cmd" || true; \
+			ln -sf interdiff "$$cmd" || true; \
 		done; \
 	fi
 
