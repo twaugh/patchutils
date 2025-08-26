@@ -1828,14 +1828,9 @@ int main (int argc, char *argv[])
 
 			if (inplace_mode) {
 				/* Redirect stdout to temporary file for in-place processing */
-				FILE *temp_output = xtmpfile();
-				FILE *old_stdout = stdout;
-				stdout = temp_output;
+				FILE *temp_output = redirectfd(stdout);
 
 				filterdiff (f, argv[i]);
-
-				/* Restore stdout */
-				stdout = old_stdout;
 
 				/* Write temp file contents back to original file */
 				if (write_file_inplace(argv[i], temp_output) != 0) {
