@@ -832,9 +832,9 @@ output_patch1_only (FILE *p1, FILE *out, int not_reverted)
 
 	fflush (NULL);
 	char *argv[2 + num_diff_opts + 2 + 1];
-	memcpy (argv, (const char *[]) { DIFF, options }, 2 * sizeof (char *));
+	memcpy (argv, ((const char *[]) { DIFF, options }), 2 * sizeof (char *));
 	memcpy (argv + 2, diff_opts, num_diff_opts * sizeof (char *));
-	memcpy (argv + 2 + num_diff_opts, (char *[]) { tmpp1, tmpp2, NULL }, (2 + 1) * sizeof (char *));
+	memcpy (argv + 2 + num_diff_opts, ((char *[]) { tmpp1, tmpp2, NULL }), (2 + 1) * sizeof (char *));
 	in = xpipe (DIFF, &child, "r", argv);
 
 	/* Eat the first line */
@@ -1194,9 +1194,9 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 	fflush (NULL);
 
 	char *argv[2 + num_diff_opts + 2 + 1];
-	memcpy (argv, (const char *[]) { DIFF, options }, 2 * sizeof (char *));
+	memcpy (argv, ((const char *[]) { DIFF, options }), 2 * sizeof (char *));
 	memcpy (argv + 2, diff_opts, num_diff_opts * sizeof (char *));
-	memcpy (argv + 2 + num_diff_opts, (char *[]) { tmpp1, tmpp2, NULL }, (2 + 1) * sizeof (char *));
+	memcpy (argv + 2 + num_diff_opts, ((char *[]) { tmpp1, tmpp2, NULL }), (2 + 1) * sizeof (char *));
 	in = xpipe (DIFF, &child, "r", argv);
 
 	/* Eat the first line */
@@ -1613,9 +1613,9 @@ take_diff (const char *f1, const char *f2, char *headers[2],
 		sprintf (options, "-U%d", max_context);
 
 	char *argv[2 + num_diff_opts + 2 + 1];
-	memcpy (argv, (const char *[]) { DIFF, options }, 2 * sizeof (char *));
+	memcpy (argv, ((const char *[]) { DIFF, options }), 2 * sizeof (char *));
 	memcpy (argv + 2, diff_opts, num_diff_opts * sizeof (char *));
-	memcpy (argv + 2 + num_diff_opts, (const char *[]) { f1, f2, NULL }, (2 + 1) * sizeof (char *));
+	memcpy (argv + 2 + num_diff_opts, ((const char *[]) { f1, f2, NULL }), (2 + 1) * sizeof (char *));
 	if (debug) {
 		fputs ("+", stdout);
 		for (int i = 0; argv[i]; i++) {
