@@ -42,6 +42,8 @@ char *xstrndup (const char *s, const size_t n);
 int xmkstemp (char *pattern);
 /* safe tmpfile */
 FILE *xtmpfile (void);
+/* redirect fd to temp file */
+FILE *redirectfd (FILE* fd);
 
 FILE *xopen(const char *file, const char *mode);
 FILE *xopen_seekable(const char *file, const char *mode);
