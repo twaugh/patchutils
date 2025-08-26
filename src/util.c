@@ -116,6 +116,30 @@ FILE *xtmpfile (void)
 	return ret;
 }
 
+FILE *redirectfd (FILE* fd)
+{
+	FILE *ret;
+	char *tmpfname;
+	char *tmpdir = getenv ("TMPDIR");
+	size_t tmpdirlen;
+
+	if (tmpdir == NULL) {
+		tmpdir = P_tmpdir;
+	}
+
+	tmpdirlen = strlen (tmpdir);
+	tmpfname = xmalloc (tmpdirlen + 8);
+	strcpy (tmpfname, tmpdir);
+	strcpy (tmpfname + tmpdirlen, "/XXXXXX");
+	close(mkstemp(tmpfname));
+	ret = freopen (tmpfname, "w+b", fd);
+	if (ret == NULL)
+		error (EXIT_FAILURE, errno, "freopen");
+	unlink (tmpfname);
+	free (tmpfname);
+	return ret;
+}
+
 /*
  * Pattern operations.
  */
