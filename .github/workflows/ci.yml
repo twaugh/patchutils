@@ -134,7 +134,7 @@ jobs:
 
     - name: Clone gnulib for bootstrap
       run: |
-        git clone --depth 1 https://git.savannah.gnu.org/git/gnulib.git /tmp/gnulib
+        ./gnulib-update.sh
 
     - name: Bootstrap
       run: |
@@ -184,7 +184,7 @@ jobs:
 
     - name: Clone gnulib for bootstrap
       run: |
-        git clone --depth 1 https://git.savannah.gnu.org/git/gnulib.git /tmp/gnulib
+        ./gnulib-update.sh
 
     - name: Bootstrap
       run: |
