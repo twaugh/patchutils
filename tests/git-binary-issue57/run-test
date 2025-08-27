@@ -36,7 +36,7 @@ ${LSDIFF} git-binary.patch 2>errors2 >result2 || exit 1
 [ -s errors2 ] && exit 1
 
 cat << EOF | cmp - result2 || exit 1
-binary-file
+a/binary-file
 b/text-file.txt
 EOF
 

@@ -1,0 +1,111 @@
+#!/bin/sh
+
+# Test for --git-prefixes option
+# This test ensures that the --git-prefixes option works correctly
+# for both strip and keep modes with various types of Git diffs
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Create test patch with different types of Git diffs:
+# 1. Binary file (no hunks, uses diff --git line for filenames)
+# 2. File rename (uses "rename from/to" headers - no a/b/ prefixes)
+# 3. Mode-only change (no hunks, uses diff --git line for filenames)
+# 4. Regular file with content changes (has traditional --- +++ lines)
+cat << EOF > mixed-git.patch
+diff --git a/binary-file b/binary-file
+new file mode 100644
+index 0000000..998a95d
+Binary files /dev/null and b/binary-file differ
+diff --git a/renamed-file b/new-name
+similarity index 100%
+rename from renamed-file
+rename to new-name
+diff --git a/mode-only.sh b/mode-only.sh
+old mode 100755
+new mode 100644
+diff --git a/regular-file.txt b/regular-file.txt
+index abcdefg..1234567 100644
+--- a/regular-file.txt
++++ b/regular-file.txt
+@@ -1,2 +1,2 @@
+-old content
++new content
+EOF
+
+# Test default behavior (keep prefixes)
+${LSDIFF} mixed-git.patch 2>errors1 >result1 || exit 1
+[ -s errors1 ] && exit 1
+
+# Expected output explanation:
+# - a/binary-file: from "diff --git a/binary-file b/binary-file" (keeps a/ prefix)
+# - new-name: from "rename to new-name" header (no prefix to keep - rename headers don't use a/b/ prefixes)
+# - a/mode-only.sh: from "diff --git a/mode-only.sh b/mode-only.sh" (keeps a/ prefix)
+# - a/regular-file.txt: from "diff --git a/regular-file.txt b/regular-file.txt" (keeps a/ prefix)
+cat << EOF | cmp - result1 || exit 1
+a/binary-file
+new-name
+a/mode-only.sh
+a/regular-file.txt
+EOF
+
+# Test --git-prefixes=keep (explicit)
+${LSDIFF} --git-prefixes=keep mixed-git.patch 2>errors2 >result2 || exit 1
+[ -s errors2 ] && exit 1
+
+cat << EOF | cmp - result2 || exit 1
+a/binary-file
+new-name
+a/mode-only.sh
+a/regular-file.txt
+EOF
+
+# Test --git-prefixes=strip
+${LSDIFF} --git-prefixes=strip mixed-git.patch 2>errors3 >result3 || exit 1
+[ -s errors3 ] && exit 1
+
+# Expected output explanation:
+# - binary-file: from "diff --git a/binary-file b/binary-file" (strips a/ prefix)
+# - new-name: from "rename to new-name" header (no prefix to strip - same as keep mode)
+# - mode-only.sh: from "diff --git a/mode-only.sh b/mode-only.sh" (strips a/ prefix)
+# - regular-file.txt: from "diff --git a/regular-file.txt b/regular-file.txt" (strips a/ prefix)
+cat << EOF | cmp - result3 || exit 1
+binary-file
+new-name
+mode-only.sh
+regular-file.txt
+EOF
+
+# Test with filterdiff --git-prefixes=strip
+${FILTERDIFF} --git-prefixes=strip -i "*.txt" mixed-git.patch 2>errors4 >result4 || exit 1
+[ -s errors4 ] && exit 1
+
+cat << EOF | cmp - result4 || exit 1
+diff --git a/regular-file.txt b/regular-file.txt
+index abcdefg..1234567 100644
+--- a/regular-file.txt
++++ b/regular-file.txt
+@@ -1,2 +1,2 @@
+-old content
++new content
+EOF
+
+# Test with grepdiff --git-prefixes=strip
+${GREPDIFF} --git-prefixes=strip --output-matching=file "content" mixed-git.patch 2>errors5 >result5 || exit 1
+[ -s errors5 ] && exit 1
+
+cat << EOF | cmp - result5 || exit 1
+diff --git a/regular-file.txt b/regular-file.txt
+index abcdefg..1234567 100644
+--- a/regular-file.txt
++++ b/regular-file.txt
+@@ -1,2 +1,2 @@
+-old content
++new content
+EOF
+
+# Test invalid argument
+${LSDIFF} --git-prefixes=invalid mixed-git.patch 2>errors6 >result6
+[ $? -eq 1 ] || exit 1
+grep -q "invalid argument to --git-prefixes" errors6 || exit 1
+
+exit 0
