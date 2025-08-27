@@ -1,6 +1,15 @@
 Patchutils news
 ---------------
 
+0.4.4 (stable)
+
+	Code improvements and build system enhancements. Added redirectfd()
+	utility function to redirect stdout without reassignment. Enhanced
+	CI testing with musl support for better compatibility testing.
+	Fixed bash completion symlinks for better installation. Made
+	grepdiff test case PCRE-aware to handle different regex library
+	configurations properly. Addresses GitHub issues #61, #91, and #93.
+
 0.4.3 (stable)
 
 	Added --in-place option to more tools for editing files in place.
