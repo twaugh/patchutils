@@ -5,10 +5,16 @@ Release: 0.1
 License: GPL
 Group: Applications/System
 URL: http://cyberelk.net/tim/patchutils/
-Source0: http://cyberelk.net/tim/data/patchutils/stable/%{name}-%{version}.tar.bz2
-BuildRoot: %{_tmppath}/%{name}-%{version}-buildroot
-Obsoletes: interdiff
-Provides: interdiff
+Source0: http://cyberelk.net/tim/data/patchutils/stable/%{name}-%{version}.tar.xz
+Obsoletes: interdiff <= 0.0.10
+Provides: interdiff = 0.0.11
+Requires: patch
+BuildRequires: make
+BuildRequires: gcc
+BuildRequires: perl-generators
+BuildRequires: xmlto
+BuildRequires: automake
+BuildRequires: autoconf
 
 %description
 This is a collection of programs that can manipulate patch files in
@@ -21,19 +27,18 @@ and simply listing the files modified by a patch.
 
 %build
 %configure
-make
+%make_build
+
+%check
 make check
 
 %install
-rm -rf %{buildroot}
 %make_install
 
-%clean
-rm -rf %{buildroot}
-
 %files
-%defattr(-,root,root)
-%doc AUTHORS ChangeLog README.md COPYING BUGS NEWS patchview/README.patchview
+%{!?_licensedir:%global license %doc}
+%doc AUTHORS ChangeLog README.md BUGS NEWS patchview/README.patchview
+%license COPYING
 %{_bindir}/*
 %{_datadir}/bash-completion/completions/*
 %if 0%{?have_xmlto}
