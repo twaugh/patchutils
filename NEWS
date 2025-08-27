@@ -9,6 +9,7 @@ Patchutils news
 	Fixed bash completion symlinks for better installation. Made
 	grepdiff test case PCRE-aware to handle different regex library
 	configurations properly. Addresses GitHub issues #61, #91, and #93.
+	Updated spec file.
 
 0.4.3 (stable)
 
