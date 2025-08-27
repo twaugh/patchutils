@@ -38,7 +38,7 @@ ${LSDIFF} git-mode.patch 2>errors2 >result2 || exit 1
 
 cat << EOF | cmp - result2 || exit 1
 a/script.sh
-mode-only.sh
+a/mode-only.sh
 EOF
 
 # Test including files with content changes

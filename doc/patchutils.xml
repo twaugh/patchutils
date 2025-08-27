@@ -654,6 +654,7 @@
 	    <arg>--strip-match=<replaceable>n</replaceable></arg>
 	  </group>
 	  <arg choice="opt">--strip=<replaceable>n</replaceable></arg>
+	  <arg choice="opt">--git-prefixes=<replaceable>strip|keep</replaceable></arg>
 	  <arg choice="opt">--addprefix=<replaceable>PREFIX</replaceable></arg>
 	  <arg choice="opt">--addoldprefix=<replaceable>PREFIX</replaceable></arg>
 	  <arg choice="opt">--addnewprefix=<replaceable>PREFIX</replaceable></arg>
@@ -861,6 +862,21 @@
 	    <listitem>
 	      <para>Remove the first <replaceable>n</replaceable>
 	        components of pathnames in the output.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--git-prefixes</option>=<replaceable>strip|keep</replaceable></term>
+	    <listitem>
+	      <para>How to handle <literal>a/</literal> and <literal>b/</literal>
+	        prefixes in Git diff filenames. With <literal>strip</literal>, removes
+	        the prefixes for consistent output. With <literal>keep</literal> (default),
+	        preserves existing behavior. Applies to both Git-specific diffs (binary files,
+	        renames, mode changes) and traditional diffs when part of a Git patch.
+	        Note: Git rename operations use <literal>rename from/to</literal> headers
+	        that contain literal filenames without <literal>a/</literal> or
+	        <literal>b/</literal> prefixes, so this option does not affect renamed
+	        filenames. The default will change to <literal>strip</literal> in version 0.5.0.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -1192,6 +1208,7 @@ patch.file]]></screen></para>
 	    <arg>--strip-match=<replaceable>n</replaceable></arg>
 	  </group>
 	  <arg choice="opt">--strip=<replaceable>n</replaceable></arg>
+	  <arg choice="opt">--git-prefixes=<replaceable>strip|keep</replaceable></arg>
 	  <arg choice="opt">--addprefix=<replaceable>PREFIX</replaceable></arg>
 	  <group choice="opt">
 	    <arg>-s</arg>
@@ -1609,13 +1626,13 @@ done)]]></screen></para>
 
     <screen>patchview</screen>
     (without args)
-    
+
 is equivalent to: lsdiff --number
 	</para>
 	<para>
     <screen>patchview -F2-</screen>
     (or with any other args)
-    
+
 is equivalent to: filterdiff -F2- (or whatever arguments are supplied)
 	</para>
 	<para>
@@ -1624,19 +1641,19 @@ There are two scripts for working with git (gitdiff and gitdiffview) and two for
     <screen>svndiff</screen>
     <screen>gitdiff</screen>
     (without args)
-    
+
 will give the list of files modified
 	</para>
 	<para>
     <screen>svndiff -F1</screen>
     <screen>gitdiff -F1</screen>
-    
+
 will show the patch of file #1
 	</para>
 	<para>
     <screen>svndiffview</screen>
     <screen>gitdiffview</screen>
-    
+
 pipe all patches through filterdiff to vim - -R (in read-only mode, easy to quit), showing complete patch with color.
 	</para>
 	<para>

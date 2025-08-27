@@ -54,8 +54,6 @@ int read_timestamp (const char *timestamp,
 		    struct tm *result /* may be NULL */,
 		    long *zone        /* may be NULL */);
 
-char *filename_from_header (const char *header);
-
 /* Git diff support */
 enum git_diff_type {
 	GIT_DIFF_NORMAL = 0,	/* Regular diff with hunks */
@@ -66,6 +64,14 @@ enum git_diff_type {
 	GIT_DIFF_DELETED_FILE	/* File deletion */
 };
 
+enum git_prefix_mode {
+	GIT_PREFIX_KEEP,   /* default for compatibility */
+	GIT_PREFIX_STRIP
+};
+
+char *filename_from_header (const char *header);
+char *filename_from_header_with_git_prefix_mode (const char *header, enum git_prefix_mode prefix_mode);
+
 enum git_diff_type detect_git_diff_type (char **headers, unsigned int num_headers);
 int extract_git_filenames (char **headers, unsigned int num_headers,
-			   char **old_name, char **new_name);
+			   char **old_name, char **new_name, enum git_prefix_mode prefix_mode);

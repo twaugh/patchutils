@@ -1089,6 +1089,18 @@ read_timestamp (const char *timestamp, struct tm *result, long *zone)
 	return 0;
 }
 
+/* Helper function to strip Git a/ or b/ prefixes from a filename */
+static char *
+strip_git_prefix_from_filename (const char *filename, enum git_prefix_mode prefix_mode)
+{
+	if (prefix_mode == GIT_PREFIX_STRIP &&
+	    ((filename[0] == 'a' && filename[1] == '/') ||
+	     (filename[0] == 'b' && filename[1] == '/'))) {
+		return xstrdup (filename + 2);
+	}
+	return xstrdup (filename);
+}
+
 char *
 filename_from_header (const char *header)
 {
@@ -1111,6 +1123,18 @@ filename_from_header (const char *header)
 		h = first_space;
 
 	return xstrndup (header, h);
+}
+
+char *
+filename_from_header_with_git_prefix_mode (const char *header, enum git_prefix_mode prefix_mode)
+{
+	char *filename = filename_from_header (header);
+	if (prefix_mode == GIT_PREFIX_STRIP) {
+		char *stripped = strip_git_prefix_from_filename (filename, prefix_mode);
+		free (filename);
+		return stripped;
+	}
+	return filename;
 }
 
 enum git_diff_type
@@ -1164,7 +1188,7 @@ detect_git_diff_type (char **headers, unsigned int num_headers)
 
 int
 extract_git_filenames (char **headers, unsigned int num_headers,
-		       char **old_name, char **new_name)
+		       char **old_name, char **new_name, enum git_prefix_mode prefix_mode)
 {
 	unsigned int i;
 	char *git_line = NULL;
@@ -1206,8 +1230,8 @@ extract_git_filenames (char **headers, unsigned int num_headers,
 		if (!space1)
 			return 1;
 
-		/* Extract old filename, stripping a/ prefix if present */
-		if (space1 - p > 2 && p[0] == 'a' && p[1] == '/') {
+		/* Extract old filename, conditionally stripping a/ prefix */
+		if (prefix_mode == GIT_PREFIX_STRIP && space1 - p > 2 && p[0] == 'a' && p[1] == '/') {
 			*old_name = xstrndup (p + 2, space1 - p - 2);
 		} else {
 			*old_name = xstrndup (p, space1 - p);
@@ -1216,9 +1240,9 @@ extract_git_filenames (char **headers, unsigned int num_headers,
 		/* Find start of new filename (b/path) */
 		space2 = space1 + 1;
 
-		/* Extract new filename, stripping b/ prefix if present */
+		/* Extract new filename, conditionally stripping b/ prefix */
 		size_t new_len = strcspn (space2, "\n\r");
-		if (new_len > 2 && space2[0] == 'b' && space2[1] == '/') {
+		if (prefix_mode == GIT_PREFIX_STRIP && new_len > 2 && space2[0] == 'b' && space2[1] == '/') {
 			*new_name = xstrndup (space2 + 2, new_len - 2);
 		} else {
 			*new_name = xstrndup (space2, new_len);
