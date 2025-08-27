@@ -110,6 +110,21 @@ static int print_patchnames = -1;
 static int empty_files_as_absent = 0;
 static unsigned long filecount=0;
 
+static enum git_prefix_mode git_prefix_mode = GIT_PREFIX_KEEP;
+
+/* Helper function to check if current patch is a Git patch */
+static int
+is_git_patch (char **headers, unsigned int num_headers)
+{
+	unsigned int i;
+	for (i = 0; i < num_headers; i++) {
+		if (!strncmp (headers[i], "diff --git ", 11)) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
 static int
 regexecs (regex_t *regex, size_t num_regex, const char *string,
 	  size_t nmatch, regmatch_t pmatch[], int eflags)
@@ -1255,7 +1270,7 @@ static int filterdiff (FILE *f, const char *patchname)
 
 					/* Extract filenames from git headers */
 					if (extract_git_filenames (header, num_headers,
-								 &git_old_name, &git_new_name) == 0) {
+								 &git_old_name, &git_new_name, git_prefix_mode) == 0) {
 						/* Use the best name for filtering */
 						char *names[2] = { git_old_name, git_new_name };
 						p = best_name (2, names);
@@ -1327,7 +1342,7 @@ static int filterdiff (FILE *f, const char *patchname)
 
 				/* Extract filenames from git headers */
 				if (extract_git_filenames (header, num_headers,
-							 &git_old_name, &git_new_name)) {
+							 &git_old_name, &git_new_name, git_prefix_mode)) {
 					/* Fallback to traditional method if git extraction fails */
 					goto flush_continue;
 				}
@@ -1386,7 +1401,11 @@ static int filterdiff (FILE *f, const char *patchname)
 			}
 		}
 
-		names[0] = filename_from_header (line + 4);
+		if (is_git_patch (header, num_headers)) {
+			names[0] = filename_from_header_with_git_prefix_mode (line + 4, git_prefix_mode);
+		} else {
+			names[0] = filename_from_header (line + 4);
+		}
 		if (mode != mode_filter && show_status)
 			orig_file_exists = file_exists (names[0], line + 4 +
 							strlen (names[0]));
@@ -1411,7 +1430,11 @@ static int filterdiff (FILE *f, const char *patchname)
 
 		filecount++;
 		header[num_headers++] = xstrdup (line);
-		names[1] = filename_from_header (line + 4);
+		if (is_git_patch (header, num_headers)) {
+			names[1] = filename_from_header_with_git_prefix_mode (line + 4, git_prefix_mode);
+		} else {
+			names[1] = filename_from_header (line + 4);
+		}
 
 		if (mode != mode_filter && show_status)
 			new_file_exists = file_exists (names[1], line + 4 +
@@ -1540,6 +1563,8 @@ const char * syntax_str =
 "  -p N, --strip-match=N\n"
 "            initial pathname components to ignore\n"
 "  --strip=N initial pathname components to strip\n"
+"  --git-prefixes=strip|keep\n"
+"            how to handle a/ and b/ prefixes in Git diffs (default: keep)\n"
 "  --addprefix=PREFIX\n"
 "            prefix pathnames with PREFIX\n"
 "  --addoldprefix=PREFIX\n"
@@ -1797,6 +1822,7 @@ int main (int argc, char *argv[])
 			{"empty-files-as-removed", 0, 0, 'E'},
 			{"file", 1, 0, 'f'},
 			{"in-place", 0, 0, 1000 + 'w'},
+			{"git-prefixes", 1, 0, 1000 + 'G'},
 			{0, 0, 0, 0}
 		};
 		char *end;
@@ -1973,6 +1999,15 @@ int main (int argc, char *argv[])
 			break;
 		case 1000 + 'w':
 			inplace_mode = 1;
+			break;
+		case 1000 + 'G':
+			if (!strcmp(optarg, "strip")) {
+				git_prefix_mode = GIT_PREFIX_STRIP;
+			} else if (!strcmp(optarg, "keep")) {
+				git_prefix_mode = GIT_PREFIX_KEEP;
+			} else {
+				error(EXIT_FAILURE, 0, "invalid argument to --git-prefixes: %s (expected 'strip' or 'keep')", optarg);
+			}
 			break;
 		default:
 			syntax(1);

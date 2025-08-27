@@ -9,7 +9,10 @@ Patchutils news
 	and permission mode changes. Fixed exclusion filtering (-x) for
 	multi-file Git diffs to prevent orphaned headers. Enhanced filename
 	extraction to properly strip Git's a/ and b/ prefixes for consistent
-	output. Addresses GitHub issues #22, #27, #57, and #59.
+	output. Added --git-prefixes=strip|keep option to control handling
+	of Git filename prefixes, with 'keep' as default for backward
+	compatibility (will change to 'strip' in version 0.5.0).
+	Addresses GitHub issues #22, #27, #57, and #59.
 
 	Code improvements and build system enhancements. Added redirectfd()
 	utility function to redirect stdout without reassignment. Enhanced
