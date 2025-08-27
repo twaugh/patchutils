@@ -3,6 +3,14 @@ Patchutils news
 
 0.4.4 (stable)
 
+	Enhanced Git diff format support in filterdiff/lsdiff/grepdiff.
+	Improved handling of Git diffs without traditional hunks,
+	including proper support for file renames, binary file changes,
+	and permission mode changes. Fixed exclusion filtering (-x) for
+	multi-file Git diffs to prevent orphaned headers. Enhanced filename
+	extraction to properly strip Git's a/ and b/ prefixes for consistent
+	output. Addresses GitHub issues #22, #27, #57, and #59.
+
 	Code improvements and build system enhancements. Added redirectfd()
 	utility function to redirect stdout without reassignment. Enhanced
 	CI testing with musl support for better compatibility testing.

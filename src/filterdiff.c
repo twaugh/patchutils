@@ -171,8 +171,8 @@ static int output_header_line (const char *line)
 	char *fn;
 
 	if (strncmp (line, "diff", 4) == 0 && isspace (line[4])) {
-		size_t		args = 0;
-		const char	*end = line + 5, *begin = end, *ws = end;
+		size_t          args = 0;
+		const char      *end = line + 5, *begin = end, *ws = end;
 		printf ("%.5s", line);
 		while (*end != 0) {
 			if (isspace (*begin))
@@ -330,8 +330,103 @@ hunk_matches (unsigned long orig_offset, unsigned long orig_count,
 }
 
 static int
+do_git_diff_no_hunks (FILE *f, char **header, unsigned int num_headers,
+		      int match, char **line, size_t *linelen,
+		      unsigned long *linenum, unsigned long start_linenum,
+		      char status, const char *bestname, const char *patchname,
+		      int *orig_file_exists, int *new_file_exists,
+		      enum git_diff_type git_type)
+{
+	unsigned int i;
+	int displayed_filename = 0;
+
+	/* Set file existence based on git diff type */
+	switch (git_type) {
+	case GIT_DIFF_NEW_FILE:
+		*orig_file_exists = 0;
+		*new_file_exists = 1;
+		break;
+	case GIT_DIFF_DELETED_FILE:
+		*orig_file_exists = 1;
+		*new_file_exists = 0;
+		break;
+	case GIT_DIFF_RENAME:
+	case GIT_DIFF_BINARY:
+	case GIT_DIFF_MODE_ONLY:
+	default:
+		*orig_file_exists = 1;
+		*new_file_exists = 1;
+		break;
+	}
+
+	/* If this diff matches the filter, display it */
+	if (match) {
+		if (mode == mode_filter) {
+			/* Output all headers for this git diff */
+			for (i = 0; i < num_headers; i++)
+				fputs (header[i], stdout);
+		} else if (mode == mode_list && !displayed_filename) {
+			if (!show_status) {
+				display_filename (start_linenum, status,
+						  bestname, patchname);
+			}
+			displayed_filename = 1;
+		}
+	}
+
+	/* Look for any additional content after headers (like binary patches)
+	 * Note: we might already have a content line in *line if we broke out of header reading */
+	int first_iteration = 1;
+	while (first_iteration || getline (line, linelen, f) != -1) {
+		if (!first_iteration)
+			++*linenum;
+		first_iteration = 0;
+
+		/* Check if we've hit the next diff */
+		if (!strncmp (*line, "diff ", 5))
+			return 1; /* Found next diff, return to main loop */
+
+		/* Check for binary patch content */
+		if (!strncmp (*line, "GIT binary patch", 16) ||
+		    !strncmp (*line, "literal ", 8) ||
+		    !strncmp (*line, "delta ", 6)) {
+			/* Output binary content if this diff matches */
+			if (match && mode == mode_filter) {
+				fputs (*line, stdout);
+				/* Continue reading binary content until next diff or EOF */
+				while (getline (line, linelen, f) != -1) {
+					++*linenum;
+					if (!strncmp (*line, "diff ", 5))
+						return 1;
+					fputs (*line, stdout);
+					/* Binary patches end with empty line typically */
+					if ((*line)[0] == '\n')
+						break;
+				}
+			} else {
+				/* Skip binary content if not matching */
+				while (getline (line, linelen, f) != -1) {
+					++*linenum;
+					if (!strncmp (*line, "diff ", 5))
+						return 1;
+					if ((*line)[0] == '\n')
+						break;
+				}
+			}
+			break;
+		}
+
+		/* For other types of content, just output if matching */
+		if (match && mode == mode_filter)
+			fputs (*line, stdout);
+	}
+
+	return 0; /* EOF reached */
+}
+
+static int
 do_unified (FILE *f, char **header, unsigned int num_headers,
-            int match, char **line,
+	    int match, char **line,
 	    size_t *linelen, unsigned long *linenum,
 	    unsigned long start_linenum, char status,
 	    const char *bestname, const char *patchname,
@@ -368,8 +463,15 @@ do_unified (FILE *f, char **header, unsigned int num_headers,
 		if (!orig_count && !new_count && **line != '\\') {
 			char *trailing;
 
-			if (strncmp (*line, "@@ ", 3))
+			if (strncmp (*line, "@@ ", 3)) {
+				/* Check if this is the start of the next diff */
+				if (!strncmp (*line, "diff ", 5) ||
+				    !strncmp (*line, "--- ", 4) ||
+				    !strncmp (*line, "*** ", 4)) {
+					ret = 1; /* Found next diff */
+				}
 				break;
+			}
 
 			/* Next chunk. */
 			hunknum++;
@@ -442,9 +544,9 @@ do_unified (FILE *f, char **header, unsigned int num_headers,
 				if (!header_displayed &&
 				    mode != mode_grep) {
 					// Display the header.
-                                        unsigned int i;
-                                        for (i = 0; i < num_headers - 2; i++)
-                                                output_header_line (header[i]);
+					unsigned int i;
+					for (i = 0; i < num_headers - 2; i++)
+						output_header_line (header[i]);
 					if (number_lines != After && number_lines != OriginalAfter)
 						output_header_line (header[num_headers - 2]);
 					if (number_lines != Before && number_lines != OriginalBefore)
@@ -556,16 +658,16 @@ do_unified (FILE *f, char **header, unsigned int num_headers,
 				}
 			} else {
 				if (match_tmpf) {
-                                        if (!header_displayed) {
-                                                unsigned int i;
-                                                for (i = 0; i < num_headers - 2; i++)
-                                                        output_header_line (header[i]);
-                                                if (number_lines != After && number_lines != OriginalAfter)
-                                                        output_header_line (header[num_headers - 2]);
-                                                if (number_lines != Before && number_lines != OriginalBefore)
-                                                        output_header_line (header[num_headers - 1]);
+					if (!header_displayed) {
+						unsigned int i;
+						for (i = 0; i < num_headers - 2; i++)
+							output_header_line (header[i]);
+						if (number_lines != After && number_lines != OriginalAfter)
+							output_header_line (header[num_headers - 2]);
+						if (number_lines != Before && number_lines != OriginalBefore)
+							output_header_line (header[num_headers - 1]);
 						header_displayed = 1;
-                                        }
+					}
 
 					rewind (match_tmpf);
 					while (!feof (match_tmpf)) {
@@ -595,14 +697,14 @@ do_unified (FILE *f, char **header, unsigned int num_headers,
 				 (number_lines == OriginalBefore && **line != '+') ||
 				 (number_lines == OriginalAfter && **line != '-')) {
 				// Numbered line.
-                                const char *rest = *line;
-                                if (rest[0] != '\n')
-                                        // Handle whitespace damage
-                                        rest++;
+				const char *rest = *line;
+				if (rest[0] != '\n')
+					// Handle whitespace damage
+					rest++;
 
 				fprintf (output_to, "%lu\t:%s",
 					 track_linenum++, rest);
-                        }
+			}
 		}
 	}
 
@@ -622,7 +724,7 @@ do_unified (FILE *f, char **header, unsigned int num_headers,
 
 static int
 do_context (FILE *f, char **header, unsigned int num_headers,
-            int match, char **line,
+	    int match, char **line,
 	    size_t *linelen, unsigned long *linenum,
 	    unsigned long start_linenum, char status,
 	    const char *bestname, const char *patchname,
@@ -776,9 +878,9 @@ do_context (FILE *f, char **header, unsigned int num_headers,
 
 			// Display the line counts.
 			if (!header_displayed && mode == mode_filter) {
-                                unsigned int i;
-                                for (i = 0; i < num_headers - 2; i++)
-                                        output_header_line (header[i]);
+				unsigned int i;
+				for (i = 0; i < num_headers - 2; i++)
+					output_header_line (header[i]);
 				if (number_lines != After && number_lines != OriginalAfter)
 					output_header_line (header[num_headers - 2]);
 				if (number_lines != Before && number_lines != OriginalBefore)
@@ -907,9 +1009,9 @@ do_context (FILE *f, char **header, unsigned int num_headers,
 					}
 				} else {
 					if (!header_displayed) {
-                                                unsigned int i;
-                                                for (i = 0; i < num_headers - 2; i++)
-                                                        output_header_line (header[i]);
+						unsigned int i;
+						for (i = 0; i < num_headers - 2; i++)
+							output_header_line (header[i]);
 						if (number_lines != After && number_lines != OriginalAfter)
 							output_header_line (header[num_headers - 2]);
 						if (number_lines != Before && number_lines != OriginalBefore)
@@ -1030,7 +1132,7 @@ static int filterdiff (FILE *f, const char *patchname)
 	static unsigned long linenum = 1;
 	char *names[2];
 	char *header[MAX_HEADERS + 2] = { NULL, NULL };
-        unsigned int num_headers = 0;
+	unsigned int num_headers = 0;
 	char *line = NULL;
 	size_t linelen = 0;
 	char *p;
@@ -1046,9 +1148,10 @@ static int filterdiff (FILE *f, const char *patchname)
 		unsigned long start_linenum;
 		int orig_file_exists, new_file_exists;
 		int is_context = -1;
+		int is_git_diff = 0;  /* Flag to track if we're processing a git diff */
 		int result;
 		int (*do_diff) (FILE *, char **, unsigned int,
-                                int, char **, size_t *,
+				int, char **, size_t *,
 				unsigned long *, unsigned long,
 				char, const char *, const char *,
 				int *, int *);
@@ -1058,8 +1161,8 @@ static int filterdiff (FILE *f, const char *patchname)
 		// Search for start of patch ("diff ", or "--- " for
 		// unified diff, "*** " for context).
 		for (;;) {
-                        if (!strncmp (line, "diff ", 5))
-                                break;
+			if (!strncmp (line, "diff ", 5))
+					break;
 
 			if (!strncmp (line, "--- ", 4)) {
 				is_context = 0;
@@ -1084,71 +1187,204 @@ static int filterdiff (FILE *f, const char *patchname)
 
 		start_linenum = linenum;
 		header[0] = xstrdup (line);
-                num_headers = 1;
+		num_headers = 1;
 
-                if (is_context == -1) {
-                        int valid_extended = 1;
-                        for (;;) {
-                                if (getline (&line, &linelen, f) == -1)
-                                        goto eof;
-                                linenum++;
+		if (is_context == -1) {
+			int valid_extended = 1;
+			int hit_eof = 0;
+			for (;;) {
+				if (getline (&line, &linelen, f) == -1) {
+					hit_eof = 1;
+					break;
+				}
+				linenum++;
 
-                                if (!strncmp (line, "diff ", 5)) {
-                                        header[num_headers++] = xstrdup (line);
-                                        break;
-                                }
+				if (!strncmp (line, "diff ", 5)) {
+					header[num_headers++] = xstrdup (line);
+					break;
+				}
 
-                                if (!strncmp (line, "--- ", 4))
-                                        is_context = 0;
-                                else if (!strncmp (line, "*** ", 4))
-                                        is_context = 1;
-                                else if (strncmp (line, "old mode ", 9) &&
-                                    strncmp (line, "new mode ", 9) &&
-                                    strncmp (line, "deleted file mode ", 18) &&
-                                    strncmp (line, "new file mode ", 14) &&
-                                    strncmp (line, "copy from ", 10) &&
-                                    strncmp (line, "copy to ", 8) &&
-                                    strncmp (line, "rename from ", 12) &&
-                                    strncmp (line, "rename to ", 10) &&
-                                    strncmp (line, "similarity index ", 17) &&
-                                    strncmp (line, "dissimilarity index ", 20) &&
-                                    strncmp (line, "index ", 6))
-                                        valid_extended = 0;
+				if (!strncmp (line, "--- ", 4))
+					is_context = 0;
+				else if (!strncmp (line, "*** ", 4))
+					is_context = 1;
+				else if (!strncmp (line, "Binary files ", 13)) {
+					/* Binary files line - this is diff content, break to process */
+					break;
+				} else if (strncmp (line, "old mode ", 9) &&
+				    strncmp (line, "new mode ", 9) &&
+				    strncmp (line, "deleted file mode ", 18) &&
+				    strncmp (line, "new file mode ", 14) &&
+				    strncmp (line, "copy from ", 10) &&
+				    strncmp (line, "copy to ", 8) &&
+				    strncmp (line, "rename from ", 12) &&
+				    strncmp (line, "rename to ", 10) &&
+				    strncmp (line, "similarity index ", 17) &&
+				    strncmp (line, "dissimilarity index ", 20) &&
+				    strncmp (line, "index ", 6))
+					valid_extended = 0;
 
-                                if (!valid_extended)
-                                        break;
+				if (!valid_extended)
+					break;
 
-                                /* Drop excess header lines */
-                                if (num_headers > MAX_HEADERS )
-                                        free (header[--num_headers]);
+				/* Drop excess header lines */
+				if (num_headers > MAX_HEADERS )
+					free (header[--num_headers]);
 
-                                header[num_headers++] = xstrdup (line);
+				header[num_headers++] = xstrdup (line);
 
-                                if (is_context != -1)
-                                        break;
-                        }
+				if (is_context != -1)
+					break;
+			}
 
-                        if (!valid_extended)
-                                goto flush_continue;
-                }
+			if (!valid_extended)
+				goto flush_continue;
 
-                if (is_context == -1) {
-                        /* We don't yet do anything with diffs with
-                         * zero hunks. */
-                        unsigned int i = 0;
-                flush_continue:
-                        if (mode == mode_filter && (pat_exclude || verbose)
-                            && !clean_comments) {
-                                for (i = 0; i < num_headers; i++)
-                                        fputs (header[i], stdout);
-                        }
-                        for (i = 0; i < num_headers; i++) {
-                                free (header[i]);
-                                header[i] = NULL;
-                        }
-                        num_headers = 0;
-                        continue;
-                }
+			/* If we hit EOF while reading extended headers, but have valid git headers,
+			 * we should still process this as a git diff without hunks */
+			if (hit_eof && valid_extended && is_context == -1) {
+				/* Process as git diff without hunks and then exit */
+				enum git_diff_type git_type = detect_git_diff_type (header, num_headers);
+
+								if (git_type != GIT_DIFF_NORMAL) {
+					char *git_old_name = NULL, *git_new_name = NULL;
+					const char *p_stripped;
+					int match;
+
+					is_git_diff = 1;  /* Mark that we're processing a git diff */
+
+					/* Extract filenames from git headers */
+					if (extract_git_filenames (header, num_headers,
+								 &git_old_name, &git_new_name) == 0) {
+						/* Use the best name for filtering */
+						char *names[2] = { git_old_name, git_new_name };
+						p = best_name (2, names);
+						p_stripped = stripped (p, ignore_components);
+
+						/* Apply include/exclude filters */
+						match = !patlist_match(pat_exclude, p_stripped);
+						if (match && pat_include != NULL)
+							match = patlist_match(pat_include, p_stripped);
+
+												/* Print filename if in list mode and matches */
+						if (match && !show_status && mode == mode_list)
+							display_filename (start_linenum, status, p, patchname);
+
+						/* Output headers if matching and in filter mode */
+						if (match && mode == mode_filter) {
+							unsigned int i;
+							for (i = 0; i < num_headers; i++)
+								fputs (header[i], stdout);
+						}
+
+						/* Set file existence based on git diff type */
+						switch (git_type) {
+						case GIT_DIFF_NEW_FILE:
+							orig_file_exists = 0;
+							new_file_exists = 1;
+							break;
+						case GIT_DIFF_DELETED_FILE:
+							orig_file_exists = 1;
+							new_file_exists = 0;
+							break;
+						default:
+							orig_file_exists = 1;
+							new_file_exists = 1;
+							break;
+						}
+
+						/* Print filename with status if in list mode and matches */
+						if (match && show_status && mode == mode_list) {
+							if (!orig_file_exists)
+								status = '+';
+							else if (!new_file_exists)
+								status = '-';
+
+							display_filename (start_linenum, status, p, patchname);
+						}
+
+						/* Clean up */
+						free (git_old_name);
+						free (git_new_name);
+					}
+				}
+				goto eof;
+			}
+		}
+
+		if (is_context == -1) {
+			/* Check if this is a git diff without hunks or with content like Binary files */
+			enum git_diff_type git_type = detect_git_diff_type (header, num_headers);
+
+						if (git_type != GIT_DIFF_NORMAL) {
+				/* This is a git diff without hunks - handle it */
+				char *git_old_name = NULL, *git_new_name = NULL;
+				const char *p_stripped;
+				int match;
+				int result;
+
+				is_git_diff = 1;  /* Mark that we're processing a git diff */
+
+				/* Extract filenames from git headers */
+				if (extract_git_filenames (header, num_headers,
+							 &git_old_name, &git_new_name)) {
+					/* Fallback to traditional method if git extraction fails */
+					goto flush_continue;
+				}
+
+				/* Use the best name for filtering */
+				char *names[2] = { git_old_name, git_new_name };
+				p = best_name (2, names);
+				p_stripped = stripped (p, ignore_components);
+
+				/* Apply include/exclude filters */
+				match = !patlist_match(pat_exclude, p_stripped);
+				if (match && pat_include != NULL)
+					match = patlist_match(pat_include, p_stripped);
+
+								/* Process the git diff (it will handle filename display) */
+				result = do_git_diff_no_hunks (f, header, num_headers,
+							     match, &line, &linelen, &linenum,
+							     start_linenum, status, p, patchname,
+							     &orig_file_exists, &new_file_exists,
+							     git_type);
+
+				/* Print filename with status if in list mode and matches */
+				if (match && show_status && mode == mode_list) {
+					if (!orig_file_exists)
+						status = '+';
+					else if (!new_file_exists)
+						status = '-';
+
+					display_filename (start_linenum, status, p, patchname);
+				}
+
+				/* Clean up */
+				free (git_old_name);
+				free (git_new_name);
+
+				/* Handle result */
+				if (result == EOF)
+					goto eof;
+
+				goto next_diff;
+			} else {
+				/* Not a git diff without hunks - use original logic */
+				unsigned int i = 0;
+			flush_continue:
+				if (mode == mode_filter && (pat_exclude || verbose)
+				    && !clean_comments) {
+					for (i = 0; i < num_headers; i++)
+						fputs (header[i], stdout);
+				}
+				for (i = 0; i < num_headers; i++) {
+					free (header[i]);
+					header[i] = NULL;
+				}
+				num_headers = 0;
+				continue;
+			}
+		}
 
 		names[0] = filename_from_header (line + 4);
 		if (mode != mode_filter && show_status)
@@ -1170,7 +1406,7 @@ static int filterdiff (FILE *f, const char *patchname)
 			/* Show non-diff lines if excluding, or if
 			 * in verbose mode, and if --clean isn't specified. */
 			free (names[0]);
-                        goto flush_continue;
+			goto flush_continue;
 		}
 
 		filecount++;
@@ -1200,7 +1436,7 @@ static int filterdiff (FILE *f, const char *patchname)
 			do_diff = do_unified;
 
 		result = do_diff (f, header, num_headers,
-                                  match, &line,
+				  match, &line,
 				  &linelen, &linenum,
 				  start_linenum, status, p, patchname,
 				  &orig_file_exists, &new_file_exists);
@@ -1222,17 +1458,29 @@ static int filterdiff (FILE *f, const char *patchname)
 			free (names[1]);
 			goto eof;
 		case 1:
-			goto next_diff;
+			/* Found next diff - line variable contains the start of next diff */
+			free (names[0]);
+			free (names[1]);
+			for (i = 0; i < num_headers; i++) {
+				free (header[i]);
+				header[i] = NULL;
+			}
+			num_headers = 0;
+			/* Continue processing with the current line (don't call getline) */
+			continue;
 		}
 
 	next_diff:
-		for (i = 0; i < 2; i++)
-			free (names[i]);
-                for (i = 0; i < num_headers; i++) {
+		/* Only free names if we're not processing a git diff (which handles its own cleanup) */
+		if (!is_git_diff) {
+			for (i = 0; i < 2; i++)
+				free (names[i]);
+		}
+		for (i = 0; i < num_headers; i++) {
 			free (header[i]);
 			header[i] = NULL;
 		}
-                num_headers = 0;
+		num_headers = 0;
 	}
 
  eof:
@@ -1512,7 +1760,7 @@ int main (int argc, char *argv[])
 	determine_mode_from_name (argv[0]);
 	while (1) {
 		static struct option long_options[] = {
-	       		{"help", 0, 0, 1000 + 'H'},
+			{"help", 0, 0, 1000 + 'H'},
 			{"version", 0, 0, 1000 + 'V'},
 			{"verbose", 0, 0, 'v'},
 			{"list", 0, 0, 'l'},
@@ -1707,13 +1955,13 @@ int main (int argc, char *argv[])
 			if (!strncmp (optarg, "all", 3))
 				only_matching = only_match_all;
 			else if (!strncmp (optarg, "rem", 3) ||
-			         !strncmp (optarg, "removals", 8))
+				 !strncmp (optarg, "removals", 8))
 				only_matching = only_match_rem;
 			else if (!strncmp (optarg, "add", 3) ||
-			         !strncmp (optarg, "additions", 9))
+				 !strncmp (optarg, "additions", 9))
 				only_matching = only_match_add;
 			else if (!strncmp (optarg, "mod", 3) ||
-			         !strncmp (optarg, "modifications", 13))
+				 !strncmp (optarg, "modifications", 13))
 				only_matching = only_match_mod;
 			else syntax (1);
 			break;
@@ -1731,8 +1979,8 @@ int main (int argc, char *argv[])
 		}
 	}
     if (have_switches == 0 && strcmp (progname, "patchview") == 0) {
-        mode = mode_list;
-        number_files = 1;
+	mode = mode_list;
+	number_files = 1;
     }
 
 	/* Preserve the old semantics of -p. */

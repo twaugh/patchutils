@@ -1,0 +1,62 @@
+#!/bin/sh
+
+# Test for GitHub Issue #59: File permissions ignored
+# This test ensures that mode-only changes are handled correctly
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > git-mode.patch
+diff --git a/script.sh b/script.sh
+old mode 100755
+new mode 100644
+index abcdefg..1234567 100644
+--- a/script.sh
++++ b/script.sh
+@@ -1,3 +1,3 @@
+ #!/bin/bash
+-echo "old"
++echo "new"
+ exit 0
+diff --git a/mode-only.sh b/mode-only.sh
+old mode 100755
+new mode 100644
+EOF
+
+# Test that filterdiff includes mode-only changes when they match
+${FILTERDIFF} -p 1 -i mode-only.sh git-mode.patch 2>errors >result || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - result || exit 1
+diff --git a/mode-only.sh b/mode-only.sh
+old mode 100755
+new mode 100644
+EOF
+
+# Test that lsdiff shows both files (one with content, one mode-only)
+${LSDIFF} git-mode.patch 2>errors2 >result2 || exit 1
+[ -s errors2 ] && exit 1
+
+cat << EOF | cmp - result2 || exit 1
+a/script.sh
+mode-only.sh
+EOF
+
+# Test including files with content changes
+${FILTERDIFF} -p 1 -i script.sh git-mode.patch 2>errors3 >result3 || exit 1
+[ -s errors3 ] && exit 1
+
+cat << EOF | cmp - result3 || exit 1
+diff --git a/script.sh b/script.sh
+old mode 100755
+new mode 100644
+index abcdefg..1234567 100644
+--- a/script.sh
++++ b/script.sh
+@@ -1,3 +1,3 @@
+ #!/bin/bash
+-echo "old"
++echo "new"
+ exit 0
+EOF
+
+exit 0
