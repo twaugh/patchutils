@@ -12,7 +12,7 @@ Patchutils news
 	output. Added --git-prefixes=strip|keep option to control handling
 	of Git filename prefixes, with 'keep' as default for backward
 	compatibility (will change to 'strip' in version 0.5.0).
-	Addresses GitHub issues #22, #27, #57, and #59.
+	Addresses GitHub issues #22, #27, #59, and #68.
 
 	Code improvements and build system enhancements. Added redirectfd()
 	utility function to redirect stdout without reassignment. Enhanced
