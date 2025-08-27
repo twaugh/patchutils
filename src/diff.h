@@ -55,3 +55,17 @@ int read_timestamp (const char *timestamp,
 		    long *zone        /* may be NULL */);
 
 char *filename_from_header (const char *header);
+
+/* Git diff support */
+enum git_diff_type {
+	GIT_DIFF_NORMAL = 0,	/* Regular diff with hunks */
+	GIT_DIFF_RENAME,	/* Pure rename (similarity index 100%) */
+	GIT_DIFF_BINARY,	/* Binary file diff */
+	GIT_DIFF_MODE_ONLY,	/* Mode change only */
+	GIT_DIFF_NEW_FILE,	/* New file creation */
+	GIT_DIFF_DELETED_FILE	/* File deletion */
+};
+
+enum git_diff_type detect_git_diff_type (char **headers, unsigned int num_headers);
+int extract_git_filenames (char **headers, unsigned int num_headers,
+			   char **old_name, char **new_name);

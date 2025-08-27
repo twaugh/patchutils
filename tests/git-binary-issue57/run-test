@@ -1,0 +1,58 @@
+#!/bin/sh
+
+# Test for GitHub Issue #57: Binary files not supported
+# This test ensures that binary file diffs are handled correctly
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > git-binary.patch
+diff --git a/binary-file b/binary-file
+new file mode 100644
+index 0000000..998a95d
+Binary files /dev/null and b/binary-file differ
+diff --git a/text-file.txt b/text-file.txt
+new file mode 100644
+index 0000000..abcdefg
+--- /dev/null
++++ b/text-file.txt
+@@ -0,0 +1,2 @@
++line 1
++line 2
+EOF
+
+# Test that filterdiff includes binary files when they match
+${FILTERDIFF} -p 1 -i binary-file git-binary.patch 2>errors >result || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - result || exit 1
+diff --git a/binary-file b/binary-file
+new file mode 100644
+index 0000000..998a95d
+Binary files /dev/null and b/binary-file differ
+EOF
+
+# Test that lsdiff shows binary files
+${LSDIFF} git-binary.patch 2>errors2 >result2 || exit 1
+[ -s errors2 ] && exit 1
+
+cat << EOF | cmp - result2 || exit 1
+binary-file
+b/text-file.txt
+EOF
+
+# Test excluding binary files
+${FILTERDIFF} -p 1 -x binary-file git-binary.patch 2>errors3 >result3 || exit 1
+[ -s errors3 ] && exit 1
+
+cat << EOF | cmp - result3 || exit 1
+diff --git a/text-file.txt b/text-file.txt
+new file mode 100644
+index 0000000..abcdefg
+--- /dev/null
++++ b/text-file.txt
+@@ -0,0 +1,2 @@
++line 1
++line 2
+EOF
+
+exit 0
