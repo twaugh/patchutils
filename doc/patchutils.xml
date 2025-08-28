@@ -870,7 +870,9 @@
 	    <listitem>
 	      <para>How to handle <literal>a/</literal> and <literal>b/</literal>
 	        prefixes in Git diff filenames. With <literal>strip</literal>, removes
-	        the prefixes for consistent output. With <literal>keep</literal> (default),
+	        the prefixes both for filename matching (when using <option>-i</option>
+	        and <option>-x</option> options) and for filename output (similar to
+	        <option>--strip</option>). With <literal>keep</literal> (default),
 	        preserves existing behavior. Applies to both Git-specific diffs (binary files,
 	        renames, mode changes) and traditional diffs when part of a Git patch.
 	        Note: Git rename operations use <literal>rename from/to</literal> headers
@@ -1384,6 +1386,23 @@ patch.file]]></screen></para>
 	  </varlistentry>
 
 	  <varlistentry>
+	    <term><option>--git-prefixes</option>=<replaceable>strip|keep</replaceable></term>
+	    <listitem>
+	      <para>How to handle <literal>a/</literal> and <literal>b/</literal>
+	        prefixes in Git diff filenames. With <literal>strip</literal>, removes
+	        the prefixes both for filename matching (when using <option>-i</option>
+	        and <option>-x</option> options) and for filename output (similar to
+	        <option>--strip</option>). With <literal>keep</literal> (default),
+	        preserves existing behavior. Applies to both Git-specific diffs (binary files,
+	        renames, mode changes) and traditional diffs when part of a Git patch.
+	        Note: Git rename operations use <literal>rename from/to</literal> headers
+	        that contain literal filenames without <literal>a/</literal> or
+	        <literal>b/</literal> prefixes, so this option does not affect renamed
+	        filenames. The default will change to <literal>strip</literal> in version 0.5.0.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
 	    <term><option>--addprefix</option>=<replaceable>PREFIX</replaceable></term>
 	    <listitem>
 	      <para>Prefix the pathname with
@@ -1563,6 +1582,7 @@ done)]]></screen></para>
 	    <arg>--strip-match=<replaceable>n</replaceable></arg>
 	  </group>
 	  <arg choice="opt">--strip=<replaceable>n</replaceable></arg>
+	  <arg choice="opt">--git-prefixes=<replaceable>strip|keep</replaceable></arg>
 	  <arg choice="opt">--addprefix=<replaceable>PREFIX</replaceable></arg>
 	  <group choice="opt">
 	    <arg>-s</arg>
@@ -1769,6 +1789,23 @@ will pipe patch of file #2 to vim - -R
 	      <para>Remove the first <replaceable>n</replaceable>
 	        components of the pathname before displaying
 	        it.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--git-prefixes</option>=<replaceable>strip|keep</replaceable></term>
+	    <listitem>
+	      <para>How to handle <literal>a/</literal> and <literal>b/</literal>
+	        prefixes in Git diff filenames. With <literal>strip</literal>, removes
+	        the prefixes both for filename matching (when using <option>-i</option>
+	        and <option>-x</option> options) and for filename output (similar to
+	        <option>--strip</option>). With <literal>keep</literal> (default),
+	        preserves existing behavior. Applies to both Git-specific diffs (binary files,
+	        renames, mode changes) and traditional diffs when part of a Git patch.
+	        Note: Git rename operations use <literal>rename from/to</literal> headers
+	        that contain literal filenames without <literal>a/</literal> or
+	        <literal>b/</literal> prefixes, so this option does not affect renamed
+	        filenames. The default will change to <literal>strip</literal> in version 0.5.0.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -2222,6 +2259,7 @@ will pipe patch of file #2 to vim - -R
 	    <arg>--strip-match=<replaceable>n</replaceable></arg>
 	  </group>
 	  <arg choice="opt">--strip=<replaceable>n</replaceable></arg>
+	  <arg choice="opt">--git-prefixes=<replaceable>strip|keep</replaceable></arg>
 	  <arg choice="opt">--addprefix=<replaceable>PREFIX</replaceable></arg>
 	  <arg choice="opt">--addoldprefix=<replaceable>PREFIX</replaceable></arg>
 	  <arg choice="opt">--addnewprefix=<replaceable>PREFIX</replaceable></arg>
@@ -2370,6 +2408,23 @@ will pipe patch of file #2 to vim - -R
 	      <para>Remove the first <replaceable>n</replaceable>
 	        components of the pathname before displaying
 	        it.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--git-prefixes</option>=<replaceable>strip|keep</replaceable></term>
+	    <listitem>
+	      <para>How to handle <literal>a/</literal> and <literal>b/</literal>
+	        prefixes in Git diff filenames. With <literal>strip</literal>, removes
+	        the prefixes both for filename matching (when using <option>-i</option>
+	        and <option>-x</option> options) and for filename output (similar to
+	        <option>--strip</option>). With <literal>keep</literal> (default),
+	        preserves existing behavior. Applies to both Git-specific diffs (binary files,
+	        renames, mode changes) and traditional diffs when part of a Git patch.
+	        Note: Git rename operations use <literal>rename from/to</literal> headers
+	        that contain literal filenames without <literal>a/</literal> or
+	        <literal>b/</literal> prefixes, so this option does not affect renamed
+	        filenames. The default will change to <literal>strip</literal> in version 0.5.0.</para>
 	    </listitem>
 	  </varlistentry>
 
