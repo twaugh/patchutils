@@ -205,6 +205,7 @@ TESTS = tests/newline1/run-test \
 	tests/lscontext3/run-test \
 	tests/filterb/run-test \
 	tests/filterp/run-test \
+	tests/strip-vs-match/run-test \
 	tests/select1/run-test \
 	tests/select2/run-test \
 	tests/select3/run-test \
