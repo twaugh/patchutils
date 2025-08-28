@@ -1,38 +1,34 @@
 So what is patchview? It is a wrapper of filterdiff for use with numbered files.
 
     $ patchview
-    (without args)
     
-is equivalent to: lsdiff --number
+Without args is equivalent to: lsdiff --number
 
     $ patchview -F2-
-    (or with any other args)
-    
-is equivalent to: filterdiff -F2- (or whatever arguments are supplied)
 
-There are two scripts for working with git (gitdiff and gitdiffview) and two for svn (svndiff and svndiffview).
+    
+With one or more args is equivalent to: filterdiff args
+
+There are 4 scripts for working with git repos (gitdiff, gitdiffview, gitshow and gitshowview) and 2 for svn (svndiff and svndiffview).
+Also these scripts have option -v which shows the full command that is which is being executed.
+
 
     $ svndiff
-    $ gitdiff
-    (without args)
-    
-will give the list of files modified
+    $ gitdiff 
 
-    $ svndiff -F1
-    $ gitdiff -F1
-    
-will show the patch of file #1
+Without args, will give the list of files modified
+With args will show the patches according the args, for example, `gitdiff -F1` will show the patch for first file
 
     $ svndiffview
     $ gitdiffview
     
-pipe all patches through filterdiff to `vim - -R` (in read-only mode, easy to quit), showing complete patch with color.
+Without args will pipe all patches through filterdiff to `vim - -R` (in read-only mode, easy to quit), showing complete patch with colors.
+With args will pipe the patches according the args, for example, `gitsvnview -F2` will pipe the patch for second file to `vim - -R`.
 
-    $ svndiffview -F2
-    $ gitdiffview -F2
-    (or any other args)
+    $ gitshow
+    $ gitshowview
 
-will pipe patch of file #2 to `vim - -R`
+Is the same of gitdiff but use `git show` instead of `git diff`. 
 
 Example:
 We can make the following one-line script with the name difftotrunk.sh, to view the differences of two directories or svn repos (trunk and .)
