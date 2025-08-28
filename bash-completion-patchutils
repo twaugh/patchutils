@@ -386,6 +386,10 @@ _patchview() {
         --addprefix|--addoldprefix|--addnewprefix)
             return 0
             ;;
+        --git-prefixes)
+            COMPREPLY=($(compgen -W "strip keep" -- "$cur"))
+            return 0
+            ;;
     esac
 
     if [[ ${cur} == -* ]]; then
