@@ -48,6 +48,8 @@ Patchutils is a small collection of programs that operate on patch files. It pro
 
 - **gitdiff** / **gitdiffview** - Git-specific diff viewing tools.
 
+- **gitshow** / **gitshowview** - Git-specific show viewing tools.
+
 - **svndiff** / **svndiffview** - Subversion-specific diff viewing tools.
 
 ## Installation
