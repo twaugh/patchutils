@@ -1,0 +1,88 @@
+#!/bin/sh
+
+# This is a filterdiff(1) testcase.
+# Test: Verify that -p (strip-match) and --strip work independently
+# -p should affect filename matching for -i/-x patterns
+# --strip should affect output path components
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Create test patch with multi-level paths
+cat << EOF > test.patch
+--- a/level1/level2/file1.txt
++++ b/level1/level2/file1.txt
+@@ -1 +1 @@
+-old content in file1
++new content in file1
+--- a/level1/level2/file2.c
++++ b/level1/level2/file2.c
+@@ -1 +1 @@
+-old content in file2
++new content in file2
+--- a/other/path/file3.txt
++++ b/other/path/file3.txt
+@@ -1 +1 @@
+-old content in file3
++new content in file3
+EOF
+
+# Test 1: Use -p for filename matching (strip 2 components for matching)
+# and --strip for output (strip 1 component from output)
+# Should match "level2/file1.txt" after stripping "a/level1/" (2 components)
+# But output should have "level1/level2/file1.txt" (strip only 1 component)
+${FILTERDIFF} -p2 --strip=1 -i "level2/file1.txt" test.patch 2>errors1 >result1 || exit 1
+[ -s errors1 ] && exit 1
+
+cat << EOF | cmp - result1 || exit 1
+--- level1/level2/file1.txt
++++ level1/level2/file1.txt
+@@ -1 +1 @@
+-old content in file1
++new content in file1
+EOF
+
+# Test 2: Different -p and --strip values
+# Match "level1/level2/file2.c" after stripping 1 component for matching
+# But output should have "level2/file2.c" (strip 2 components from output)
+${FILTERDIFF} -p1 --strip=2 -i "level1/level2/file2.c" test.patch 2>errors2 >result2 || exit 1
+[ -s errors2 ] && exit 1
+
+cat << EOF | cmp - result2 || exit 1
+--- level2/file2.c
++++ level2/file2.c
+@@ -1 +1 @@
+-old content in file2
++new content in file2
+EOF
+
+# Test 3: Use -p for exclusion matching
+# Exclude "path/file3.txt" after stripping 2 components, but keep others
+# Output should strip 1 component
+${FILTERDIFF} -p2 --strip=1 -x "path/file3.txt" test.patch 2>errors3 >result3 || exit 1
+[ -s errors3 ] && exit 1
+
+cat << EOF | cmp - result3 || exit 1
+--- level1/level2/file1.txt
++++ level1/level2/file1.txt
+@@ -1 +1 @@
+-old content in file1
++new content in file1
+--- level1/level2/file2.c
++++ level1/level2/file2.c
+@@ -1 +1 @@
+-old content in file2
++new content in file2
+EOF
+
+# Test 4: Verify that -p without -i/-x gets converted to --strip
+# (backward compatibility behavior) - this only happens in non-filter modes like lsdiff
+${LSDIFF} -p1 test.patch 2>errors4 >result4 || exit 1
+grep -q "guessing that you meant --strip instead" errors4 || exit 1
+
+# The result should be the same as --strip=1
+${LSDIFF} --strip=1 test.patch 2>errors5 >result5 || exit 1
+[ -s errors5 ] && exit 1
+
+cmp result4 result5 || exit 1
+
+exit 0
