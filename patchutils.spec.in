@@ -1,9 +1,8 @@
-Summary: A collection of programs for manipulating patch files.
+Summary: A collection of programs for manipulating patch files
 Name: @PACKAGE@
 Version: @VERSION@
 Release: 0.1
-License: GPL
-Group: Applications/System
+License: GPL-2.0-or-later
 URL: http://cyberelk.net/tim/patchutils/
 Source0: http://cyberelk.net/tim/data/patchutils/stable/%{name}-%{version}.tar.xz
 Obsoletes: interdiff <= 0.0.10
