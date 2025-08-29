@@ -62,6 +62,10 @@ make
 make install
 ```
 
+## Building from the Git repository
+
+After cloning the source from GitHub, you need to run `./bootstrap` to generate the `configure` script.
+
 ## Requirements
 
 - A C compiler (GCC recommended)
