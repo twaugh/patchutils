@@ -1,6 +1,8 @@
 /Makefile.in
 /Makefile
 /configure
+/config.guess
+/config.sub
 /config.status
 /config.log
 /config.h*
@@ -15,6 +17,8 @@
 /stamp-h1
 .deps
 .dirstamp
+lib/Makefile
+lib/Makefile.in
 
 # Compiled objects
 *.o
