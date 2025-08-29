@@ -287,13 +287,15 @@ TESTS = tests/newline1/run-test \
 	tests/git-mode-issue59/run-test \
 	tests/git-exclude-issue27/run-test \
 	tests/git-prefixes-option/run-test \
-	tests/git-prefixes-with-strip/run-test
+	tests/git-prefixes-with-strip/run-test \
+	tests/git-diff-duplication/run-test
 
 # These ones don't work yet.
 # Feel free to send me patches. :-)
 XFAIL_TESTS = \
 	tests/delhunk5/run-test \
-	tests/delhunk6/run-test
+	tests/delhunk6/run-test \
+	tests/git-diff-duplication/run-test
 
 test-perms: src/combinediff$(EXEEXT) src/flipdiff$(EXEEXT) \
 		src/lsdiff$(EXEEXT) src/grepdiff$(EXEEXT) src/patchview$(EXEEXT) \
