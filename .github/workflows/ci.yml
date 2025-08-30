@@ -25,7 +25,8 @@ jobs:
           diffutils \
           xmlto \
           libpcre2-dev \
-          gnulib
+          gnulib \
+          lcov
 
     - name: Bootstrap
       run: ./bootstrap
@@ -33,13 +34,52 @@ jobs:
     - name: Configure
       run: |
         ./configure \
-          --with-pcre2
+          --with-pcre2 \
+          CFLAGS="--coverage -g -O0" \
+          LDFLAGS="--coverage"
 
     - name: Build
       run: make -j$(nproc)
 
     - name: Run tests
       run: make check
+
+    - name: Generate coverage report
+      run: |
+        # Create coverage directory
+        mkdir -p coverage
+
+        # Capture coverage data with geninfo options to handle warnings
+        lcov --capture --directory . --output-file coverage/coverage.info --rc geninfo_unexecuted_blocks=1
+
+        # Remove coverage data for system headers, lib files, and test files
+        lcov --remove coverage/coverage.info '/usr/*' '*/lib/*' '*/tests/*' --output-file coverage/coverage_filtered.info --ignore-errors unused
+
+        # Generate HTML report
+        genhtml coverage/coverage_filtered.info --output-directory coverage/html
+
+        # Generate summary for CI and extract coverage percentage
+        lcov --summary coverage/coverage_filtered.info > coverage/summary.txt
+
+        # Extract coverage percentage for badge (using awk for more reliable parsing)
+        COVERAGE=$(awk '/lines\.+:/ {gsub(/[()%]/, "", $2); print $2}' coverage/summary.txt)
+        echo "COVERAGE_PERCENT=$COVERAGE" >> $GITHUB_ENV
+        echo "Coverage: $COVERAGE%"
+
+        # Extract detailed coverage info for PR comments
+        LINES_COVERED=$(awk '/lines\.+:/ {print $3 " " $4 " " $5}' coverage/summary.txt | tr -d '()')
+        FUNCTIONS_COVERED=$(awk '/functions\.+:/ {print $3 " " $4 " " $5}' coverage/summary.txt | tr -d '()')
+        echo "LINES_COVERED=$LINES_COVERED" >> $GITHUB_ENV
+        echo "FUNCTIONS_COVERED=$FUNCTIONS_COVERED" >> $GITHUB_ENV
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage/coverage_filtered.info
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+        token: ${{ secrets.CODECOV_TOKEN }}
 
     - name: Show test results on failure
       if: failure()
