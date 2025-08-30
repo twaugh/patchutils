@@ -1,0 +1,198 @@
+#!/bin/sh
+
+# Test git copy operations (similarity < 100%)
+# This test covers file copies with modifications
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Test 1: Basic copy operation with modifications
+cat << EOF > copy-basic.patch
+diff --git a/original.c b/copy1.c
+similarity index 85%
+copy from original.c
+copy to copy1.c
+index abc123..def456 100644
+--- a/original.c
++++ b/copy1.c
+@@ -1,5 +1,6 @@
+ #include <stdio.h>
+
+ int main() {
++    printf("This is a copy\\n");
+     return 0;
+ }
+EOF
+
+# Test lsdiff with copy operation
+${LSDIFF} copy-basic.patch 2>errors1 >result1 || exit 1
+[ -s errors1 ] && exit 1
+
+cat << EOF | cmp - result1 || exit 1
+b/copy1.c
+EOF
+
+# Test filterdiff with copy operation
+${FILTERDIFF} -i "b/copy1.c" copy-basic.patch 2>errors2 >result2 || exit 1
+[ -s errors2 ] && exit 1
+
+cat << EOF | cmp - result2 || exit 1
+diff --git a/original.c b/copy1.c
+similarity index 85%
+copy from original.c
+copy to copy1.c
+index abc123..def456 100644
+--- a/original.c
++++ b/copy1.c
+@@ -1,5 +1,6 @@
+ #include <stdio.h>
+
+ int main() {
++    printf("This is a copy\\n");
+     return 0;
+ }
+EOF
+
+# Test 2: Multiple copy operations in one patch
+cat << EOF > copy-multiple.patch
+diff --git a/base.h b/copy1.h
+similarity index 90%
+copy from base.h
+copy to copy1.h
+index 111222..333444 100644
+--- a/base.h
++++ b/copy1.h
+@@ -1,3 +1,4 @@
+ #ifndef BASE_H
+ #define BASE_H
++#define COPY1_VERSION 1
+ #endif
+diff --git a/base.h b/copy2.h
+similarity index 80%
+copy from base.h
+copy to copy2.h
+index 111222..555666 100644
+--- a/base.h
++++ b/copy2.h
+@@ -1,3 +1,5 @@
+ #ifndef BASE_H
+ #define BASE_H
++#define COPY2_VERSION 2
++#define EXTRA_FEATURE
+ #endif
+EOF
+
+# Test lsdiff with multiple copies
+${LSDIFF} copy-multiple.patch 2>errors3 >result3 || exit 1
+[ -s errors3 ] && exit 1
+
+cat << EOF | cmp - result3 || exit 1
+a/base.h
+a/base.h
+EOF
+
+# Test filtering by source file (matches both copies)
+${FILTERDIFF} -i "a/base.h" copy-multiple.patch 2>errors4 >result4 || exit 1
+[ -s errors4 ] && exit 1
+
+grep -q "copy2.h" result4 || exit 1
+grep -q "copy1.h" result4 || exit 1
+
+# Test 3: Copy with --git-prefixes=strip
+${LSDIFF} --git-prefixes=strip copy-multiple.patch 2>errors5 >result5 || exit 1
+[ -s errors5 ] && exit 1
+
+cat << EOF | cmp - result5 || exit 1
+base.h
+base.h
+EOF
+
+# Test 4: Copy operation with binary file
+cat << EOF > copy-binary.patch
+diff --git a/data.bin b/backup.bin
+similarity index 100%
+copy from data.bin
+copy to backup.bin
+Binary files a/data.bin and b/backup.bin differ
+EOF
+
+${LSDIFF} copy-binary.patch 2>errors6 >result6 || exit 1
+[ -s errors6 ] && exit 1
+
+cat << EOF | cmp - result6 || exit 1
+data.bin
+EOF
+
+${FILTERDIFF} -i "data.bin" copy-binary.patch 2>errors7 >result7 || exit 1
+[ -s errors7 ] && exit 1
+
+cat << EOF | cmp - result7 || exit 1
+diff --git a/data.bin b/backup.bin
+similarity index 100%
+copy from data.bin
+copy to backup.bin
+Binary files a/data.bin and b/backup.bin differ
+EOF
+
+# Test 5: Mixed copy and rename operations
+cat << EOF > copy-rename-mixed.patch
+diff --git a/file1.txt b/file1-copy.txt
+similarity index 75%
+copy from file1.txt
+copy to file1-copy.txt
+index abc123..def456 100644
+--- a/file1.txt
++++ b/file1-copy.txt
+@@ -1,2 +1,3 @@
+ original content
++copied and modified
+ end
+diff --git a/file2.txt b/file2-renamed.txt
+similarity index 100%
+rename from file2.txt
+rename to file2-renamed.txt
+EOF
+
+${LSDIFF} copy-rename-mixed.patch 2>errors8 >result8 || exit 1
+[ -s errors8 ] && exit 1
+
+cat << EOF | cmp - result8 || exit 1
+a/file1.txt
+file2.txt
+EOF
+
+# Test 6: Copy with very low similarity
+cat << EOF > copy-low-similarity.patch
+diff --git a/template.c b/heavily-modified.c
+similarity index 15%
+copy from template.c
+copy to heavily-modified.c
+index abc123..xyz789 100644
+--- a/template.c
++++ b/heavily-modified.c
+@@ -1,10 +1,20 @@
+ #include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <unistd.h>
+
+-int main() {
+-    return 0;
++int main(int argc, char **argv) {
++    if (argc < 2) {
++        fprintf(stderr, "Usage: %s <arg>\\n", argv[0]);
++        return 1;
++    }
++
++    printf("Processing: %s\\n", argv[1]);
++    // Heavy modifications here
++    return 0;
+ }
+EOF
+
+${FILTERDIFF} copy-low-similarity.patch 2>errors9 >result9 || exit 1
+[ -s errors9 ] && exit 1
+
+grep -q "heavily-modified.c" result9 || exit 1
+grep -q "similarity index 15%" result9 || exit 1
+
+exit 0
