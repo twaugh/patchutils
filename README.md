@@ -1,5 +1,8 @@
 # Patchutils
 
+[![CI](https://github.com/twaugh/patchutils/actions/workflows/ci.yml/badge.svg)](https://github.com/twaugh/patchutils/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/twaugh/patchutils/branch/master/graph/badge.svg)](https://codecov.io/gh/twaugh/patchutils)
+
 A collection of tools that operate on patch files.
 
 ## Overview
