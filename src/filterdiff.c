@@ -366,6 +366,7 @@ do_git_diff_no_hunks (FILE *f, char **header, unsigned int num_headers,
 		*new_file_exists = 0;
 		break;
 	case GIT_DIFF_RENAME:
+	case GIT_DIFF_COPY:
 	case GIT_DIFF_BINARY:
 	case GIT_DIFF_MODE_ONLY:
 	default:

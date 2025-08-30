@@ -1143,6 +1143,7 @@ detect_git_diff_type (char **headers, unsigned int num_headers)
 	unsigned int i;
 	int has_similarity_100 = 0;
 	int has_rename = 0;
+	int has_copy = 0;
 	int has_binary = 0;
 	int has_mode_change = 0;
 	int has_new_file = 0;
@@ -1159,6 +1160,9 @@ detect_git_diff_type (char **headers, unsigned int num_headers)
 		else if (!strncmp (headers[i], "rename from ", 12) ||
 			 !strncmp (headers[i], "rename to ", 10))
 			has_rename = 1;
+		else if (!strncmp (headers[i], "copy from ", 10) ||
+			 !strncmp (headers[i], "copy to ", 8))
+			has_copy = 1;
 		else if (!strncmp (headers[i], "old mode ", 9) ||
 			 !strncmp (headers[i], "new mode ", 9))
 			has_mode_change = 1;
@@ -1174,6 +1178,8 @@ detect_git_diff_type (char **headers, unsigned int num_headers)
 	/* Determine the type based on header combinations */
 	if (has_similarity_100 && has_rename)
 		return GIT_DIFF_RENAME;
+	else if (has_copy)
+		return GIT_DIFF_COPY;
 	else if (has_binary)
 		return GIT_DIFF_BINARY;
 	else if (has_mode_change && !has_new_file && !has_deleted_file)
@@ -1208,12 +1214,16 @@ extract_git_filenames (char **headers, unsigned int num_headers,
 	if (!git_line)
 		return 1; /* Not a git diff */
 
-	/* Look for rename headers first */
+	/* Look for rename/copy headers first */
 	for (i = 0; i < num_headers; i++) {
 		if (!strncmp (headers[i], "rename from ", 12))
 			rename_from = headers[i] + 12;
 		else if (!strncmp (headers[i], "rename to ", 10))
 			rename_to = headers[i] + 10;
+		else if (!strncmp (headers[i], "copy from ", 10))
+			rename_from = headers[i] + 10;
+		else if (!strncmp (headers[i], "copy to ", 8))
+			rename_to = headers[i] + 8;
 	}
 
 	if (rename_from && rename_to) {
