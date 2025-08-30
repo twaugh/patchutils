@@ -294,8 +294,7 @@ TESTS = tests/newline1/run-test \
 # Feel free to send me patches. :-)
 XFAIL_TESTS = \
 	tests/delhunk5/run-test \
-	tests/delhunk6/run-test \
-	tests/git-diff-duplication/run-test
+	tests/delhunk6/run-test
 
 test-perms: src/combinediff$(EXEEXT) src/flipdiff$(EXEEXT) \
 		src/lsdiff$(EXEEXT) src/grepdiff$(EXEEXT) src/patchview$(EXEEXT) \
