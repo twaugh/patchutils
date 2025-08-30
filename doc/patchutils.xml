@@ -654,6 +654,7 @@
 	    <arg>--strip-match=<replaceable>n</replaceable></arg>
 	  </group>
 	  <arg choice="opt">--strip=<replaceable>n</replaceable></arg>
+	  <arg choice="opt">--git-prefixes=<replaceable>strip|keep</replaceable></arg>
 	  <arg choice="opt">--addprefix=<replaceable>PREFIX</replaceable></arg>
 	  <arg choice="opt">--addoldprefix=<replaceable>PREFIX</replaceable></arg>
 	  <arg choice="opt">--addnewprefix=<replaceable>PREFIX</replaceable></arg>
@@ -723,6 +724,10 @@
 	command like this:
 
 	<screen>filterdiff message-with-diff-in-the-body > patch</screen></para>
+
+	<para>Filterdiff supports unified, context, and Git format diffs.
+	  Git format includes support for binary files, file renames,
+	  permission mode changes, and other Git-specific diff features.</para>
 
 	<para>Note that the interpretation of the shell wildcard
 	  pattern does not count slash characters or periods as
@@ -857,6 +862,23 @@
 	    <listitem>
 	      <para>Remove the first <replaceable>n</replaceable>
 	        components of pathnames in the output.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--git-prefixes</option>=<replaceable>strip|keep</replaceable></term>
+	    <listitem>
+	      <para>How to handle <literal>a/</literal> and <literal>b/</literal>
+	        prefixes in Git diff filenames. With <literal>strip</literal>, removes
+	        the prefixes both for filename matching (when using <option>-i</option>
+	        and <option>-x</option> options) and for filename output (similar to
+	        <option>--strip</option>). With <literal>keep</literal> (default),
+	        preserves existing behavior. Applies to both Git-specific diffs (binary files,
+	        renames, mode changes) and traditional diffs when part of a Git patch.
+	        Note: Git rename operations use <literal>rename from/to</literal> headers
+	        that contain literal filenames without <literal>a/</literal> or
+	        <literal>b/</literal> prefixes, so this option does not affect renamed
+	        filenames. The default will change to <literal>strip</literal> in version 0.5.0.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -1039,6 +1061,12 @@ patch.file]]></screen></para>
 	  and context format diffs:
 
 <screen><![CDATA[filterdiff -v --format=unified context.diff]]></screen></para>
+
+	<para>Git format diffs are fully supported, including binary files,
+	  file renames, and permission mode changes. For example, to extract
+	  only the renames from a git diff:
+
+<screen><![CDATA[filterdiff -i '*/newname' git-patch-with-renames.patch]]></screen></para>
       </refsect1>
 
       <refsect1>
@@ -1182,6 +1210,7 @@ patch.file]]></screen></para>
 	    <arg>--strip-match=<replaceable>n</replaceable></arg>
 	  </group>
 	  <arg choice="opt">--strip=<replaceable>n</replaceable></arg>
+	  <arg choice="opt">--git-prefixes=<replaceable>strip|keep</replaceable></arg>
 	  <arg choice="opt">--addprefix=<replaceable>PREFIX</replaceable></arg>
 	  <group choice="opt">
 	    <arg>-s</arg>
@@ -1243,8 +1272,10 @@ patch.file]]></screen></para>
 
 	<para>List the files modified by a patch.</para>
 
-	<para>You can use both unified and context format diffs with
-	  this program.</para>
+	<para>You can use unified, context, and Git format diffs with
+	  this program. Git format includes support for binary files,
+	  file renames, permission mode changes, and other Git-specific
+	  diff features.</para>
 
       </refsect1>
 
@@ -1351,6 +1382,23 @@ patch.file]]></screen></para>
 	      <para>Remove the first <replaceable>n</replaceable>
 	        components of the pathname before displaying
 	        it.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--git-prefixes</option>=<replaceable>strip|keep</replaceable></term>
+	    <listitem>
+	      <para>How to handle <literal>a/</literal> and <literal>b/</literal>
+	        prefixes in Git diff filenames. With <literal>strip</literal>, removes
+	        the prefixes both for filename matching (when using <option>-i</option>
+	        and <option>-x</option> options) and for filename output (similar to
+	        <option>--strip</option>). With <literal>keep</literal> (default),
+	        preserves existing behavior. Applies to both Git-specific diffs (binary files,
+	        renames, mode changes) and traditional diffs when part of a Git patch.
+	        Note: Git rename operations use <literal>rename from/to</literal> headers
+	        that contain literal filenames without <literal>a/</literal> or
+	        <literal>b/</literal> prefixes, so this option does not affect renamed
+	        filenames. The default will change to <literal>strip</literal> in version 0.5.0.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -1534,6 +1582,7 @@ done)]]></screen></para>
 	    <arg>--strip-match=<replaceable>n</replaceable></arg>
 	  </group>
 	  <arg choice="opt">--strip=<replaceable>n</replaceable></arg>
+	  <arg choice="opt">--git-prefixes=<replaceable>strip|keep</replaceable></arg>
 	  <arg choice="opt">--addprefix=<replaceable>PREFIX</replaceable></arg>
 	  <group choice="opt">
 	    <arg>-s</arg>
@@ -1597,13 +1646,13 @@ done)]]></screen></para>
 
     <screen>patchview</screen>
     (without args)
-    
+
 is equivalent to: lsdiff --number
 	</para>
 	<para>
     <screen>patchview -F2-</screen>
     (or with any other args)
-    
+
 is equivalent to: filterdiff -F2- (or whatever arguments are supplied)
 	</para>
 	<para>
@@ -1612,19 +1661,19 @@ There are two scripts for working with git (gitdiff and gitdiffview) and two for
     <screen>svndiff</screen>
     <screen>gitdiff</screen>
     (without args)
-    
+
 will give the list of files modified
 	</para>
 	<para>
     <screen>svndiff -F1</screen>
     <screen>gitdiff -F1</screen>
-    
+
 will show the patch of file #1
 	</para>
 	<para>
     <screen>svndiffview</screen>
     <screen>gitdiffview</screen>
-    
+
 pipe all patches through filterdiff to vim - -R (in read-only mode, easy to quit), showing complete patch with color.
 	</para>
 	<para>
@@ -1740,6 +1789,23 @@ will pipe patch of file #2 to vim - -R
 	      <para>Remove the first <replaceable>n</replaceable>
 	        components of the pathname before displaying
 	        it.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--git-prefixes</option>=<replaceable>strip|keep</replaceable></term>
+	    <listitem>
+	      <para>How to handle <literal>a/</literal> and <literal>b/</literal>
+	        prefixes in Git diff filenames. With <literal>strip</literal>, removes
+	        the prefixes both for filename matching (when using <option>-i</option>
+	        and <option>-x</option> options) and for filename output (similar to
+	        <option>--strip</option>). With <literal>keep</literal> (default),
+	        preserves existing behavior. Applies to both Git-specific diffs (binary files,
+	        renames, mode changes) and traditional diffs when part of a Git patch.
+	        Note: Git rename operations use <literal>rename from/to</literal> headers
+	        that contain literal filenames without <literal>a/</literal> or
+	        <literal>b/</literal> prefixes, so this option does not affect renamed
+	        filenames. The default will change to <literal>strip</literal> in version 0.5.0.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -2193,6 +2259,7 @@ will pipe patch of file #2 to vim - -R
 	    <arg>--strip-match=<replaceable>n</replaceable></arg>
 	  </group>
 	  <arg choice="opt">--strip=<replaceable>n</replaceable></arg>
+	  <arg choice="opt">--git-prefixes=<replaceable>strip|keep</replaceable></arg>
 	  <arg choice="opt">--addprefix=<replaceable>PREFIX</replaceable></arg>
 	  <arg choice="opt">--addoldprefix=<replaceable>PREFIX</replaceable></arg>
 	  <arg choice="opt">--addnewprefix=<replaceable>PREFIX</replaceable></arg>
@@ -2291,8 +2358,10 @@ will pipe patch of file #2 to vim - -R
 <screen><![CDATA[grepdiff pf_gfp_mask my.patch | \
   xargs -rn1 filterdiff my.patch -i]]></screen></para>
 
-	<para>You can use both unified and context format diffs with
-	  this program.</para>
+	<para>You can use unified, context, and Git format diffs with
+	  this program. Git format includes support for binary files,
+	  file renames, permission mode changes, and other Git-specific
+	  diff features.</para>
 
       </refsect1>
 
@@ -2339,6 +2408,23 @@ will pipe patch of file #2 to vim - -R
 	      <para>Remove the first <replaceable>n</replaceable>
 	        components of the pathname before displaying
 	        it.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--git-prefixes</option>=<replaceable>strip|keep</replaceable></term>
+	    <listitem>
+	      <para>How to handle <literal>a/</literal> and <literal>b/</literal>
+	        prefixes in Git diff filenames. With <literal>strip</literal>, removes
+	        the prefixes both for filename matching (when using <option>-i</option>
+	        and <option>-x</option> options) and for filename output (similar to
+	        <option>--strip</option>). With <literal>keep</literal> (default),
+	        preserves existing behavior. Applies to both Git-specific diffs (binary files,
+	        renames, mode changes) and traditional diffs when part of a Git patch.
+	        Note: Git rename operations use <literal>rename from/to</literal> headers
+	        that contain literal filenames without <literal>a/</literal> or
+	        <literal>b/</literal> prefixes, so this option does not affect renamed
+	        filenames. The default will change to <literal>strip</literal> in version 0.5.0.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -2601,6 +2687,20 @@ will pipe patch of file #2 to vim - -R
 	    </listitem>
 	  </varlistentry>
 	</variablelist>
+      </refsect1>
+
+      <refsect1>
+	<title>Examples</title>
+
+	<para>Git format diffs are fully supported. For example, to find
+	  files in a git patch that contain changes to malloc calls:
+
+<screen><![CDATA[grepdiff "malloc" git-patch.patch]]></screen></para>
+
+	<para>Note that grepdiff searches in the hunk content (the actual
+	  code changes), not in Git metadata like rename headers. Files with
+	  only renames or mode changes (no content hunks) won't be found
+	  even if the pattern appears in the Git headers.</para>
       </refsect1>
 
       <refsect1>

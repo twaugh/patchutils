@@ -1,0 +1,48 @@
+#!/bin/sh
+
+# Test for GitHub Issue #27: -x $file only removes the diff body from git diff output
+# This test ensures that when excluding files, no orphaned git headers remain
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > git-multi.patch
+diff --git a/README.vin b/README.vin
+index d7a1ea2..7c298d7 100644
+--- a/README.vin
++++ b/README.vin
+@@ -1,2 +1,2 @@
+-old content
++new content
+ some line
+diff --git a/autogen.sh b/autogen.sh
+index 1234567..abcdefg 100644
+--- a/autogen.sh
++++ b/autogen.sh
+@@ -1,2 +1,2 @@
+-old script
++new script
+EOF
+
+# Test that excluding README.vin removes the entire git diff block
+${FILTERDIFF} -p 1 -x README.vin git-multi.patch 2>errors >result || exit 1
+[ -s errors ] && exit 1
+
+# The result should contain the complete autogen.sh diff, no orphaned headers
+cat << EOF | cmp - result || exit 1
+diff --git a/autogen.sh b/autogen.sh
+index 1234567..abcdefg 100644
+--- a/autogen.sh
++++ b/autogen.sh
+@@ -1,2 +1,2 @@
+-old script
++new script
+EOF
+
+# Test that excluding both files results in empty output
+${FILTERDIFF} -p 1 -x README.vin -x autogen.sh git-multi.patch 2>errors2 >result2 || exit 1
+[ -s errors2 ] && exit 1
+
+# The result should be completely empty
+[ -s result2 ] && exit 1
+
+exit 0

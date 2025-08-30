@@ -1,0 +1,36 @@
+#!/bin/sh
+
+# This is a filterdiff(1) testcase.
+# Test: Bug where filterdiff duplicates "diff --git" lines
+# When processing multiple git diff blocks where the second block has both
+# rename and content changes, filterdiff incorrectly duplicates the second
+# "diff --git" line. The output should be unchanged.
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Create a minimal test case that triggers the duplication bug
+cat << EOF > git-diff-bug.patch
+diff --git a/file1 b/file2
+similarity index 100%
+rename from file1
+rename to file2
+diff --git a/file3 b/file4
+similarity index 98%
+rename from file3
+rename to file4
+index 1111111..2222222 100644
+--- a/file3
++++ b/file4
+@@ -1 +1 @@
+-old
++new
+EOF
+
+# Test that filterdiff preserves the output unchanged
+${FILTERDIFF} git-diff-bug.patch 2>errors >result || exit 1
+[ -s errors ] && exit 1
+
+# The result should be identical to the input
+cmp git-diff-bug.patch result || exit 1
+
+exit 0

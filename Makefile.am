@@ -276,7 +276,17 @@ TESTS = tests/newline1/run-test \
 	tests/patch-ignore-whitespace/run-test \
 	tests/whitespace-w/run-test \
 	tests/filterdiff-inplace1/run-test \
-	tests/rediff-inplace1/run-test
+	tests/rediff-inplace1/run-test \
+	tests/git-rename-issue22/run-test \
+	tests/git-binary-issue57/run-test \
+	tests/git-mode-issue59/run-test \
+	tests/git-exclude-issue27/run-test \
+	tests/git-prefixes-option/run-test \
+	tests/git-prefixes-with-strip/run-test \
+	tests/git-diff-duplication/run-test \
+	tests/git-complex-mixed/run-test \
+	tests/git-error-handling/run-test \
+	tests/git-copy-operations/run-test
 
 # These ones don't work yet.
 # Feel free to send me patches. :-)

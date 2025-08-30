@@ -939,7 +939,7 @@ static FILE *do_convert (FILE *f, const char *mode, int seekable,
 			    error (EXIT_FAILURE, errno, "fdopen failed");
 
 			if (seekable) {
-				FILE *tmp = xtmpfile ();	
+				FILE *tmp = xtmpfile ();
 				while (!feof (ret)) {
 					int c = fgetc (ret);
 
@@ -1089,6 +1089,18 @@ read_timestamp (const char *timestamp, struct tm *result, long *zone)
 	return 0;
 }
 
+/* Helper function to strip Git a/ or b/ prefixes from a filename */
+static char *
+strip_git_prefix_from_filename (const char *filename, enum git_prefix_mode prefix_mode)
+{
+	if (prefix_mode == GIT_PREFIX_STRIP &&
+	    ((filename[0] == 'a' && filename[1] == '/') ||
+	     (filename[0] == 'b' && filename[1] == '/'))) {
+		return xstrdup (filename + 2);
+	}
+	return xstrdup (filename);
+}
+
 char *
 filename_from_header (const char *header)
 {
@@ -1111,4 +1123,141 @@ filename_from_header (const char *header)
 		h = first_space;
 
 	return xstrndup (header, h);
+}
+
+char *
+filename_from_header_with_git_prefix_mode (const char *header, enum git_prefix_mode prefix_mode)
+{
+	char *filename = filename_from_header (header);
+	if (prefix_mode == GIT_PREFIX_STRIP) {
+		char *stripped = strip_git_prefix_from_filename (filename, prefix_mode);
+		free (filename);
+		return stripped;
+	}
+	return filename;
+}
+
+enum git_diff_type
+detect_git_diff_type (char **headers, unsigned int num_headers)
+{
+	unsigned int i;
+	int has_similarity_100 = 0;
+	int has_rename = 0;
+	int has_copy = 0;
+	int has_binary = 0;
+	int has_mode_change = 0;
+	int has_new_file = 0;
+	int has_deleted_file = 0;
+
+	/* Check if this is even a git diff */
+	if (num_headers == 0 || strncmp (headers[0], "diff --git ", 11))
+		return GIT_DIFF_NORMAL;
+
+	/* Analyze the headers */
+	for (i = 0; i < num_headers; i++) {
+		if (!strncmp (headers[i], "similarity index 100%", 21))
+			has_similarity_100 = 1;
+		else if (!strncmp (headers[i], "rename from ", 12) ||
+			 !strncmp (headers[i], "rename to ", 10))
+			has_rename = 1;
+		else if (!strncmp (headers[i], "copy from ", 10) ||
+			 !strncmp (headers[i], "copy to ", 8))
+			has_copy = 1;
+		else if (!strncmp (headers[i], "old mode ", 9) ||
+			 !strncmp (headers[i], "new mode ", 9))
+			has_mode_change = 1;
+		else if (!strncmp (headers[i], "new file mode ", 14))
+			has_new_file = 1;
+		else if (!strncmp (headers[i], "deleted file mode ", 18))
+			has_deleted_file = 1;
+		else if (strstr (headers[i], "Binary files ") ||
+			 !strncmp (headers[i], "GIT binary patch", 16))
+			has_binary = 1;
+	}
+
+	/* Determine the type based on header combinations */
+	if (has_similarity_100 && has_rename)
+		return GIT_DIFF_RENAME;
+	else if (has_copy)
+		return GIT_DIFF_COPY;
+	else if (has_binary)
+		return GIT_DIFF_BINARY;
+	else if (has_mode_change && !has_new_file && !has_deleted_file)
+		return GIT_DIFF_MODE_ONLY;
+	else if (has_new_file)
+		return GIT_DIFF_NEW_FILE;
+	else if (has_deleted_file)
+		return GIT_DIFF_DELETED_FILE;
+	else
+		return GIT_DIFF_NORMAL;
+}
+
+int
+extract_git_filenames (char **headers, unsigned int num_headers,
+		       char **old_name, char **new_name, enum git_prefix_mode prefix_mode)
+{
+	unsigned int i;
+	char *git_line = NULL;
+	char *rename_from = NULL, *rename_to = NULL;
+
+	*old_name = NULL;
+	*new_name = NULL;
+
+	/* Find the diff --git line */
+	for (i = 0; i < num_headers; i++) {
+		if (!strncmp (headers[i], "diff --git ", 11)) {
+			git_line = headers[i];
+			break;
+		}
+	}
+
+	if (!git_line)
+		return 1; /* Not a git diff */
+
+	/* Look for rename/copy headers first */
+	for (i = 0; i < num_headers; i++) {
+		if (!strncmp (headers[i], "rename from ", 12))
+			rename_from = headers[i] + 12;
+		else if (!strncmp (headers[i], "rename to ", 10))
+			rename_to = headers[i] + 10;
+		else if (!strncmp (headers[i], "copy from ", 10))
+			rename_from = headers[i] + 10;
+		else if (!strncmp (headers[i], "copy to ", 8))
+			rename_to = headers[i] + 8;
+	}
+
+	if (rename_from && rename_to) {
+		/* Use rename headers for filenames */
+		*old_name = xstrndup (rename_from, strcspn (rename_from, "\n\r"));
+		*new_name = xstrndup (rename_to, strcspn (rename_to, "\n\r"));
+	} else {
+		/* Parse filenames from "diff --git a/path b/path" line */
+		char *p = git_line + 11; /* Skip "diff --git " */
+		char *space1, *space2;
+
+		/* Find the space between a/path and b/path */
+		space1 = strchr (p, ' ');
+		if (!space1)
+			return 1;
+
+		/* Extract old filename, conditionally stripping a/ prefix */
+		if (prefix_mode == GIT_PREFIX_STRIP && space1 - p > 2 && p[0] == 'a' && p[1] == '/') {
+			*old_name = xstrndup (p + 2, space1 - p - 2);
+		} else {
+			*old_name = xstrndup (p, space1 - p);
+		}
+
+		/* Find start of new filename (b/path) */
+		space2 = space1 + 1;
+
+		/* Extract new filename, conditionally stripping b/ prefix */
+		size_t new_len = strcspn (space2, "\n\r");
+		if (prefix_mode == GIT_PREFIX_STRIP && new_len > 2 && space2[0] == 'b' && space2[1] == '/') {
+			*new_name = xstrndup (space2 + 2, new_len - 2);
+		} else {
+			*new_name = xstrndup (space2, new_len);
+		}
+	}
+
+	return 0;
 }
