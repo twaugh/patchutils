@@ -1,0 +1,149 @@
+#!/bin/sh
+
+# Test error handling and edge cases for git diff processing
+# This test ensures robust handling of malformed or unusual git diffs
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Test 1: Malformed git diff line (missing space)
+cat << EOF > malformed1.patch
+diff --gita/file.txt b/file.txt
+index abc123..def456 100644
+--- a/file.txt
++++ b/file.txt
+@@ -1 +1 @@
+-old
++new
+EOF
+
+# Should handle gracefully and treat as regular diff
+${FILTERDIFF} malformed1.patch 2>errors1 >result1 || exit 1
+[ -s errors1 ] && exit 1
+grep -q "file.txt" result1 || exit 1
+
+# Test 2: Git diff with missing filenames in git line
+cat << EOF > malformed2.patch
+diff --git
+index abc123..def456 100644
+--- a/file.txt
++++ b/file.txt
+@@ -1 +1 @@
+-old
++new
+EOF
+
+# Should handle gracefully
+${FILTERDIFF} malformed2.patch 2>errors2 >result2 || exit 1
+[ -s errors2 ] && exit 1
+
+# Test 3: Git diff with only one filename in git line
+cat << EOF > malformed3.patch
+diff --git a/single-file.txt
+index abc123..def456 100644
+--- a/single-file.txt
++++ b/single-file.txt
+@@ -1 +1 @@
+-old
++new
+EOF
+
+# Should handle gracefully
+${FILTERDIFF} malformed3.patch 2>errors3 >result3 || exit 1
+[ -s errors3 ] && exit 1
+
+# Test 4: Git diff with unusual prefixes (not a/ b/)
+cat << EOF > unusual-prefixes.patch
+diff --git x/file.txt y/file.txt
+index abc123..def456 100644
+--- x/file.txt
++++ y/file.txt
+@@ -1 +1 @@
+-old
++new
+EOF
+
+# Should handle gracefully
+${FILTERDIFF} unusual-prefixes.patch 2>errors4 >result4 || exit 1
+[ -s errors4 ] && exit 1
+grep -q "file.txt" result4 || exit 1
+
+# Test 5: Test --git-prefixes with unusual prefixes
+${FILTERDIFF} --git-prefixes=strip unusual-prefixes.patch 2>errors5 >result5 || exit 1
+[ -s errors5 ] && exit 1
+grep -q "file.txt" result5 || exit 1
+
+# Test 6: Git diff with no prefixes at all
+cat << EOF > no-prefixes.patch
+diff --git file.txt file.txt
+index abc123..def456 100644
+--- file.txt
++++ file.txt
+@@ -1 +1 @@
+-old
++new
+EOF
+
+${FILTERDIFF} --git-prefixes=strip no-prefixes.patch 2>errors6 >result6 || exit 1
+[ -s errors6 ] && exit 1
+grep -q "file.txt" result6 || exit 1
+
+# Test 7: Binary diff with "Binary files" format (standard)
+cat << EOF > git-binary-patch.patch
+diff --git a/binary.dat b/binary.dat
+new file mode 100644
+index 0000000..1234567
+Binary files /dev/null and b/binary.dat differ
+EOF
+
+${FILTERDIFF} -i "*binary*" git-binary-patch.patch 2>errors7 >result7 || exit 1
+[ -s errors7 ] && exit 1
+grep -q "binary.dat" result7 || exit 1
+
+# Test 8: Test lsdiff with binary patch format
+${LSDIFF} git-binary-patch.patch 2>errors8 >result8 || exit 1
+[ -s errors8 ] && exit 1
+
+cat << EOF | cmp - result8 || exit 1
+a/binary.dat
+EOF
+
+# Test 9: Mixed binary formats in one patch
+cat << EOF > mixed-binary.patch
+diff --git a/file1.bin b/file1.bin
+new file mode 100644
+index 0000000..abc123
+Binary files /dev/null and b/file1.bin differ
+diff --git a/file2.dat b/file2.dat
+new file mode 100644
+index 0000000..def456
+GIT binary patch
+literal 512
+zcmV+00000000000000000000000000000000000000000000000000000000
+M000000000000000000000000000000000000000000000000000000000000
+literal 0
+HcmV?d00001
+
+EOF
+
+${LSDIFF} mixed-binary.patch 2>errors9 >result9 || exit 1
+[ -s errors9 ] && exit 1
+
+cat << EOF | cmp - result9 || exit 1
+a/file1.bin
+EOF
+
+# Test 10: Empty git diff (just headers, no content)
+cat << EOF > empty-git.patch
+diff --git a/empty.txt b/empty.txt
+new file mode 100644
+index 0000000..e69de29
+--- /dev/null
++++ b/empty.txt
+EOF
+
+${FILTERDIFF} empty-git.patch 2>errors10 >result10 || exit 1
+[ -s errors10 ] && exit 1
+# Empty patch should produce no output
+[ ! -s result10 ] || exit 1
+
+exit 0

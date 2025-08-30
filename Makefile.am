@@ -288,7 +288,10 @@ TESTS = tests/newline1/run-test \
 	tests/git-exclude-issue27/run-test \
 	tests/git-prefixes-option/run-test \
 	tests/git-prefixes-with-strip/run-test \
-	tests/git-diff-duplication/run-test
+	tests/git-diff-duplication/run-test \
+	tests/git-complex-mixed/run-test \
+	tests/git-error-handling/run-test \
+	tests/git-copy-operations/run-test
 
 # These ones don't work yet.
 # Feel free to send me patches. :-)
