@@ -1215,7 +1215,7 @@ static int filterdiff (FILE *f, const char *patchname)
 				linenum++;
 
 				if (!strncmp (line, "diff ", 5)) {
-					header[num_headers++] = xstrdup (line);
+					/* Found start of next diff - don't add to headers */
 					break;
 				}
 
