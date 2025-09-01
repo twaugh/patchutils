@@ -1,0 +1,154 @@
+#!/bin/sh
+
+# Test core git diff status handling with lsdiff -s
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Test 1: Git diff with new file (no hunks) - should show '+'
+cat << EOF > new-file-no-hunks.patch
+diff --git a/new-file.txt b/new-file.txt
+new file mode 100644
+index 0000000..abcdef1
+EOF
+
+${LSDIFF} -s new-file-no-hunks.patch 2>errors1 >result1 || exit 1
+[ -s errors1 ] && exit 1
+
+cat << EOF | cmp - result1 || exit 1
++ a/new-file.txt
+EOF
+
+# Test 2: Git diff with deleted file (no hunks) - should show '-'
+cat << EOF > deleted-file-no-hunks.patch
+diff --git a/deleted-file.txt b/deleted-file.txt
+deleted file mode 100644
+index abcdef1..0000000
+EOF
+
+${LSDIFF} -s deleted-file-no-hunks.patch 2>errors2 >result2 || exit 1
+[ -s errors2 ] && exit 1
+
+cat << EOF | cmp - result2 || exit 1
+- a/deleted-file.txt
+EOF
+
+# Test 3: Git diff with new file (with hunks) - should show '+'
+cat << EOF > new-file-with-hunks.patch
+diff --git a/new-file-hunks.txt b/new-file-hunks.txt
+new file mode 100644
+index 0000000..1234567
+--- /dev/null
++++ b/new-file-hunks.txt
+@@ -0,0 +1,3 @@
++line 1
++line 2
++line 3
+EOF
+
+${LSDIFF} -s new-file-with-hunks.patch 2>errors3 >result3 || exit 1
+[ -s errors3 ] && exit 1
+
+cat << EOF | cmp - result3 || exit 1
++ b/new-file-hunks.txt
+EOF
+
+# Test 4: Git diff with deleted file (with hunks) - should show '-'
+cat << EOF > deleted-file-with-hunks.patch
+diff --git a/deleted-file-hunks.txt b/deleted-file-hunks.txt
+deleted file mode 100644
+index 1234567..0000000
+--- a/deleted-file-hunks.txt
++++ /dev/null
+@@ -1,3 +0,0 @@
+-line 1
+-line 2
+-line 3
+EOF
+
+${LSDIFF} -s deleted-file-with-hunks.patch 2>errors4 >result4 || exit 1
+[ -s errors4 ] && exit 1
+
+cat << EOF | cmp - result4 || exit 1
+- a/deleted-file-hunks.txt
+EOF
+
+# Test 5: Git diff with regular modification (no hunks) - produces no output
+cat << EOF > modified-file-no-hunks.patch
+diff --git a/modified-file.txt b/modified-file.txt
+index abcdef1..1234567 100644
+EOF
+
+${LSDIFF} -s modified-file-no-hunks.patch 2>errors5 >result5 || exit 1
+[ -s errors5 ] && exit 1
+
+# Should produce no output (empty file)
+[ ! -s result5 ] || exit 1
+
+# Test 6: Git diff with regular modification (with hunks) - should show '!'
+cat << EOF > modified-file-with-hunks.patch
+diff --git a/modified-file-hunks.txt b/modified-file-hunks.txt
+index abcdef1..1234567 100644
+--- a/modified-file-hunks.txt
++++ b/modified-file-hunks.txt
+@@ -1,3 +1,3 @@
+ line 1
+-old line
++new line
+ line 3
+EOF
+
+${LSDIFF} -s modified-file-with-hunks.patch 2>errors6 >result6 || exit 1
+[ -s errors6 ] && exit 1
+
+cat << EOF | cmp - result6 || exit 1
+! a/modified-file-hunks.txt
+EOF
+
+# Test 7: Mixed git diff with multiple file types
+cat << EOF > mixed-git.patch
+diff --git a/new.txt b/new.txt
+new file mode 100644
+index 0000000..abc123
+--- /dev/null
++++ b/new.txt
+@@ -0,0 +1 @@
++new content
+diff --git a/deleted.txt b/deleted.txt
+deleted file mode 100644
+index def456..0000000
+--- a/deleted.txt
++++ /dev/null
+@@ -1 +0,0 @@
+-deleted content
+diff --git a/modified.txt b/modified.txt
+index ghi789..jkl012 100644
+--- a/modified.txt
++++ b/modified.txt
+@@ -1 +1 @@
+-old
++new
+diff --git a/empty-new.txt b/empty-new.txt
+new file mode 100644
+index 0000000..e69de29
+diff --git a/empty-deleted.txt b/empty-deleted.txt
+deleted file mode 100644
+index e69de29..0000000
+EOF
+
+${LSDIFF} -s mixed-git.patch 2>errors7 >result7 || exit 1
+[ -s errors7 ] && exit 1
+
+cat << EOF | cmp - result7 || exit 1
++ b/new.txt
+- a/deleted.txt
+! a/modified.txt
++ a/empty-new.txt
+- a/empty-deleted.txt
+EOF
+
+# Test 8: Test with filterdiff in list mode (should use same code paths)
+${FILTERDIFF} --list -s mixed-git.patch 2>errors8 >result8 || exit 1
+[ -s errors8 ] && exit 1
+
+# Should be identical to lsdiff -s output
+cmp result7 result8 || exit 1
