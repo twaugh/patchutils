@@ -27,7 +27,7 @@ index 1111111..2222222 100644
 EOF
 
 # Test that filterdiff preserves the output unchanged
-${FILTERDIFF} git-diff-bug.patch 2>errors >result || exit 1
+${FILTERDIFF} --git-prefixes=strip git-diff-bug.patch 2>errors >result || exit 1
 [ -s errors ] && exit 1
 
 # The result should be identical to the input
