@@ -1,0 +1,55 @@
+#!/bin/sh
+
+# Test malformed diff headers and error handling paths
+# This test covers the flush_continue code path in filterdiff
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Test 1: Malformed diff header (triggers flush_continue path with verbose output)
+cat << EOF > malformed-diff.patch
+diff --git a/test.txt b/test.txt
+some invalid header line here
+EOF
+
+# This should trigger the flush_continue path and output the malformed headers in verbose mode
+${FILTERDIFF} --verbose malformed-diff.patch 2>errors1 >result1 || exit 1
+[ -s errors1 ] && exit 1
+
+# Should output the original headers due to verbose mode
+grep -q "diff --git a/test.txt b/test.txt" result1 || exit 1
+grep -q "some invalid header line here" result1 || exit 1
+
+# Test 2: Same malformed diff but with exclude patterns (different code path)
+${FILTERDIFF} --verbose -x "*.nonexistent" malformed-diff.patch 2>errors2 >result2 || exit 1
+[ -s errors2 ] && exit 1
+
+# Should also output the headers due to exclude pattern + verbose
+grep -q "diff --git a/test.txt b/test.txt" result2 || exit 1
+grep -q "some invalid header line here" result2 || exit 1
+
+# Test 3: Malformed diff with clean option (should NOT output headers)
+# Note: --verbose and --clean are mutually exclusive, so we test clean separately
+${FILTERDIFF} --clean malformed-diff.patch 2>errors3 >result3 || exit 1
+[ -s errors3 ] && exit 1
+
+# Should NOT contain the malformed header due to --clean
+[ -s result3 ] && exit 1
+
+# Test 4: Multiple malformed headers
+cat << EOF > multi-malformed.patch
+diff --git a/file1.txt b/file1.txt
+invalid line 1
+invalid line 2
+diff --git a/file2.txt b/file2.txt
+another invalid line
+EOF
+
+${FILTERDIFF} --verbose multi-malformed.patch 2>errors4 >result4 || exit 1
+[ -s errors4 ] && exit 1
+
+# Should contain all the malformed content
+grep -q "invalid line 1" result4 || exit 1
+grep -q "invalid line 2" result4 || exit 1
+grep -q "another invalid line" result4 || exit 1
+
+exit 0

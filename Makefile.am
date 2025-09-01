@@ -292,7 +292,8 @@ TESTS = tests/newline1/run-test \
 	tests/git-complex-mixed/run-test \
 	tests/git-error-handling/run-test \
 	tests/git-copy-operations/run-test \
-	tests/git-extended-headers/run-test
+	tests/git-extended-headers/run-test \
+	tests/malformed-diff-headers/run-test
 
 # These ones don't work yet.
 # Feel free to send me patches. :-)
