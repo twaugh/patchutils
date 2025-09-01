@@ -1137,6 +1137,10 @@ filename_from_header_with_git_prefix_mode (const char *header, enum git_prefix_m
 	return filename;
 }
 
+/* Detect the type of git diff based on headers.
+ * Returns GIT_DIFF_NORMAL for non-git diffs or regular git diffs with hunks,
+ * or a specific git diff type for special cases like renames, copies, etc.
+ */
 enum git_diff_type
 detect_git_diff_type (char **headers, unsigned int num_headers)
 {
@@ -1149,7 +1153,8 @@ detect_git_diff_type (char **headers, unsigned int num_headers)
 	int has_new_file = 0;
 	int has_deleted_file = 0;
 
-	/* Check if this is even a git diff */
+	/* Check if this is even a git diff format.
+	 * If not, return GIT_DIFF_NORMAL (the default for regular diffs) */
 	if (num_headers == 0 || strncmp (headers[0], "diff --git ", 11))
 		return GIT_DIFF_NORMAL;
 
@@ -1189,6 +1194,7 @@ detect_git_diff_type (char **headers, unsigned int num_headers)
 	else if (has_deleted_file)
 		return GIT_DIFF_DELETED_FILE;
 	else
+		/* Regular git diff with hunks (no special operations) */
 		return GIT_DIFF_NORMAL;
 }
 
