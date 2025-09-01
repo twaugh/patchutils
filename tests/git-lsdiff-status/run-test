@@ -72,7 +72,7 @@ cat << EOF | cmp - result4 || exit 1
 - a/deleted-file-hunks.txt
 EOF
 
-# Test 5: Git diff with regular modification (no hunks) - produces no output
+# Test 5: Malformed git diff with index changes but no hunks (not normally produced by git) - produces no output
 cat << EOF > modified-file-no-hunks.patch
 diff --git a/modified-file.txt b/modified-file.txt
 index abcdef1..1234567 100644
