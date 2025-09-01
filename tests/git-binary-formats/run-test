@@ -1,0 +1,126 @@
+#!/bin/sh
+
+# Test coverage for binary patch content handling
+# Tests binary patch formats: "GIT binary patch" and "literal"
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Test 1: GIT binary patch format
+cat << 'EOF' > git-binary-patch.patch
+diff --git a/file1.bin b/file1.bin
+new file mode 100644
+index 0000000..abc123
+Binary files /dev/null and b/file1.bin differ
+GIT binary patch
+literal 12
+TcmZn~00001
+
+diff --git a/file2.txt b/file2.txt
+new file mode 100644
+index 0000000..def456
+--- /dev/null
++++ b/file2.txt
+@@ -0,0 +1 @@
++text content
+EOF
+
+# Test 2: literal format binary patch
+cat << 'EOF' > literal-patch.patch
+diff --git a/file3.bin b/file3.bin
+new file mode 100644
+index 0000000..ghi789
+Binary files /dev/null and b/file3.bin differ
+literal 8
+PcmZn~0001
+
+diff --git a/file4.txt b/file4.txt
+new file mode 100644
+index 0000000..jkl012
+--- /dev/null
++++ b/file4.txt
+@@ -0,0 +1 @@
++more text
+EOF
+
+# Test 3: delta format binary patch (working format)
+cat << 'EOF' > delta-patch.patch
+diff --git a/file5.bin b/file5.bin
+new file mode 100644
+index 0000000..mno345
+Binary files /dev/null and b/file5.bin differ
+delta 16
+XcmZn~00002Tc
+
+diff --git a/file6.txt b/file6.txt
+new file mode 100644
+index 0000000..pqr678
+--- /dev/null
++++ b/file6.txt
+@@ -0,0 +1 @@
++final text
+EOF
+
+# Test filtering binary files with GIT binary patch format - should include binary content
+echo "Testing GIT binary patch format (include)..."
+${FILTERDIFF} -i "*/file1.bin" git-binary-patch.patch 2>errors1 >result1 || exit 1
+[ -s errors1 ] && { echo "Unexpected errors in test 1:"; cat errors1; exit 1; }
+
+cat << 'EOF' | cmp - result1 || { echo "Test 1 failed"; exit 1; }
+diff --git a/file1.bin b/file1.bin
+new file mode 100644
+index 0000000..abc123
+Binary files /dev/null and b/file1.bin differ
+GIT binary patch
+literal 12
+TcmZn~00001
+
+EOF
+
+# Test filtering binary files with literal format - should include binary content
+echo "Testing literal format (include)..."
+${FILTERDIFF} -i "*/file3.bin" literal-patch.patch 2>errors2 >result2 || exit 1
+[ -s errors2 ] && { echo "Unexpected errors in test 2:"; cat errors2; exit 1; }
+
+cat << 'EOF' | cmp - result2 || { echo "Test 2 failed"; exit 1; }
+diff --git a/file3.bin b/file3.bin
+new file mode 100644
+index 0000000..ghi789
+Binary files /dev/null and b/file3.bin differ
+literal 8
+PcmZn~0001
+
+EOF
+
+# Test filtering binary files with delta format - should include binary content
+echo "Testing delta format (include)..."
+${FILTERDIFF} -i "*/file5.bin" delta-patch.patch 2>errors3 >result3 || exit 1
+[ -s errors3 ] && { echo "Unexpected errors in test 3:"; cat errors3; exit 1; }
+
+cat << 'EOF' | cmp - result3 || { echo "Test 3 failed"; exit 1; }
+diff --git a/file5.bin b/file5.bin
+new file mode 100644
+index 0000000..mno345
+Binary files /dev/null and b/file5.bin differ
+delta 16
+XcmZn~00002Tc
+
+EOF
+
+# Test excluding binary files - should skip binary content
+echo "Testing binary patch exclusion..."
+${FILTERDIFF} -x "*/file1.bin" git-binary-patch.patch 2>errors4 >result4 || exit 1
+[ -s errors4 ] && { echo "Unexpected errors in test 4:"; cat errors4; exit 1; }
+
+cat << 'EOF' | cmp - result4 || { echo "Test 4 failed"; exit 1; }
+
+diff --git a/file2.txt b/file2.txt
+new file mode 100644
+index 0000000..def456
+--- /dev/null
++++ b/file2.txt
+@@ -0,0 +1 @@
++text content
+EOF
+
+echo "All binary format tests passed!"
+exit 0
