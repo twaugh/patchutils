@@ -295,6 +295,9 @@ TESTS = tests/newline1/run-test \
 	tests/git-copy-operations/run-test \
 	tests/git-extended-headers/run-test \
 	tests/git-lsdiff-status/run-test \
+	tests/git-deleted-file/run-test \
+	tests/git-pure-rename/run-test \
+	tests/git-diff-edge-cases/run-test \
 	tests/malformed-diff-headers/run-test
 
 # These ones don't work yet.
