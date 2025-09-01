@@ -1,0 +1,349 @@
+#!/bin/sh
+
+# Test all git extended headers for comprehensive coverage
+# This test ensures filterdiff correctly handles all git extended headers
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Test 1a: deleted file mode (with hunks)
+cat << EOF > deleted-file.patch
+diff --git a/removed.txt b/removed.txt
+deleted file mode 100644
+index 1234567..0000000
+--- a/removed.txt
++++ /dev/null
+@@ -1,3 +0,0 @@
+-line 1
+-line 2
+-line 3
+EOF
+
+${LSDIFF} deleted-file.patch 2>errors1a >result1a || exit 1
+[ -s errors1a ] && exit 1
+
+cat << EOF | cmp - result1a || exit 1
+a/removed.txt
+EOF
+
+${FILTERDIFF} -i "a/removed.txt" deleted-file.patch 2>errors1a2 >result1a2 || exit 1
+[ -s errors1a2 ] && exit 1
+
+cat << EOF | cmp - result1a2 || exit 1
+diff --git a/removed.txt b/removed.txt
+deleted file mode 100644
+index 1234567..0000000
+--- a/removed.txt
++++ /dev/null
+@@ -1,3 +0,0 @@
+-line 1
+-line 2
+-line 3
+EOF
+
+# Test 1b: deleted file mode (no hunks - triggers do_git_diff_no_hunks)
+cat << EOF > deleted-file-no-hunks.patch
+diff --git a/empty-deleted.txt b/empty-deleted.txt
+deleted file mode 100644
+index e69de29..0000000
+EOF
+
+${LSDIFF} deleted-file-no-hunks.patch 2>errors1b >result1b || exit 1
+[ -s errors1b ] && exit 1
+
+cat << EOF | cmp - result1b || exit 1
+a/empty-deleted.txt
+EOF
+
+${FILTERDIFF} -i "a/empty-deleted.txt" deleted-file-no-hunks.patch 2>errors1b2 >result1b2 || exit 1
+[ -s errors1b2 ] && exit 1
+
+cat << EOF | cmp - result1b2 || exit 1
+diff --git a/empty-deleted.txt b/empty-deleted.txt
+deleted file mode 100644
+index e69de29..0000000
+EOF
+
+# Test 2a: new file mode (with hunks)
+cat << EOF > new-file.patch
+diff --git a/created.txt b/created.txt
+new file mode 100644
+index 0000000..abcdefg
+--- /dev/null
++++ b/created.txt
+@@ -0,0 +1,3 @@
++new line 1
++new line 2
++new line 3
+EOF
+
+${LSDIFF} new-file.patch 2>errors2a >result2a || exit 1
+[ -s errors2a ] && exit 1
+
+cat << EOF | cmp - result2a || exit 1
+b/created.txt
+EOF
+
+${FILTERDIFF} -i "b/created.txt" new-file.patch 2>errors2a2 >result2a2 || exit 1
+[ -s errors2a2 ] && exit 1
+
+cat << EOF | cmp - result2a2 || exit 1
+diff --git a/created.txt b/created.txt
+new file mode 100644
+index 0000000..abcdefg
+--- /dev/null
++++ b/created.txt
+@@ -0,0 +1,3 @@
++new line 1
++new line 2
++new line 3
+EOF
+
+# Test 2b: new file mode (no hunks - triggers do_git_diff_no_hunks)
+cat << EOF > new-file-no-hunks.patch
+diff --git a/empty-new.txt b/empty-new.txt
+new file mode 100644
+index 0000000..e69de29
+EOF
+
+${LSDIFF} new-file-no-hunks.patch 2>errors2b >result2b || exit 1
+[ -s errors2b ] && exit 1
+
+cat << EOF | cmp - result2b || exit 1
+a/empty-new.txt
+EOF
+
+${FILTERDIFF} -i "a/empty-new.txt" new-file-no-hunks.patch 2>errors2b2 >result2b2 || exit 1
+[ -s errors2b2 ] && exit 1
+
+cat << EOF | cmp - result2b2 || exit 1
+diff --git a/empty-new.txt b/empty-new.txt
+new file mode 100644
+index 0000000..e69de29
+EOF
+
+# Test 1c: deleted file with binary content (triggers do_git_diff_no_hunks path)
+cat << EOF > deleted-file-binary.patch
+diff --git a/pure-deleted.txt b/pure-deleted.txt
+deleted file mode 100644
+index e69de29..0000000
+Binary files a/pure-deleted.txt and /dev/null differ
+EOF
+
+${LSDIFF} deleted-file-binary.patch 2>errors1c >result1c || exit 1
+[ -s errors1c ] && exit 1
+
+cat << EOF | cmp - result1c || exit 1
+a/pure-deleted.txt
+EOF
+
+${FILTERDIFF} -i "a/pure-deleted.txt" deleted-file-binary.patch 2>errors1c2 >result1c2 || exit 1
+[ -s errors1c2 ] && exit 1
+
+cat << EOF | cmp - result1c2 || exit 1
+diff --git a/pure-deleted.txt b/pure-deleted.txt
+deleted file mode 100644
+index e69de29..0000000
+Binary files a/pure-deleted.txt and /dev/null differ
+EOF
+
+# Test 3: dissimilarity index (file rewrite)
+cat << EOF > dissimilar-file.patch
+diff --git a/rewritten.c b/rewritten.c
+dissimilarity index 95%
+index abc1234..def5678 100644
+--- a/rewritten.c
++++ b/rewritten.c
+@@ -1,10 +1,15 @@
+-#include <stdio.h>
+-
+-int old_function() {
+-    printf("old code");
+-    return 0;
+-}
+-
+-int main() {
+-    return old_function();
+-}
++#include <stdlib.h>
++#include <string.h>
++
++struct new_data {
++    char *name;
++    int value;
++};
++
++int main(int argc, char **argv) {
++    struct new_data data;
++    data.name = strdup("new");
++    data.value = 42;
++    free(data.name);
++    return 0;
++}
+EOF
+
+${LSDIFF} dissimilar-file.patch 2>errors3a >result3a || exit 1
+[ -s errors3a ] && exit 1
+
+cat << EOF | cmp - result3a || exit 1
+a/rewritten.c
+EOF
+
+${FILTERDIFF} -i "a/rewritten.c" dissimilar-file.patch 2>errors3a2 >result3a2 || exit 1
+[ -s errors3a2 ] && exit 1
+
+grep -q "dissimilarity index 95%" result3a2 || exit 1
+grep -q "rewritten.c" result3a2 || exit 1
+
+# Test 4: Mixed extended headers in one patch
+cat << EOF > mixed-extended.patch
+diff --git a/old.txt b/old.txt
+deleted file mode 100644
+index abc123..0000000
+--- a/old.txt
++++ /dev/null
+@@ -1,2 +0,0 @@
+-old content
+-to be removed
+diff --git a/template.h b/variant1.h
+similarity index 60%
+copy from template.h
+copy to variant1.h
+index def456..ghi789 100644
+--- a/template.h
++++ b/variant1.h
+@@ -1,5 +1,6 @@
+ #ifndef TEMPLATE_H
+ #define TEMPLATE_H
++#define VARIANT1
+
+ void function();
+ #endif
+diff --git a/config.conf b/settings.conf
+similarity index 100%
+rename from config.conf
+rename to settings.conf
+diff --git a/script.sh b/script.sh
+old mode 100755
+new mode 100644
+index xyz987..uvw654 100644
+--- a/script.sh
++++ b/script.sh
+@@ -1,3 +1,3 @@
+ #!/bin/bash
+-echo "executable"
++echo "not executable"
+ exit 0
+diff --git a/brand-new.py b/brand-new.py
+new file mode 100755
+index 0000000..123abc
+--- /dev/null
++++ b/brand-new.py
+@@ -0,0 +1,4 @@
++#!/usr/bin/env python3
++
++if __name__ == "__main__":
++    print("Hello, World!")
+diff --git a/completely-rewritten.java b/completely-rewritten.java
+dissimilarity index 98%
+index old123..new456 100644
+--- a/completely-rewritten.java
++++ b/completely-rewritten.java
+@@ -1,15 +1,20 @@
+-public class OldClass {
+-    private int oldField;
+-
+-    public OldClass(int value) {
+-        this.oldField = value;
+-    }
+-
+-    public void oldMethod() {
+-        System.out.println("Old: " + oldField);
+-    }
+-
+-    public static void main(String[] args) {
+-        new OldClass(42).oldMethod();
+-    }
+-}
++import java.util.*;
++
++public class NewClass {
++    private Map<String, Object> data;
++
++    public NewClass() {
++        this.data = new HashMap<>();
++    }
++
++    public void addData(String key, Object value) {
++        data.put(key, value);
++    }
++
++    public void printAll() {
++        data.forEach((k, v) -> System.out.println(k + ": " + v));
++    }
++
++    public static void main(String[] args) {
++        new NewClass().printAll();
++    }
++}
+EOF
+
+# Test lsdiff shows all files
+${LSDIFF} mixed-extended.patch 2>errors4 >result4 || exit 1
+[ -s errors4 ] && exit 1
+
+cat << EOF | cmp - result4 || exit 1
+a/old.txt
+a/template.h
+config.conf
+a/script.sh
+b/brand-new.py
+a/completely-rewritten.java
+EOF
+
+# Test filtering works with all header types
+${FILTERDIFF} -i "b/*.py" mixed-extended.patch 2>errors5 >result5 || exit 1
+[ -s errors5 ] && exit 1
+
+grep -q "brand-new.py" result5 || exit 1
+grep -q "new file mode 100755" result5 || exit 1
+
+${FILTERDIFF} -i "a/*.java" mixed-extended.patch 2>errors6 >result6 || exit 1
+[ -s errors6 ] && exit 1
+
+grep -q "completely-rewritten.java" result6 || exit 1
+grep -q "dissimilarity index 98%" result6 || exit 1
+
+${FILTERDIFF} -i "a/old.txt" mixed-extended.patch 2>errors7 >result7 || exit 1
+[ -s errors7 ] && exit 1
+
+grep -q "deleted file mode 100644" result7 || exit 1
+
+# Test 5: Edge case - file with multiple extended headers
+cat << EOF > multiple-headers.patch
+diff --git a/complex.c b/renamed-complex.c
+similarity index 75%
+rename from complex.c
+rename to renamed-complex.c
+old mode 100644
+new mode 100755
+index abc123..def456 100755
+--- a/complex.c
++++ b/renamed-complex.c
+@@ -1,4 +1,5 @@
+ #include <stdio.h>
++#include <stdlib.h>
+
+ int main() {
+     printf("Hello");
+EOF
+
+${FILTERDIFF} -i "*complex*.c" multiple-headers.patch 2>errors8 >result8 || exit 1
+[ -s errors8 ] && exit 1
+
+grep -q "similarity index 75%" result8 || exit 1
+grep -q "rename from complex.c" result8 || exit 1
+grep -q "rename to renamed-complex.c" result8 || exit 1
+grep -q "old mode 100644" result8 || exit 1
+grep -q "new mode 100755" result8 || exit 1
+
+exit 0
