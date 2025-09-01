@@ -1,0 +1,130 @@
+#!/bin/sh
+
+# Test for GIT_DIFF_DELETED_FILE functionality
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Test 1: Basic deleted file
+cat << 'EOF' > git-deleted.patch
+diff --git a/deleted-file.txt b/deleted-file.txt
+deleted file mode 100644
+index abc123..0000000
+--- a/deleted-file.txt
++++ /dev/null
+@@ -1,3 +0,0 @@
+-line 1
+-line 2
+-line 3
+EOF
+
+# Test 2: Deleted file without hunks (pure header-only deletion)
+cat << 'EOF' > git-deleted-no-hunks.patch
+diff --git a/removed.c b/removed.c
+deleted file mode 100644
+index def456..0000000
+Binary files a/removed.c and /dev/null differ
+EOF
+
+# Test 3: Multiple deleted files in one patch
+cat << 'EOF' > git-multiple-deleted.patch
+diff --git a/file1.txt b/file1.txt
+deleted file mode 100644
+index 111..0000000
+--- a/file1.txt
++++ /dev/null
+@@ -1 +0,0 @@
+-content1
+diff --git a/file2.txt b/file2.txt
+deleted file mode 100644
+index 222..0000000
+--- a/file2.txt
++++ /dev/null
+@@ -1 +0,0 @@
+-content2
+EOF
+
+echo "=== Test 1: lsdiff with deleted file ==="
+${LSDIFF} -s git-deleted.patch 2>errors1 >result1 || exit 1
+[ -s errors1 ] && exit 1
+
+# Should show file with '-' status
+cat << EOF | cmp - result1 || exit 1
+- a/deleted-file.txt
+EOF
+
+echo "=== Test 2: filterdiff include deleted file ==="
+${FILTERDIFF} -i "*/deleted*" git-deleted.patch 2>errors2 >result2 || exit 1
+[ -s errors2 ] && exit 1
+
+# Should include the full diff
+cat << 'EOF' | cmp - result2 || exit 1
+diff --git a/deleted-file.txt b/deleted-file.txt
+deleted file mode 100644
+index abc123..0000000
+--- a/deleted-file.txt
++++ /dev/null
+@@ -1,3 +0,0 @@
+-line 1
+-line 2
+-line 3
+EOF
+
+echo "=== Test 3: filterdiff exclude deleted file ==="
+${FILTERDIFF} -x "*/deleted*" git-deleted.patch 2>errors3 >result3 || exit 1
+[ -s errors3 ] && exit 1
+
+# Should be empty
+[ -s result3 ] && exit 1
+
+echo "=== Test 4: lsdiff with deleted file (no hunks) ==="
+${LSDIFF} -s git-deleted-no-hunks.patch 2>errors4 >result4 || exit 1
+[ -s errors4 ] && exit 1
+
+cat << EOF | cmp - result4 || exit 1
+- a/removed.c
+EOF
+
+echo "=== Test 5: filterdiff with deleted file (no hunks) ==="
+${FILTERDIFF} -i "*/*.c" git-deleted-no-hunks.patch 2>errors5 >result5 || exit 1
+[ -s errors5 ] && exit 1
+
+cat << 'EOF' | cmp - result5 || exit 1
+diff --git a/removed.c b/removed.c
+deleted file mode 100644
+index def456..0000000
+Binary files a/removed.c and /dev/null differ
+EOF
+
+echo "=== Test 6: lsdiff with multiple deleted files ==="
+${LSDIFF} -s git-multiple-deleted.patch 2>errors6 >result6 || exit 1
+[ -s errors6 ] && exit 1
+
+cat << EOF | cmp - result6 || exit 1
+- a/file1.txt
+- a/file2.txt
+EOF
+
+echo "=== Test 7: filterdiff with pattern matching multiple deleted files ==="
+${FILTERDIFF} -i "*/file1*" git-multiple-deleted.patch 2>errors7 >result7 || exit 1
+[ -s errors7 ] && exit 1
+
+cat << 'EOF' | cmp - result7 || exit 1
+diff --git a/file1.txt b/file1.txt
+deleted file mode 100644
+index 111..0000000
+--- a/file1.txt
++++ /dev/null
+@@ -1 +0,0 @@
+-content1
+EOF
+
+echo "=== Test 8: Test git-prefixes with deleted files ==="
+${LSDIFF} --git-prefixes=strip -s git-deleted.patch 2>errors8 >result8 || exit 1
+[ -s errors8 ] && exit 1
+
+cat << EOF | cmp - result8 || exit 1
+- deleted-file.txt
+EOF
+
+echo "All deleted file tests passed!"
+exit 0

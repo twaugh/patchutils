@@ -1,0 +1,137 @@
+#!/bin/sh
+
+# Test for GIT_DIFF_RENAME functionality (similarity index 100%)
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Test 1: Pure rename (similarity index 100%)
+cat << 'EOF' > git-pure-rename.patch
+diff --git a/old-name.txt b/new-name.txt
+similarity index 100%
+rename from old-name.txt
+rename to new-name.txt
+EOF
+
+# Test 2: Rename with similarity < 100% (should be treated as copy)
+cat << 'EOF' > git-rename-with-changes.patch
+diff --git a/original.c b/modified.c
+similarity index 85%
+rename from original.c
+rename to modified.c
+index abc123..def456 100644
+--- a/original.c
++++ b/modified.c
+@@ -1,5 +1,6 @@
+ #include <stdio.h>
+ 
+ int main() {
++    printf("Modified!\n");
+     return 0;
+ }
+EOF
+
+# Test 3: Multiple pure renames
+cat << 'EOF' > git-multiple-renames.patch
+diff --git a/file1.txt b/renamed1.txt
+similarity index 100%
+rename from file1.txt
+rename to renamed1.txt
+diff --git a/file2.txt b/renamed2.txt
+similarity index 100%
+rename from file2.txt
+rename to renamed2.txt
+EOF
+
+# Test 4: Rename in subdirectory
+cat << 'EOF' > git-rename-subdir.patch
+diff --git a/src/old.c b/src/new.c
+similarity index 100%
+rename from src/old.c
+rename to src/new.c
+EOF
+
+echo "=== Test 1: lsdiff with pure rename ==="
+${LSDIFF} -s git-pure-rename.patch 2>errors1 >result1 || exit 1
+[ -s errors1 ] && exit 1
+
+# For pure renames, both files exist so status should be '!'
+cat << EOF | cmp - result1 || exit 1
+! old-name.txt
+EOF
+
+echo "=== Test 2: filterdiff include pure rename ==="
+${FILTERDIFF} -i "old*" git-pure-rename.patch 2>errors2 >result2 || exit 1
+[ -s errors2 ] && exit 1
+
+cat << 'EOF' | cmp - result2 || exit 1
+diff --git a/old-name.txt b/new-name.txt
+similarity index 100%
+rename from old-name.txt
+rename to new-name.txt
+EOF
+
+echo "=== Test 3: filterdiff include by new name (should not match) ==="
+${FILTERDIFF} -i "new*" git-pure-rename.patch 2>errors3 >result3 || exit 1
+[ -s errors3 ] && exit 1
+
+# Should be empty because best_name() chooses the old name for renames
+[ -s result3 ] && exit 1
+
+echo "=== Test 4: filterdiff exclude pure rename ==="
+${FILTERDIFF} -x "*name*" git-pure-rename.patch 2>errors4 >result4 || exit 1
+[ -s errors4 ] && exit 1
+
+# Should be empty
+[ -s result4 ] && exit 1
+
+echo "=== Test 5: lsdiff with rename that has changes ==="
+${LSDIFF} -s git-rename-with-changes.patch 2>errors5 >result5 || exit 1
+[ -s errors5 ] && exit 1
+
+cat << EOF | cmp - result5 || exit 1
+! a/original.c
+EOF
+
+echo "=== Test 6: lsdiff with multiple renames ==="
+${LSDIFF} -s git-multiple-renames.patch 2>errors6 >result6 || exit 1
+[ -s errors6 ] && exit 1
+
+cat << EOF | cmp - result6 || exit 1
+! file1.txt
+! file2.txt
+EOF
+
+echo "=== Test 7: filterdiff with pattern matching one of multiple renames ==="
+${FILTERDIFF} -i "file1*" git-multiple-renames.patch 2>errors7 >result7 || exit 1
+[ -s errors7 ] && exit 1
+
+cat << 'EOF' | cmp - result7 || exit 1
+diff --git a/file1.txt b/renamed1.txt
+similarity index 100%
+rename from file1.txt
+rename to renamed1.txt
+EOF
+
+echo "=== Test 8: filterdiff with subdirectory rename ==="
+${FILTERDIFF} -i "src/*" git-rename-subdir.patch 2>errors8 >result8 || exit 1
+[ -s errors8 ] && exit 1
+
+cat << 'EOF' | cmp - result8 || exit 1
+diff --git a/src/old.c b/src/new.c
+similarity index 100%
+rename from src/old.c
+rename to src/new.c
+EOF
+
+echo "=== Test 9: Test git-prefixes with renames ==="
+${LSDIFF} --git-prefixes=strip -s git-pure-rename.patch 2>errors9 >result9 || exit 1
+[ -s errors9 ] && exit 1
+
+cat << EOF | cmp - result9 || exit 1
+! old-name.txt
+EOF
+
+# Skip grepdiff test - pure renames have no content to grep
+
+echo "All pure rename tests passed!"
+exit 0

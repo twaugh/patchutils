@@ -1,0 +1,220 @@
+#!/bin/sh
+
+# Test for edge cases and error conditions in git diff processing
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Test 1: Mode-only change (GIT_DIFF_MODE_ONLY)
+cat << 'EOF' > git-mode-only.patch
+diff --git a/script.sh b/script.sh
+old mode 100644
+new mode 100755
+index abc123..abc123 100644
+EOF
+
+# Test 2: Git diff with no hunks and binary marker
+cat << 'EOF' > git-binary-no-hunks.patch
+diff --git a/image.png b/image.png
+new file mode 100644
+index 0000000..abc123
+Binary files /dev/null and b/image.png differ
+EOF
+
+# Test 3: Copy operation (not pure rename)
+cat << 'EOF' > git-copy.patch
+diff --git a/original.txt b/copy.txt
+similarity index 85%
+copy from original.txt
+copy to copy.txt
+index abc123..def456 100644
+--- a/original.txt
++++ b/copy.txt
+@@ -1,3 +1,4 @@
+ line 1
+ line 2
+ line 3
++added line
+EOF
+
+# Test 4: Malformed git headers (should fall back gracefully)
+cat << 'EOF' > malformed-git.patch
+diff --git incomplete
+some random content
+--- a/file.txt
++++ b/file.txt
+@@ -1 +1 @@
+-old
++new
+EOF
+
+# Test 5: Git diff with both old and new mode changes
+cat << 'EOF' > git-mode-and-content.patch
+diff --git a/file.txt b/file.txt
+old mode 100644
+new mode 100755
+index abc123..def456
+--- a/file.txt
++++ b/file.txt
+@@ -1 +1,2 @@
+ content
++new line
+EOF
+
+# Test 6: Empty git diff (no changes)
+cat << 'EOF' > git-empty.patch
+diff --git a/unchanged.txt b/unchanged.txt
+index abc123..abc123 100644
+EOF
+
+echo "=== Test 1: Mode-only change ==="
+${LSDIFF} -s git-mode-only.patch 2>errors1 >result1 || exit 1
+[ -s errors1 ] && exit 1
+
+cat << EOF | cmp - result1 || exit 1
+! a/script.sh
+EOF
+
+echo "=== Test 2: Binary file with no hunks ==="
+${LSDIFF} -s git-binary-no-hunks.patch 2>errors2 >result2 || exit 1
+[ -s errors2 ] && exit 1
+
+cat << EOF | cmp - result2 || exit 1
++ a/image.png
+EOF
+
+echo "=== Test 3: Copy operation ==="
+${LSDIFF} -s git-copy.patch 2>errors3 >result3 || exit 1
+[ -s errors3 ] && exit 1
+
+cat << EOF | cmp - result3 || exit 1
+! b/copy.txt
+EOF
+
+echo "=== Test 4: filterdiff with copy operation ==="
+${FILTERDIFF} -i "*/copy*" git-copy.patch 2>errors4 >result4 || exit 1
+[ -s errors4 ] && exit 1
+
+cat << 'EOF' | cmp - result4 || exit 1
+diff --git a/original.txt b/copy.txt
+similarity index 85%
+copy from original.txt
+copy to copy.txt
+index abc123..def456 100644
+--- a/original.txt
++++ b/copy.txt
+@@ -1,3 +1,4 @@
+ line 1
+ line 2
+ line 3
++added line
+EOF
+
+echo "=== Test 5: filterdiff with copy by target name ==="
+${FILTERDIFF} -i "*/copy*" git-copy.patch 2>errors5 >result5 || exit 1
+[ -s errors5 ] && exit 1
+
+# Should still match (uses best_name)
+cat << 'EOF' | cmp - result5 || exit 1
+diff --git a/original.txt b/copy.txt
+similarity index 85%
+copy from original.txt
+copy to copy.txt
+index abc123..def456 100644
+--- a/original.txt
++++ b/copy.txt
+@@ -1,3 +1,4 @@
+ line 1
+ line 2
+ line 3
++added line
+EOF
+
+echo "=== Test 6: Malformed git headers fallback ==="
+${LSDIFF} malformed-git.patch 2>errors6 >result6 || exit 1
+[ -s errors6 ] && exit 1
+
+cat << EOF | cmp - result6 || exit 1
+a/file.txt
+EOF
+
+echo "=== Test 7: Mode and content change ==="
+${LSDIFF} -s git-mode-and-content.patch 2>errors7 >result7 || exit 1
+[ -s errors7 ] && exit 1
+
+cat << EOF | cmp - result7 || exit 1
+! a/file.txt
+EOF
+
+echo "=== Test 8: Empty git diff ==="
+${LSDIFF} -s git-empty.patch 2>errors8 >result8 || exit 1
+[ -s errors8 ] && exit 1
+
+# Empty git diff should produce no output
+[ -s result8 ] && exit 1
+
+echo "=== Test 9: filterdiff with git-prefixes on various types ==="
+${FILTERDIFF} --git-prefixes=strip -i "*.sh" git-mode-only.patch 2>errors9 >result9 || exit 1
+[ -s errors9 ] && exit 1
+
+cat << 'EOF' | cmp - result9 || exit 1
+diff --git a/script.sh b/script.sh
+old mode 100644
+new mode 100755
+index abc123..abc123 100644
+EOF
+
+echo "=== Test 10: Test include/exclude with no matches ==="
+${FILTERDIFF} -i "nonexistent*" git-mode-only.patch 2>errors10 >result10 || exit 1
+[ -s errors10 ] && exit 1
+
+# Should be empty
+[ -s result10 ] && exit 1
+
+echo "=== Test 11: Multiple git diff types in one patch ==="
+cat << 'EOF' > mixed-git-types.patch
+diff --git a/deleted.txt b/deleted.txt
+deleted file mode 100644
+index abc123..0000000
+--- a/deleted.txt
++++ /dev/null
+@@ -1 +0,0 @@
+-content
+diff --git a/old.txt b/new.txt
+similarity index 100%
+rename from old.txt
+rename to new.txt
+diff --git a/script.sh b/script.sh
+old mode 100644
+new mode 100755
+index def456..def456 100644
+EOF
+
+${LSDIFF} -s mixed-git-types.patch 2>errors11 >result11 || exit 1
+[ -s errors11 ] && exit 1
+
+cat << EOF | cmp - result11 || exit 1
+- a/deleted.txt
+! old.txt
+! a/script.sh
+EOF
+
+echo "=== Test 12: filterdiff with pattern matching mixed types ==="
+${FILTERDIFF} -i "*.txt" mixed-git-types.patch 2>errors12 >result12 || exit 1
+[ -s errors12 ] && exit 1
+
+cat << 'EOF' | cmp - result12 || exit 1
+diff --git a/deleted.txt b/deleted.txt
+deleted file mode 100644
+index abc123..0000000
+--- a/deleted.txt
++++ /dev/null
+@@ -1 +0,0 @@
+-content
+diff --git a/old.txt b/new.txt
+similarity index 100%
+rename from old.txt
+rename to new.txt
+EOF
+
+echo "All edge case tests passed!"
+exit 0
