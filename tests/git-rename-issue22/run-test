@@ -13,7 +13,7 @@ rename to tests/wpt/web-platform-tests/2dcontext/transformations/2d.transformati
 EOF
 
 # Test that filterdiff includes the rename when it matches the filter
-${FILTERDIFF} -p 1 -i "*wpt*" git-rename.patch 2>errors >result || exit 1
+${FILTERDIFF} --git-prefixes=strip -i "*wpt*" git-rename.patch 2>errors >result || exit 1
 [ -s errors ] && exit 1
 
 # The result should contain the complete git diff block
@@ -25,14 +25,14 @@ rename to tests/wpt/web-platform-tests/2dcontext/transformations/2d.transformati
 EOF
 
 # Test that filterdiff excludes the rename when it doesn't match the filter
-${FILTERDIFF} -p 1 -i something-else git-rename.patch 2>errors2 >result2 || exit 1
+${FILTERDIFF} --git-prefixes=strip -i something-else git-rename.patch 2>errors2 >result2 || exit 1
 [ -s errors2 ] && exit 1
 
 # The result should be empty
 [ -s result2 ] && exit 1
 
 # Test lsdiff works with renames
-${LSDIFF} git-rename.patch 2>errors3 >result3 || exit 1
+${LSDIFF} --git-prefixes=strip git-rename.patch 2>errors3 >result3 || exit 1
 [ -s errors3 ] && exit 1
 
 cat << EOF | cmp - result3 || exit 1

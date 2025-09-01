@@ -18,14 +18,14 @@ index 1234567..0000000
 -line 3
 EOF
 
-${LSDIFF} deleted-file.patch 2>errors1a >result1a || exit 1
+${LSDIFF} --git-prefixes=strip deleted-file.patch 2>errors1a >result1a || exit 1
 [ -s errors1a ] && exit 1
 
 cat << EOF | cmp - result1a || exit 1
-a/removed.txt
+removed.txt
 EOF
 
-${FILTERDIFF} -i "a/removed.txt" deleted-file.patch 2>errors1a2 >result1a2 || exit 1
+${FILTERDIFF} --git-prefixes=strip -i "removed.txt" deleted-file.patch 2>errors1a2 >result1a2 || exit 1
 [ -s errors1a2 ] && exit 1
 
 cat << EOF | cmp - result1a2 || exit 1
@@ -47,14 +47,14 @@ deleted file mode 100644
 index e69de29..0000000
 EOF
 
-${LSDIFF} deleted-file-no-hunks.patch 2>errors1b >result1b || exit 1
+${LSDIFF} --git-prefixes=strip deleted-file-no-hunks.patch 2>errors1b >result1b || exit 1
 [ -s errors1b ] && exit 1
 
 cat << EOF | cmp - result1b || exit 1
-a/empty-deleted.txt
+empty-deleted.txt
 EOF
 
-${FILTERDIFF} -i "a/empty-deleted.txt" deleted-file-no-hunks.patch 2>errors1b2 >result1b2 || exit 1
+${FILTERDIFF} --git-prefixes=strip -i "empty-deleted.txt" deleted-file-no-hunks.patch 2>errors1b2 >result1b2 || exit 1
 [ -s errors1b2 ] && exit 1
 
 cat << EOF | cmp - result1b2 || exit 1
@@ -76,14 +76,14 @@ index 0000000..abcdefg
 +new line 3
 EOF
 
-${LSDIFF} new-file.patch 2>errors2a >result2a || exit 1
+${LSDIFF} --git-prefixes=strip new-file.patch 2>errors2a >result2a || exit 1
 [ -s errors2a ] && exit 1
 
 cat << EOF | cmp - result2a || exit 1
-b/created.txt
+created.txt
 EOF
 
-${FILTERDIFF} -i "b/created.txt" new-file.patch 2>errors2a2 >result2a2 || exit 1
+${FILTERDIFF} --git-prefixes=strip -i "created.txt" new-file.patch 2>errors2a2 >result2a2 || exit 1
 [ -s errors2a2 ] && exit 1
 
 cat << EOF | cmp - result2a2 || exit 1
@@ -105,14 +105,14 @@ new file mode 100644
 index 0000000..e69de29
 EOF
 
-${LSDIFF} new-file-no-hunks.patch 2>errors2b >result2b || exit 1
+${LSDIFF} --git-prefixes=strip new-file-no-hunks.patch 2>errors2b >result2b || exit 1
 [ -s errors2b ] && exit 1
 
 cat << EOF | cmp - result2b || exit 1
-a/empty-new.txt
+empty-new.txt
 EOF
 
-${FILTERDIFF} -i "a/empty-new.txt" new-file-no-hunks.patch 2>errors2b2 >result2b2 || exit 1
+${FILTERDIFF} --git-prefixes=strip -i "empty-new.txt" new-file-no-hunks.patch 2>errors2b2 >result2b2 || exit 1
 [ -s errors2b2 ] && exit 1
 
 cat << EOF | cmp - result2b2 || exit 1
@@ -129,14 +129,14 @@ index e69de29..0000000
 Binary files a/pure-deleted.txt and /dev/null differ
 EOF
 
-${LSDIFF} deleted-file-binary.patch 2>errors1c >result1c || exit 1
+${LSDIFF} --git-prefixes=strip deleted-file-binary.patch 2>errors1c >result1c || exit 1
 [ -s errors1c ] && exit 1
 
 cat << EOF | cmp - result1c || exit 1
-a/pure-deleted.txt
+pure-deleted.txt
 EOF
 
-${FILTERDIFF} -i "a/pure-deleted.txt" deleted-file-binary.patch 2>errors1c2 >result1c2 || exit 1
+${FILTERDIFF} --git-prefixes=strip -i "pure-deleted.txt" deleted-file-binary.patch 2>errors1c2 >result1c2 || exit 1
 [ -s errors1c2 ] && exit 1
 
 cat << EOF | cmp - result1c2 || exit 1
@@ -181,14 +181,14 @@ index abc1234..def5678 100644
 +}
 EOF
 
-${LSDIFF} dissimilar-file.patch 2>errors3a >result3a || exit 1
+${LSDIFF} --git-prefixes=strip dissimilar-file.patch 2>errors3a >result3a || exit 1
 [ -s errors3a ] && exit 1
 
 cat << EOF | cmp - result3a || exit 1
-a/rewritten.c
+rewritten.c
 EOF
 
-${FILTERDIFF} -i "a/rewritten.c" dissimilar-file.patch 2>errors3a2 >result3a2 || exit 1
+${FILTERDIFF} --git-prefixes=strip -i "rewritten.c" dissimilar-file.patch 2>errors3a2 >result3a2 || exit 1
 [ -s errors3a2 ] && exit 1
 
 grep -q "dissimilarity index 95%" result3a2 || exit 1
@@ -288,32 +288,32 @@ index old123..new456 100644
 EOF
 
 # Test lsdiff shows all files
-${LSDIFF} mixed-extended.patch 2>errors4 >result4 || exit 1
+${LSDIFF} --git-prefixes=strip mixed-extended.patch 2>errors4 >result4 || exit 1
 [ -s errors4 ] && exit 1
 
 cat << EOF | cmp - result4 || exit 1
-a/old.txt
-a/template.h
+old.txt
+template.h
 config.conf
-a/script.sh
-b/brand-new.py
-a/completely-rewritten.java
+script.sh
+brand-new.py
+completely-rewritten.java
 EOF
 
 # Test filtering works with all header types
-${FILTERDIFF} -i "b/*.py" mixed-extended.patch 2>errors5 >result5 || exit 1
+${FILTERDIFF} --git-prefixes=strip -i "*.py" mixed-extended.patch 2>errors5 >result5 || exit 1
 [ -s errors5 ] && exit 1
 
 grep -q "brand-new.py" result5 || exit 1
 grep -q "new file mode 100755" result5 || exit 1
 
-${FILTERDIFF} -i "a/*.java" mixed-extended.patch 2>errors6 >result6 || exit 1
+${FILTERDIFF} --git-prefixes=strip -i "*.java" mixed-extended.patch 2>errors6 >result6 || exit 1
 [ -s errors6 ] && exit 1
 
 grep -q "completely-rewritten.java" result6 || exit 1
 grep -q "dissimilarity index 98%" result6 || exit 1
 
-${FILTERDIFF} -i "a/old.txt" mixed-extended.patch 2>errors7 >result7 || exit 1
+${FILTERDIFF} --git-prefixes=strip -i "old.txt" mixed-extended.patch 2>errors7 >result7 || exit 1
 [ -s errors7 ] && exit 1
 
 grep -q "deleted file mode 100644" result7 || exit 1
@@ -337,7 +337,7 @@ index abc123..def456 100755
      printf("Hello");
 EOF
 
-${FILTERDIFF} -i "*complex*.c" multiple-headers.patch 2>errors8 >result8 || exit 1
+${FILTERDIFF} --git-prefixes=strip -i "*complex*.c" multiple-headers.patch 2>errors8 >result8 || exit 1
 [ -s errors8 ] && exit 1
 
 grep -q "similarity index 75%" result8 || exit 1

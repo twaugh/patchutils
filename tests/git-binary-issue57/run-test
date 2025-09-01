@@ -21,7 +21,7 @@ index 0000000..abcdefg
 EOF
 
 # Test that filterdiff includes binary files when they match
-${FILTERDIFF} -p 1 -i binary-file git-binary.patch 2>errors >result || exit 1
+${FILTERDIFF} --git-prefixes=strip -i binary-file git-binary.patch 2>errors >result || exit 1
 [ -s errors ] && exit 1
 
 cat << EOF | cmp - result || exit 1
@@ -32,16 +32,16 @@ Binary files /dev/null and b/binary-file differ
 EOF
 
 # Test that lsdiff shows binary files
-${LSDIFF} git-binary.patch 2>errors2 >result2 || exit 1
+${LSDIFF} --git-prefixes=strip git-binary.patch 2>errors2 >result2 || exit 1
 [ -s errors2 ] && exit 1
 
 cat << EOF | cmp - result2 || exit 1
-a/binary-file
-b/text-file.txt
+binary-file
+text-file.txt
 EOF
 
 # Test excluding binary files
-${FILTERDIFF} -p 1 -x binary-file git-binary.patch 2>errors3 >result3 || exit 1
+${FILTERDIFF} --git-prefixes=strip -x binary-file git-binary.patch 2>errors3 >result3 || exit 1
 [ -s errors3 ] && exit 1
 
 cat << EOF | cmp - result3 || exit 1

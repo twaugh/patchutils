@@ -1,0 +1,216 @@
+#!/bin/sh
+
+# Test complex git diff scenarios and edge cases for lsdiff -s
+# This test covers advanced combinations and mixed diff types
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Test 1: Complex mixed diff with all types
+cat << EOF > all-types-mixed.patch
+diff --git a/new-file.txt b/new-file.txt
+new file mode 100644
+index 0000000..abc123
+--- /dev/null
++++ b/new-file.txt
+@@ -0,0 +1 @@
++new content
+diff --git a/deleted-file.txt b/deleted-file.txt
+deleted file mode 100644
+index abc123..0000000
+--- a/deleted-file.txt
++++ /dev/null
+@@ -1 +0,0 @@
+-deleted content
+diff --git a/old-name.c b/renamed.c
+similarity index 100%
+rename from old-name.c
+rename to renamed.c
+diff --git a/source.h b/copied.h
+similarity index 90%
+copy from source.h
+copy to copied.h
+index abc123..def456 100644
+--- a/source.h
++++ b/copied.h
+@@ -1 +1,2 @@
+ #ifndef HEADER_H
++#define COPIED_VERSION
+diff --git a/script.py b/script.py
+old mode 100644
+new mode 100755
+index abc123..abc123
+diff --git a/normal.c b/normal.c
+index abc123..def456 100644
+--- a/normal.c
++++ b/normal.c
+@@ -1 +1 @@
+-old line
++new line
+EOF
+
+${LSDIFF} -s all-types-mixed.patch 2>errors1 >result1 || exit 1
+[ -s errors1 ] && exit 1
+
+cat << EOF | cmp - result1 || exit 1
++ b/new-file.txt
+- a/deleted-file.txt
+! renamed.c
+! b/copied.h
+! a/script.py
+! a/normal.c
+EOF
+
+# Test 2: Binary file operations (with proper git diff types)
+cat << EOF > binary-new-file.patch
+diff --git a/new-binary.bin b/new-binary.bin
+new file mode 100644
+index 0000000..abc123
+Binary files /dev/null and b/new-binary.bin differ
+EOF
+
+${LSDIFF} -s binary-new-file.patch 2>errors2 >result2 || exit 1
+[ -s errors2 ] && exit 1
+
+cat << EOF | cmp - result2 || exit 1
++ a/new-binary.bin
+EOF
+
+# Test 3: Binary deleted file
+cat << EOF > binary-deleted-file.patch
+diff --git a/old-binary.bin b/old-binary.bin
+deleted file mode 100644
+index abc123..0000000
+Binary files a/old-binary.bin and /dev/null differ
+EOF
+
+${LSDIFF} -s binary-deleted-file.patch 2>errors3 >result3 || exit 1
+[ -s errors3 ] && exit 1
+
+cat << EOF | cmp - result3 || exit 1
+- a/old-binary.bin
+EOF
+
+# Test 4: Binary file modification (should show output with proper headers)
+cat << EOF > binary-modified.patch
+diff --git a/data.bin b/data.bin
+index abc123..def456 100644
+GIT binary patch
+delta 123
+zcmV-;0E~(b0jh^H8Gi-<0001b0000000000000000000000000000000000
+delta 456
+zcmV-;0E~(b0jh^H8Gi-<0001b0000000000000000000000000000000000
+EOF
+
+${LSDIFF} -s binary-modified.patch 2>errors4 >result4 || exit 1
+[ -s errors4 ] && exit 1
+
+cat << EOF | cmp - result4 || exit 1
+! a/data.bin
+EOF
+
+# Test 5: Mode change on new file (should be treated as new file)
+cat << EOF > new-file-with-mode.patch
+diff --git a/new-script.sh b/new-script.sh
+new file mode 100755
+index 0000000..abc123
+--- /dev/null
++++ b/new-script.sh
+@@ -0,0 +1,2 @@
++#!/bin/bash
++echo "hello"
+EOF
+
+${LSDIFF} -s new-file-with-mode.patch 2>errors5 >result5 || exit 1
+[ -s errors5 ] && exit 1
+
+cat << EOF | cmp - result5 || exit 1
++ b/new-script.sh
+EOF
+
+# Test 6: Rename with very low similarity (should still be detected as rename)
+cat << EOF > rename-low-similarity.patch
+diff --git a/heavily-modified.c b/completely-different.c
+similarity index 15%
+rename from heavily-modified.c
+rename to completely-different.c
+index abc123..def456 100644
+--- a/heavily-modified.c
++++ b/completely-different.c
+@@ -1,10 +1,20 @@
+-// Old file
+-int old_function() {
+-    return 0;
+-}
++// Completely rewritten
++#include <stdio.h>
++#include <stdlib.h>
++
++int new_function(int arg) {
++    printf("New implementation: %d\n", arg);
++    return arg * 2;
++}
++
++int main() {
++    return new_function(42);
++}
+EOF
+
+${LSDIFF} -s rename-low-similarity.patch 2>errors6 >result6 || exit 1
+[ -s errors6 ] && exit 1
+
+cat << EOF | cmp - result6 || exit 1
+! a/heavily-modified.c
+EOF
+
+# Test 7: Copy operation with 100% similarity
+cat << EOF > copy-identical.patch
+diff --git a/template.h b/instance.h
+similarity index 100%
+copy from template.h
+copy to instance.h
+index abc123..abc123 100644
+EOF
+
+${LSDIFF} -s copy-identical.patch 2>errors7 >result7 || exit 1
+[ -s errors7 ] && exit 1
+
+cat << EOF | cmp - result7 || exit 1
+! instance.h
+EOF
+
+# Test 8: Multiple mode changes
+cat << EOF > multiple-modes.patch
+diff --git a/script1.sh b/script1.sh
+old mode 100644
+new mode 100755
+index abc123..abc123
+diff --git a/script2.py b/script2.py
+old mode 100755
+new mode 100644
+index def456..def456
+diff --git a/data.txt b/data.txt
+old mode 100644
+new mode 100644
+index 789abc..def789 100644
+--- a/data.txt
++++ b/data.txt
+@@ -1 +1 @@
+-old
++new
+EOF
+
+${LSDIFF} -s multiple-modes.patch 2>errors8 >result8 || exit 1
+[ -s errors8 ] && exit 1
+
+cat << EOF | cmp - result8 || exit 1
+! a/script1.sh
+! a/script2.py
+! a/data.txt
+EOF
+
+# Test 9: Test with filterdiff --list mode (should use same code paths)
+${FILTERDIFF} --list -s all-types-mixed.patch 2>errors9 >result9 || exit 1
+[ -s errors9 ] && exit 1
+
+# Should be identical to lsdiff -s output
+cmp result1 result9 || exit 1
