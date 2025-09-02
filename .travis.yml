@@ -1,6 +1,0 @@
-language: c
-compiler: gcc
-os: linux
-script: ./bootstrap &&
-        ./configure &&
-        make distcheck
