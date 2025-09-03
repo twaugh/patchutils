@@ -22,6 +22,9 @@ lib/Makefile.in
 
 # Compiled objects
 *.o
+*.gcno
+*.gcda
+*.gcov
 src/combinediff
 src/filterdiff
 src/flipdiff
@@ -30,6 +33,12 @@ src/interdiff
 src/lsdiff
 src/rediff
 src/patchview
+
+# Build artifacts
+lib-built
+lib/libgnu.a
+lib/*.h
+lib/sys/
 
 # These are generated from *.in files
 /patchutils.spec
