@@ -11,6 +11,9 @@ Patchutils news
 	configurations properly. Addresses GitHub issues #61, #91, and #93.
 	Updated spec file.
 
+	Added manual pages for gitdiff, gitdiffview, svndiff, and svndiffview
+	commands. Addresses GitHub issue #112.
+
 0.4.3 (stable)
 
 	Added --in-place option to more tools for editing files in place.
