@@ -1,0 +1,82 @@
+# AFL++ dictionary for patch file fuzzing
+# Common patch format keywords and patterns
+
+# Unified diff headers
+"--- "
+"+++ "
+"@@"
+"@@ -"
+"+++ "
+
+# Context diff headers
+"*** "
+"--- "
+"***************"
+
+# Git diff headers
+"diff --git"
+"index "
+"new file mode"
+"deleted file mode"
+"similarity index"
+"rename from"
+"rename to"
+"copy from"
+"copy to"
+"GIT binary patch"
+"delta "
+"literal "
+
+# Common file paths and extensions
+"/dev/null"
+"a/"
+"b/"
+".c"
+".h"
+".txt"
+".patch"
+".diff"
+
+# Hunk markers
+" "
+"+"
+"-"
+"\\"
+"\ No newline at end of file"
+
+# Timestamps
+"2024-01-01"
+"00:00:00"
+"+0000"
+"UTC"
+
+# Mode changes
+"100644"
+"100755"
+"120000"
+"040000"
+
+# Binary indicators
+"Binary files"
+"differ"
+
+# Git hash patterns (short examples)
+"1234567"
+"abcdef0"
+"0000000"
+
+# Line numbers and counts
+",0"
+",1"
+",3"
+",10"
+"+1"
+"-1"
+"+0"
+"-0"
+
+# Special characters that might cause issues
+"\t"
+"\r"
+"\n"
+"\0"

@@ -337,6 +337,21 @@ distclean-local:
 	-rm -rf $(top_builddir)/test-arena
 	-rm -f lib-built
 
+# Fuzzing targets - delegate to separate makefile
+fuzz-help fuzz-corpus fuzz-test fuzz-analyze fuzz-clean fuzz-check fuzz-ci fuzz-stats:
+	@if [ -f Makefile.fuzz ]; then \
+		$(MAKE) -f Makefile.fuzz $@; \
+	else \
+		echo "Fuzzing not available - Makefile.fuzz not found"; \
+	fi
+
+fuzz-filterdiff fuzz-interdiff fuzz-rediff fuzz-grepdiff fuzz-lsdiff:
+	@if [ -f Makefile.fuzz ]; then \
+		$(MAKE) -f Makefile.fuzz $@; \
+	else \
+		echo "Fuzzing not available - Makefile.fuzz not found"; \
+	fi
+
 EXTRA_DIST = $(man_MANS) \
 	tests/common.sh tests/soak-test \
 	$(TESTS) $(XFAIL_TESTS) \
@@ -347,6 +362,9 @@ EXTRA_DIST = $(man_MANS) \
 	patchview/README.patchview \
 	scripts/move-to-front \
 	m4/gnulib-cache.m4 \
+	Makefile.fuzz \
+	fuzz/README.md fuzz/generate_corpus.sh fuzz/run_fuzz.sh fuzz/analyze_crashes.sh \
+	fuzz/patch.dict \
 	bash-completion-patchutils
 
 tag:
