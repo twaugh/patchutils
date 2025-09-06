@@ -1,0 +1,197 @@
+# Makefile for patchutils fuzzing infrastructure
+
+FUZZ_DIR = fuzz
+CORPUS_DIR = $(FUZZ_DIR)/corpus
+RESULTS_DIR = $(FUZZ_DIR)/results
+TOOLS = filterdiff interdiff rediff grepdiff lsdiff
+
+.PHONY: fuzz-help fuzz-corpus fuzz-clean fuzz-test fuzz-all fuzz-analyze
+.PHONY: $(addprefix fuzz-, $(TOOLS))
+
+# Default target - show help
+fuzz-help:
+	@echo "Patchutils Fuzzing Targets:"
+	@echo ""
+	@echo "  fuzz-corpus     - Generate/update fuzzing corpus"
+	@echo "  fuzz-test       - Quick 60-second fuzz test of filterdiff"
+	@echo "  fuzz-all        - Run extended fuzzing on all tools (background)"
+	@echo "  fuzz-analyze    - Analyze fuzzing results and crashes"
+	@echo "  fuzz-clean      - Clean fuzzing results (keeps corpus)"
+	@echo ""
+	@echo "Individual tool fuzzing:"
+	@echo "  fuzz-filterdiff - Fuzz filterdiff"
+	@echo "  fuzz-interdiff  - Fuzz interdiff"
+	@echo "  fuzz-rediff     - Fuzz rediff"
+	@echo "  fuzz-grepdiff   - Fuzz grepdiff"
+	@echo "  fuzz-lsdiff     - Fuzz lsdiff"
+	@echo ""
+	@echo "Prerequisites:"
+	@echo "  - AFL++ installed (american-fuzzy-lop package)"
+	@echo "  - Tools built (run 'make' first)"
+	@echo ""
+	@echo "Quick start: make fuzz-corpus && make fuzz-test"
+
+# Generate or update the fuzzing corpus
+fuzz-corpus: $(FUZZ_DIR)/generate_corpus.sh
+	@echo "Generating/updating fuzzing corpus..."
+	@if [ ! -d "$(CORPUS_DIR)" ] || [ -z "$$(ls -A $(CORPUS_DIR) 2>/dev/null)" ]; then \
+		echo "Creating new corpus..."; \
+		$(FUZZ_DIR)/generate_corpus.sh; \
+	else \
+		echo "Corpus exists with $$(ls -1 $(CORPUS_DIR) | wc -l) files"; \
+		echo "Updating with new git diffs..."; \
+		$(FUZZ_DIR)/generate_corpus.sh; \
+	fi
+	@echo "Corpus ready: $$(ls -1 $(CORPUS_DIR) | wc -l) files"
+
+# Quick fuzzing test (60 seconds)
+fuzz-test: fuzz-corpus src/filterdiff
+	@echo "Running quick fuzz test (60 seconds)..."
+	@echo "This will test basic fuzzing functionality"
+	timeout 60s $(FUZZ_DIR)/run_fuzz.sh filterdiff || true
+	@echo ""
+	@echo "Quick test completed. Check fuzz/results/filterdiff/ for results"
+	@if [ -d "$(RESULTS_DIR)/filterdiff/crashes" ] && [ -n "$$(ls -A $(RESULTS_DIR)/filterdiff/crashes 2>/dev/null)" ]; then \
+		echo "⚠️  Crashes found! Run 'make fuzz-analyze' to investigate"; \
+	else \
+		echo "✅ No crashes in quick test"; \
+	fi
+
+# Extended fuzzing on all tools (runs in background)
+fuzz-all: fuzz-corpus $(addprefix src/, $(TOOLS))
+	@echo "Starting extended fuzzing on all tools..."
+	@echo "This will run fuzzing sessions in the background"
+	@echo "Monitor with: ps aux | grep afl-fuzz"
+	@echo "Stop with: pkill afl-fuzz"
+	@echo ""
+	@for tool in $(TOOLS); do \
+		if [ -f "src/$$tool" ]; then \
+			echo "Starting $$tool fuzzing in background..."; \
+			nohup $(FUZZ_DIR)/run_fuzz.sh $$tool > $(RESULTS_DIR)/$$tool.log 2>&1 & \
+			sleep 2; \
+		fi; \
+	done
+	@echo ""
+	@echo "All fuzzing sessions started. Logs in $(RESULTS_DIR)/*.log"
+	@echo "Run 'make fuzz-analyze' periodically to check for crashes"
+
+# Individual tool fuzzing targets
+fuzz-filterdiff: fuzz-corpus src/filterdiff
+	@echo "Starting filterdiff fuzzing (interactive)..."
+	$(FUZZ_DIR)/run_fuzz.sh filterdiff
+
+fuzz-interdiff: fuzz-corpus src/interdiff
+	@echo "Starting interdiff fuzzing (interactive)..."
+	$(FUZZ_DIR)/run_fuzz.sh interdiff
+
+fuzz-rediff: fuzz-corpus src/rediff
+	@echo "Starting rediff fuzzing (interactive)..."
+	$(FUZZ_DIR)/run_fuzz.sh rediff
+
+fuzz-grepdiff: fuzz-corpus src/grepdiff
+	@echo "Starting grepdiff fuzzing (interactive)..."
+	$(FUZZ_DIR)/run_fuzz.sh grepdiff
+
+fuzz-lsdiff: fuzz-corpus src/lsdiff
+	@echo "Starting lsdiff fuzzing (interactive)..."
+	$(FUZZ_DIR)/run_fuzz.sh lsdiff
+
+# Analyze fuzzing results
+fuzz-analyze: $(FUZZ_DIR)/analyze_crashes.sh
+	@echo "Analyzing fuzzing results..."
+	@$(FUZZ_DIR)/analyze_crashes.sh
+	@echo ""
+	@echo "Summary of results:"
+	@for tool in $(TOOLS); do \
+		if [ -d "$(RESULTS_DIR)/$$tool" ]; then \
+			crashes=$$(find $(RESULTS_DIR)/$$tool/crashes -name 'id:*' 2>/dev/null | wc -l); \
+			hangs=$$(find $(RESULTS_DIR)/$$tool/hangs -name 'id:*' 2>/dev/null | wc -l); \
+			echo "  $$tool: $$crashes crashes, $$hangs hangs"; \
+		fi; \
+	done
+
+# Clean fuzzing results but preserve corpus
+fuzz-clean:
+	@echo "Cleaning fuzzing results (preserving corpus)..."
+	@if [ -d "$(RESULTS_DIR)" ]; then \
+		rm -rf $(RESULTS_DIR)/*; \
+		echo "Results cleaned"; \
+	else \
+		echo "No results to clean"; \
+	fi
+
+# Clean everything including corpus (nuclear option)
+fuzz-clean-all:
+	@echo "WARNING: This will delete ALL fuzzing data including corpus!"
+	@read -p "Are you sure? [y/N] " -n 1 -r; \
+	echo; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+		rm -rf $(FUZZ_DIR)/corpus $(FUZZ_DIR)/results; \
+		echo "All fuzzing data deleted"; \
+	else \
+		echo "Cancelled"; \
+	fi
+
+# Check fuzzing prerequisites
+fuzz-check:
+	@echo "Checking fuzzing prerequisites..."
+	@echo -n "AFL++ installed: "
+	@if command -v afl-fuzz >/dev/null 2>&1; then \
+		echo "✅ Yes ($$(afl-fuzz --help 2>&1 | head -1))"; \
+	else \
+		echo "❌ No - install american-fuzzy-lop package"; \
+	fi
+	@echo -n "Tools built: "
+	@missing=""; \
+	for tool in $(TOOLS); do \
+		if [ ! -f "src/$$tool" ]; then \
+			missing="$$missing $$tool"; \
+		fi; \
+	done; \
+	if [ -z "$$missing" ]; then \
+		echo "✅ All tools present"; \
+	else \
+		echo "❌ Missing:$$missing - run 'make' first"; \
+	fi
+	@echo -n "Corpus ready: "
+	@if [ -d "$(CORPUS_DIR)" ] && [ -n "$$(ls -A $(CORPUS_DIR) 2>/dev/null)" ]; then \
+		echo "✅ Yes ($$(ls -1 $(CORPUS_DIR) | wc -l) files)"; \
+	else \
+		echo "❌ No - run 'make fuzz-corpus' first"; \
+	fi
+
+# Continuous integration target - quick validation
+fuzz-ci: fuzz-corpus
+	@echo "Running CI fuzzing validation..."
+	@echo "Quick 30-second test to catch obvious issues"
+	@for tool in filterdiff rediff; do \
+		echo "Testing $$tool..."; \
+		timeout 30s $(FUZZ_DIR)/run_fuzz.sh $$tool >/dev/null 2>&1 || true; \
+		if [ -d "$(RESULTS_DIR)/$$tool/crashes" ] && [ -n "$$(ls -A $(RESULTS_DIR)/$$tool/crashes 2>/dev/null)" ]; then \
+			echo "❌ $$tool: Crashes found in CI test!"; \
+			exit 1; \
+		else \
+			echo "✅ $$tool: No crashes in CI test"; \
+		fi; \
+	done
+	@echo "CI fuzzing validation passed"
+
+# Show fuzzing statistics
+fuzz-stats:
+	@echo "Fuzzing Statistics:"
+	@echo "==================="
+	@if [ -d "$(CORPUS_DIR)" ]; then \
+		echo "Corpus: $$(ls -1 $(CORPUS_DIR) | wc -l) files ($$(du -sh $(CORPUS_DIR) | cut -f1))"; \
+	fi
+	@if [ -d "$(RESULTS_DIR)" ]; then \
+		echo "Results: $$(du -sh $(RESULTS_DIR) | cut -f1)"; \
+		echo ""; \
+		for tool in $(TOOLS); do \
+			if [ -f "$(RESULTS_DIR)/$$tool/fuzzer_stats" ]; then \
+				echo "$$tool:"; \
+				echo "  Execs: $$(grep execs_done $(RESULTS_DIR)/$$tool/fuzzer_stats | cut -d: -f2 | tr -d ' ')"; \
+				echo "  Crashes: $$(grep unique_crashes $(RESULTS_DIR)/$$tool/fuzzer_stats | cut -d: -f2 | tr -d ' ')"; \
+				echo "  Coverage: $$(grep bitmap_cvg $(RESULTS_DIR)/$$tool/fuzzer_stats | cut -d: -f2 | tr -d ' ')%"; \
+			fi; \
+		done; \
+	fi
