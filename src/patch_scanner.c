@@ -40,6 +40,11 @@ static void scanner_parse_similarity_line(patch_scanner_t *scanner, const char *
 static void scanner_parse_dissimilarity_line(patch_scanner_t *scanner, const char *line);
 static void scanner_determine_git_diff_type(patch_scanner_t *scanner);
 
+/* Helper functions for common parsing patterns */
+static char *scanner_extract_filename(const char *line, int prefix_len);
+static void scanner_parse_index_percentage(const char *line, const char *prefix, int *target_field);
+static void scanner_parse_filename_field(const char *line, int prefix_len, char **target_field);
+
 /* Forward declarations for header order validation functions */
 static int scanner_validate_git_header_order(patch_scanner_t *scanner);
 static int scanner_validate_context_header_order(patch_scanner_t *scanner);
@@ -250,14 +255,14 @@ int patch_scanner_next(patch_scanner_t *scanner, const patch_content_t **content
             }
 
         case STATE_IN_PATCH:
-            if (!strncmp(line, "@@ ", 3)) {
+            if (!strncmp(line, "@@ ", sizeof("@@ ") - 1)) {
                 /* Hunk header */
                 scanner->state = STATE_IN_HUNK;
                 scanner_emit_hunk_header(scanner, line);
                 *content = &scanner->current_content;
                 return PATCH_SCAN_OK;
-            } else if (!strncmp(line, "Binary files ", 13) ||
-                       !strncmp(line, "GIT binary patch", 16)) {
+            } else if (!strncmp(line, "Binary files ", sizeof("Binary files ") - 1) ||
+                       !strncmp(line, "GIT binary patch", sizeof("GIT binary patch") - 1)) {
                 /* Binary content */
                 scanner_emit_binary(scanner, line);
                 *content = &scanner->current_content;
@@ -287,7 +292,7 @@ int patch_scanner_next(patch_scanner_t *scanner, const patch_content_t **content
                 scanner_emit_no_newline(scanner, line);
                 *content = &scanner->current_content;
                 return PATCH_SCAN_OK;
-            } else if (!strncmp(line, "@@ ", 3)) {
+            } else if (!strncmp(line, "@@ ", sizeof("@@ ") - 1)) {
                 /* Next hunk */
                 scanner_emit_hunk_header(scanner, line);
                 *content = &scanner->current_content;
@@ -426,9 +431,9 @@ static int scanner_read_line(patch_scanner_t *scanner)
 
 static int scanner_is_potential_patch_start(const char *line)
 {
-    return (!strncmp(line, "diff ", 5) ||
-            !strncmp(line, "--- ", 4) ||
-            !strncmp(line, "*** ", 4));
+    return (!strncmp(line, "diff ", sizeof("diff ") - 1) ||
+            !strncmp(line, "--- ", sizeof("--- ") - 1) ||
+            !strncmp(line, "*** ", sizeof("*** ") - 1));
 }
 
 static int scanner_is_header_continuation(patch_scanner_t *scanner, const char *line)
@@ -436,19 +441,19 @@ static int scanner_is_header_continuation(patch_scanner_t *scanner, const char *
     /* TODO: Implement proper header continuation logic */
     /* For now, simple heuristics */
     (void)scanner; /* unused parameter */
-    return (!strncmp(line, "+++ ", 4) ||
-            !strncmp(line, "--- ", 4) ||
-            !strncmp(line, "index ", 6) ||
-            !strncmp(line, "new file mode ", 14) ||
-            !strncmp(line, "deleted file mode ", 18) ||
-            !strncmp(line, "old mode ", 9) ||
-            !strncmp(line, "new mode ", 9) ||
-            !strncmp(line, "similarity index ", 17) ||
-            !strncmp(line, "dissimilarity index ", 20) ||
-            !strncmp(line, "rename from ", 12) ||
-            !strncmp(line, "rename to ", 10) ||
-            !strncmp(line, "copy from ", 10) ||
-            !strncmp(line, "copy to ", 8));
+    return (!strncmp(line, "+++ ", sizeof("+++ ") - 1) ||
+            !strncmp(line, "--- ", sizeof("--- ") - 1) ||
+            !strncmp(line, "index ", sizeof("index ") - 1) ||
+            !strncmp(line, "new file mode ", sizeof("new file mode ") - 1) ||
+            !strncmp(line, "deleted file mode ", sizeof("deleted file mode ") - 1) ||
+            !strncmp(line, "old mode ", sizeof("old mode ") - 1) ||
+            !strncmp(line, "new mode ", sizeof("new mode ") - 1) ||
+            !strncmp(line, "similarity index ", sizeof("similarity index ") - 1) ||
+            !strncmp(line, "dissimilarity index ", sizeof("dissimilarity index ") - 1) ||
+            !strncmp(line, "rename from ", sizeof("rename from ") - 1) ||
+            !strncmp(line, "rename to ", sizeof("rename to ") - 1) ||
+            !strncmp(line, "copy from ", sizeof("copy from ") - 1) ||
+            !strncmp(line, "copy to ", sizeof("copy to ") - 1));
 }
 
 static int scanner_validate_headers(patch_scanner_t *scanner)
@@ -471,11 +476,11 @@ static int scanner_validate_headers(patch_scanner_t *scanner)
     for (i = 0; i < scanner->num_header_lines; i++) {
         const char *line = scanner->header_lines[i];
 
-        if (!strncmp(line, "diff --git ", 11)) {
+        if (!strncmp(line, "diff --git ", sizeof("diff --git ") - 1)) {
             has_git_diff = 1;
             scanner->current_headers.type = PATCH_TYPE_GIT_EXTENDED;
         }
-        else if (!strncmp(line, "--- ", 4)) {
+        else if (!strncmp(line, "--- ", sizeof("--- ") - 1)) {
             if (has_context_old) {
                 /* This is the new file line in context diff */
                 has_context_new = 1;
@@ -483,10 +488,10 @@ static int scanner_validate_headers(patch_scanner_t *scanner)
                 has_old_file = 1;
             }
         }
-        else if (!strncmp(line, "+++ ", 4)) {
+        else if (!strncmp(line, "+++ ", sizeof("+++ ") - 1)) {
             has_new_file = 1;
         }
-        else if (!strncmp(line, "*** ", 4)) {
+        else if (!strncmp(line, "*** ", sizeof("*** ") - 1)) {
             has_context_old = 1;
             scanner->current_headers.type = PATCH_TYPE_CONTEXT;
         }
@@ -537,66 +542,58 @@ static int scanner_parse_headers(patch_scanner_t *scanner)
     for (unsigned int i = 0; i < scanner->num_header_lines; i++) {
         const char *line = scanner->header_lines[i];
 
-        if (!strncmp(line, "diff --git ", 11)) {
+        if (!strncmp(line, "diff --git ", sizeof("diff --git ") - 1)) {
             scanner->current_headers.type = PATCH_TYPE_GIT_EXTENDED;
             scanner_parse_git_diff_line(scanner, line);
         }
-        else if (!strncmp(line, "--- ", 4)) {
+        else if (!strncmp(line, "--- ", sizeof("--- ") - 1)) {
             scanner_parse_old_file_line(scanner, line);
         }
-        else if (!strncmp(line, "+++ ", 4)) {
+        else if (!strncmp(line, "+++ ", sizeof("+++ ") - 1)) {
             scanner_parse_new_file_line(scanner, line);
         }
-        else if (!strncmp(line, "*** ", 4)) {
+        else if (!strncmp(line, "*** ", sizeof("*** ") - 1)) {
             scanner->current_headers.type = PATCH_TYPE_CONTEXT;
             scanner_parse_context_old_line(scanner, line);
         }
-        else if (!strncmp(line, "index ", 6)) {
+        else if (!strncmp(line, "index ", sizeof("index ") - 1)) {
             scanner_parse_index_line(scanner, line);
         }
-        else if (!strncmp(line, "new file mode ", 14)) {
+        else if (!strncmp(line, "new file mode ", sizeof("new file mode ") - 1)) {
             scanner->current_headers.git_type = GIT_DIFF_NEW_FILE;
             scanner_parse_mode_line(scanner, line, &scanner->current_headers.new_mode);
         }
-        else if (!strncmp(line, "deleted file mode ", 18)) {
+        else if (!strncmp(line, "deleted file mode ", sizeof("deleted file mode ") - 1)) {
             scanner->current_headers.git_type = GIT_DIFF_DELETED_FILE;
             scanner_parse_mode_line(scanner, line, &scanner->current_headers.old_mode);
         }
-        else if (!strncmp(line, "old mode ", 9)) {
+        else if (!strncmp(line, "old mode ", sizeof("old mode ") - 1)) {
             scanner_parse_mode_line(scanner, line, &scanner->current_headers.old_mode);
         }
-        else if (!strncmp(line, "new mode ", 9)) {
+        else if (!strncmp(line, "new mode ", sizeof("new mode ") - 1)) {
             scanner_parse_mode_line(scanner, line, &scanner->current_headers.new_mode);
         }
-        else if (!strncmp(line, "similarity index ", 17)) {
+        else if (!strncmp(line, "similarity index ", sizeof("similarity index ") - 1)) {
             scanner_parse_similarity_line(scanner, line);
         }
-        else if (!strncmp(line, "dissimilarity index ", 20)) {
+        else if (!strncmp(line, "dissimilarity index ", sizeof("dissimilarity index ") - 1)) {
             scanner_parse_dissimilarity_line(scanner, line);
         }
-        else if (!strncmp(line, "rename from ", 12)) {
+        else if (!strncmp(line, "rename from ", sizeof("rename from ") - 1)) {
             scanner->current_headers.git_type = GIT_DIFF_RENAME;
-            const char *filename = line + 12;
-            size_t len = strcspn(filename, "\n\r");
-            scanner->current_headers.rename_from = xstrndup(filename, len);
+            scanner_parse_filename_field(line, sizeof("rename from ") - 1, &scanner->current_headers.rename_from);
         }
-        else if (!strncmp(line, "rename to ", 10)) {
-            const char *filename = line + 10;
-            size_t len = strcspn(filename, "\n\r");
-            scanner->current_headers.rename_to = xstrndup(filename, len);
+        else if (!strncmp(line, "rename to ", sizeof("rename to ") - 1)) {
+            scanner_parse_filename_field(line, sizeof("rename to ") - 1, &scanner->current_headers.rename_to);
         }
-        else if (!strncmp(line, "copy from ", 10)) {
+        else if (!strncmp(line, "copy from ", sizeof("copy from ") - 1)) {
             scanner->current_headers.git_type = GIT_DIFF_COPY;
-            const char *filename = line + 10;
-            size_t len = strcspn(filename, "\n\r");
-            scanner->current_headers.copy_from = xstrndup(filename, len);
+            scanner_parse_filename_field(line, sizeof("copy from ") - 1, &scanner->current_headers.copy_from);
         }
-        else if (!strncmp(line, "copy to ", 8)) {
-            const char *filename = line + 8;
-            size_t len = strcspn(filename, "\n\r");
-            scanner->current_headers.copy_to = xstrndup(filename, len);
+        else if (!strncmp(line, "copy to ", sizeof("copy to ") - 1)) {
+            scanner_parse_filename_field(line, sizeof("copy to ") - 1, &scanner->current_headers.copy_to);
         }
-        else if (strstr(line, "Binary files ") || !strncmp(line, "GIT binary patch", 16)) {
+        else if (strstr(line, "Binary files ") || !strncmp(line, "GIT binary patch", sizeof("GIT binary patch") - 1)) {
             scanner->current_headers.is_binary = 1;
         }
     }
@@ -680,9 +677,50 @@ static int scanner_emit_binary(patch_scanner_t *scanner, const char *line)
     scanner->current_content.position = scanner->current_position;
     scanner->current_content.data.binary.line = line;
     scanner->current_content.data.binary.length = strlen(line);
-    scanner->current_content.data.binary.is_git_binary = !strncmp(line, "GIT binary patch", 16);
+    scanner->current_content.data.binary.is_git_binary = !strncmp(line, "GIT binary patch", sizeof("GIT binary patch") - 1);
 
     return PATCH_SCAN_OK;
+}
+
+/* Helper functions for common parsing patterns */
+static char *scanner_extract_filename(const char *line, int prefix_len)
+{
+    /* Extract filename from header line, handling whitespace and timestamps */
+    const char *filename = line + prefix_len;
+
+    /* Skip whitespace */
+    while (*filename == ' ' || *filename == '\t') filename++;
+
+    /* Find end of filename (before timestamp if present) */
+    const char *end = filename;
+    while (*end && *end != '\t' && *end != '\n' && *end != '\r') {
+        end++;
+    }
+
+    return xstrndup(filename, end - filename);
+}
+
+static void scanner_parse_index_percentage(const char *line, const char *prefix, int *target_field)
+{
+    /* Parse "prefix NN%" format safely */
+    const char *percent = strchr(line, '%');
+    int prefix_len = strlen(prefix);
+
+    if (percent && strlen(line) > (size_t)prefix_len) {
+        const char *start = line + prefix_len;
+        /* Ensure we have a number before the % */
+        if (start < percent) {
+            *target_field = (int)strtol(start, NULL, 10);
+        }
+    }
+}
+
+static void scanner_parse_filename_field(const char *line, int prefix_len, char **target_field)
+{
+    /* Parse filename field and strip newlines */
+    const char *filename = line + prefix_len;
+    size_t len = strcspn(filename, "\n\r");
+    *target_field = xstrndup(filename, len);
 }
 
 /* Helper functions for parsing specific header types */
@@ -708,35 +746,13 @@ static void scanner_parse_git_diff_line(patch_scanner_t *scanner, const char *li
 static void scanner_parse_old_file_line(patch_scanner_t *scanner, const char *line)
 {
     /* Parse "--- filename" - extract filename, handle /dev/null */
-    const char *filename = line + 4; /* Skip "--- " */
-
-    /* Skip whitespace */
-    while (*filename == ' ' || *filename == '\t') filename++;
-
-    /* Find end of filename (before timestamp if present) */
-    const char *end = filename;
-    while (*end && *end != '\t' && *end != '\n' && *end != '\r') {
-        end++;
-    }
-
-    scanner->current_headers.old_name = xstrndup(filename, end - filename);
+    scanner->current_headers.old_name = scanner_extract_filename(line, sizeof("--- ") - 1);
 }
 
 static void scanner_parse_new_file_line(patch_scanner_t *scanner, const char *line)
 {
     /* Parse "+++ filename" - extract filename, handle /dev/null */
-    const char *filename = line + 4; /* Skip "+++ " */
-
-    /* Skip whitespace */
-    while (*filename == ' ' || *filename == '\t') filename++;
-
-    /* Find end of filename (before timestamp if present) */
-    const char *end = filename;
-    while (*end && *end != '\t' && *end != '\n' && *end != '\r') {
-        end++;
-    }
-
-    scanner->current_headers.new_name = xstrndup(filename, end - filename);
+    scanner->current_headers.new_name = scanner_extract_filename(line, sizeof("+++ ") - 1);
 }
 
 static void scanner_parse_context_old_line(patch_scanner_t *scanner, const char *line)
@@ -748,7 +764,7 @@ static void scanner_parse_context_old_line(patch_scanner_t *scanner, const char 
 static void scanner_parse_index_line(patch_scanner_t *scanner, const char *line)
 {
     /* Parse "index abc123..def456 100644" */
-    const char *start = line + 6; /* Skip "index " */
+    const char *start = line + sizeof("index ") - 1;
     const char *dots = strstr(start, "..");
     if (dots) {
         scanner->current_headers.old_hash = xstrndup(start, dots - start);
@@ -777,27 +793,13 @@ static void scanner_parse_mode_line(patch_scanner_t *scanner, const char *line, 
 static void scanner_parse_similarity_line(patch_scanner_t *scanner, const char *line)
 {
     /* Parse "similarity index 85%" */
-    const char *percent = strchr(line, '%');
-    if (percent && strlen(line) > 17) {
-        const char *start = line + 17; /* Skip "similarity index " */
-        /* Ensure we have a number before the % */
-        if (start < percent) {
-            scanner->current_headers.similarity_index = (int)strtol(start, NULL, 10);
-        }
-    }
+    scanner_parse_index_percentage(line, "similarity index ", &scanner->current_headers.similarity_index);
 }
 
 static void scanner_parse_dissimilarity_line(patch_scanner_t *scanner, const char *line)
 {
     /* Parse "dissimilarity index 98%" */
-    const char *percent = strchr(line, '%');
-    if (percent && strlen(line) > 20) {
-        const char *start = line + 20; /* Skip "dissimilarity index " */
-        /* Ensure we have a number before the % */
-        if (start < percent) {
-            scanner->current_headers.dissimilarity_index = (int)strtol(start, NULL, 10);
-        }
-    }
+    scanner_parse_index_percentage(line, "dissimilarity index ", &scanner->current_headers.dissimilarity_index);
 }
 
 static void scanner_determine_git_diff_type(patch_scanner_t *scanner)
@@ -834,14 +836,14 @@ static int scanner_validate_unified_header_order(patch_scanner_t *scanner)
     for (i = 0; i < scanner->num_header_lines; i++) {
         const char *line = scanner->header_lines[i];
 
-        if (!strncmp(line, "--- ", 4)) {
+        if (!strncmp(line, "--- ", sizeof("--- ") - 1)) {
             if (seen_new_file) {
                 /* --- after +++ is invalid */
                 return 0;
             }
             seen_old_file = 1;
         }
-        else if (!strncmp(line, "+++ ", 4)) {
+        else if (!strncmp(line, "+++ ", sizeof("+++ ") - 1)) {
             if (!seen_old_file) {
                 /* +++ without preceding --- is invalid */
                 return 0;
@@ -863,14 +865,14 @@ static int scanner_validate_context_header_order(patch_scanner_t *scanner)
     for (i = 0; i < scanner->num_header_lines; i++) {
         const char *line = scanner->header_lines[i];
 
-        if (!strncmp(line, "*** ", 4)) {
+        if (!strncmp(line, "*** ", sizeof("*** ") - 1)) {
             if (seen_context_new) {
                 /* *** after --- is invalid in context diff */
                 return 0;
             }
             seen_context_old = 1;
         }
-        else if (!strncmp(line, "--- ", 4)) {
+        else if (!strncmp(line, "--- ", sizeof("--- ") - 1)) {
             if (!seen_context_old) {
                 /* --- without preceding *** is invalid in context diff */
                 return 0;
@@ -899,7 +901,7 @@ static int scanner_validate_git_header_order(patch_scanner_t *scanner)
     for (i = 0; i < scanner->num_header_lines; i++) {
         const char *line = scanner->header_lines[i];
 
-        if (!strncmp(line, "diff --git ", 11)) {
+        if (!strncmp(line, "diff --git ", sizeof("diff --git ") - 1)) {
             if (seen_git_diff || seen_old_file || seen_new_file) {
                 /* Multiple diff --git lines or diff --git after file lines */
                 return 0;
@@ -907,7 +909,7 @@ static int scanner_validate_git_header_order(patch_scanner_t *scanner)
             seen_git_diff = 1;
             in_extended_headers = 1;
         }
-        else if (!strncmp(line, "--- ", 4)) {
+        else if (!strncmp(line, "--- ", sizeof("--- ") - 1)) {
             if (!seen_git_diff) {
                 /* --- without preceding diff --git */
                 return 0;
@@ -919,7 +921,7 @@ static int scanner_validate_git_header_order(patch_scanner_t *scanner)
             seen_old_file = 1;
             in_extended_headers = 0;
         }
-        else if (!strncmp(line, "+++ ", 4)) {
+        else if (!strncmp(line, "+++ ", sizeof("+++ ") - 1)) {
             if (!seen_old_file) {
                 /* +++ without preceding --- */
                 return 0;
@@ -945,19 +947,19 @@ static int scanner_validate_git_header_order(patch_scanner_t *scanner)
 static int scanner_is_git_extended_header(const char *line)
 {
     /* Check if line is a valid Git extended header */
-    return (!strncmp(line, "old mode ", 9) ||
-            !strncmp(line, "new mode ", 9) ||
-            !strncmp(line, "deleted file mode ", 18) ||
-            !strncmp(line, "new file mode ", 14) ||
-            !strncmp(line, "similarity index ", 17) ||
-            !strncmp(line, "dissimilarity index ", 20) ||
-            !strncmp(line, "rename from ", 12) ||
-            !strncmp(line, "rename to ", 10) ||
-            !strncmp(line, "copy from ", 10) ||
-            !strncmp(line, "copy to ", 8) ||
-            !strncmp(line, "index ", 6) ||
+    return (!strncmp(line, "old mode ", sizeof("old mode ") - 1) ||
+            !strncmp(line, "new mode ", sizeof("new mode ") - 1) ||
+            !strncmp(line, "deleted file mode ", sizeof("deleted file mode ") - 1) ||
+            !strncmp(line, "new file mode ", sizeof("new file mode ") - 1) ||
+            !strncmp(line, "similarity index ", sizeof("similarity index ") - 1) ||
+            !strncmp(line, "dissimilarity index ", sizeof("dissimilarity index ") - 1) ||
+            !strncmp(line, "rename from ", sizeof("rename from ") - 1) ||
+            !strncmp(line, "rename to ", sizeof("rename to ") - 1) ||
+            !strncmp(line, "copy from ", sizeof("copy from ") - 1) ||
+            !strncmp(line, "copy to ", sizeof("copy to ") - 1) ||
+            !strncmp(line, "index ", sizeof("index ") - 1) ||
             strstr(line, "Binary files ") ||
-            !strncmp(line, "GIT binary patch", 16));
+            !strncmp(line, "GIT binary patch", sizeof("GIT binary patch") - 1));
 }
 
 static void scanner_free_headers(patch_scanner_t *scanner)
