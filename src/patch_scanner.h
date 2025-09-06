@@ -66,8 +66,10 @@ enum git_diff_type {
     GIT_DIFF_NEW_FILE,           /* New file creation */
     GIT_DIFF_DELETED_FILE,       /* File deletion */
     GIT_DIFF_RENAME,             /* File rename */
+    GIT_DIFF_PURE_RENAME,        /* Pure rename (100% similarity) */
     GIT_DIFF_COPY,               /* File copy */
     GIT_DIFF_MODE_ONLY,          /* Mode change only */
+    GIT_DIFF_MODE_CHANGE,        /* Mode change with content changes */
     GIT_DIFF_BINARY              /* Binary file diff */
 };
 
@@ -93,11 +95,19 @@ struct patch_headers {
     char *new_name;              /* New filename (best name after Git processing) */
 
     /* Git-specific information (valid when type == PATCH_TYPE_GIT_EXTENDED) */
+    char *git_old_name;          /* Original filename from diff --git line */
+    char *git_new_name;          /* New filename from diff --git line */
     int old_mode;                /* Old file mode (-1 if not specified) */
     int new_mode;                /* New file mode (-1 if not specified) */
     char *old_hash;              /* Old file hash (NULL if not specified) */
     char *new_hash;              /* New file hash (NULL if not specified) */
     int similarity_index;        /* Similarity index for renames/copies (-1 if not specified) */
+    int dissimilarity_index;     /* Dissimilarity index (-1 if not specified) */
+    char *rename_from;           /* Source filename for renames */
+    char *rename_to;             /* Target filename for renames */
+    char *copy_from;             /* Source filename for copies */
+    char *copy_to;               /* Target filename for copies */
+    int is_binary;               /* 1 if binary patch, 0 otherwise */
 
     /* Position information */
     long start_position;         /* File position where this patch starts */
