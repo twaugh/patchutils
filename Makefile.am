@@ -323,7 +323,8 @@ TESTS = tests/newline1/run-test \
 	tests/git-deleted-file/run-test \
 	tests/git-pure-rename/run-test \
 	tests/git-diff-edge-cases/run-test \
-	tests/malformed-diff-headers/run-test
+	tests/malformed-diff-headers/run-test \
+	tests/scanner/run-test
 
 # These ones don't work yet.
 # Feel free to send me patches. :-)
@@ -450,6 +451,8 @@ endif
 EXTRA_DIST = $(man_MANS) \
 	tests/common.sh tests/soak-test \
 	$(TESTS) $(XFAIL_TESTS) \
+	tests/scanner/test_basic.c tests/scanner/Makefile tests/scanner/README.md \
+	src/patch_scanner.c src/patch_scanner.h \
 	README.md BUGS COPYING TODO ChangeLog \
 	bootstrap \
 	patchutils.spec \
