@@ -429,6 +429,177 @@ static void test_header_order_validation(void)
     printf("✓ Header order validation test passed\n");
 }
 
+static void test_hunk_parsing(void)
+{
+    printf("Running hunk parsing test...\n");
+
+    const char *patch_with_hunks =
+        "--- a/file.txt\n"
+        "+++ b/file.txt\n"
+        "@@ -1,4 +1,5 @@\n"
+        " line1\n"
+        "-line2\n"
+        "+line2_modified\n"
+        "+new_line\n"
+        " line3\n"
+        " line4\n"
+        "@@ -10 +12,2 @@ function_name\n"
+        " context\n"
+        "+added_line\n";
+
+    FILE *fp = fmemopen((void*)patch_with_hunks, strlen(patch_with_hunks), "r");
+    assert(fp != NULL);
+
+    patch_scanner_t *scanner = patch_scanner_create(fp);
+    assert(scanner != NULL);
+
+    const patch_content_t *content;
+    patch_scan_result_t result;
+    int hunk_count = 0;
+    int line_count = 0;
+
+    /* Process all content */
+    while ((result = patch_scanner_next(scanner, &content)) == PATCH_SCAN_OK) {
+        switch (content->type) {
+        case PATCH_CONTENT_HEADERS:
+            assert(content->data.headers != NULL);
+            assert(content->data.headers->patch_type == PATCH_TYPE_UNIFIED);
+            break;
+
+        case PATCH_CONTENT_HUNK_HEADER:
+            hunk_count++;
+            assert(content->data.hunk != NULL);
+
+            if (hunk_count == 1) {
+                /* First hunk: @@ -1,4 +1,5 @@ */
+                assert(content->data.hunk->orig_offset == 1);
+                assert(content->data.hunk->orig_count == 4);
+                assert(content->data.hunk->new_offset == 1);
+                assert(content->data.hunk->new_count == 5);
+                assert(content->data.hunk->context == NULL);
+            } else if (hunk_count == 2) {
+                /* Second hunk: @@ -10 +12,2 @@ function_name */
+                assert(content->data.hunk->orig_offset == 10);
+                assert(content->data.hunk->orig_count == 1);
+                assert(content->data.hunk->new_offset == 12);
+                assert(content->data.hunk->new_count == 2);
+                assert(content->data.hunk->context != NULL);
+                assert(strcmp(content->data.hunk->context, "function_name") == 0);
+            }
+            break;
+
+        case PATCH_CONTENT_HUNK_LINE:
+            line_count++;
+            assert(content->data.line != NULL);
+
+            /* Verify line types are correct */
+            char expected_types[] = {' ', '-', '+', '+', ' ', ' ', ' ', '+'};
+            assert(line_count <= 8);
+            assert(content->data.line->type == expected_types[line_count - 1]);
+            break;
+
+        default:
+            /* Other content types are fine */
+            break;
+        }
+    }
+
+    assert(result == PATCH_SCAN_EOF);
+    assert(hunk_count == 2);
+    assert(line_count == 8);
+
+    patch_scanner_destroy(scanner);
+    fclose(fp);
+
+    printf("✓ Hunk parsing test passed\n");
+}
+
+static void test_no_newline_handling(void)
+{
+    printf("Running no newline handling test...\n");
+
+    const char *patch_with_no_newline =
+        "--- a/file.txt\n"
+        "+++ b/file.txt\n"
+        "@@ -1 +1 @@\n"
+        "-old_line\n"
+        "\\ No newline at end of file\n"
+        "+new_line\n"
+        "\\ No newline at end of file\n"
+        "@@ -10,2 +10,1 @@\n"
+        " context\n"
+        "-removed\n"
+        "\\ No newline at end of file\n";
+
+    FILE *fp = fmemopen((void*)patch_with_no_newline, strlen(patch_with_no_newline), "r");
+    assert(fp != NULL);
+
+    patch_scanner_t *scanner = patch_scanner_create(fp);
+    assert(scanner != NULL);
+
+    const patch_content_t *content;
+    patch_scan_result_t result;
+    int hunk_count = 0;
+    int line_count = 0;
+    int no_newline_count = 0;
+
+    /* Process all content */
+    while ((result = patch_scanner_next(scanner, &content)) == PATCH_SCAN_OK) {
+        switch (content->type) {
+        case PATCH_CONTENT_HEADERS:
+            assert(content->data.headers != NULL);
+            assert(content->data.headers->patch_type == PATCH_TYPE_UNIFIED);
+            break;
+
+        case PATCH_CONTENT_HUNK_HEADER:
+            hunk_count++;
+            assert(content->data.hunk != NULL);
+
+            if (hunk_count == 1) {
+                /* First hunk: @@ -1 +1 @@ */
+                assert(content->data.hunk->orig_offset == 1);
+                assert(content->data.hunk->orig_count == 1);
+                assert(content->data.hunk->new_offset == 1);
+                assert(content->data.hunk->new_count == 1);
+            } else if (hunk_count == 2) {
+                /* Second hunk: @@ -10,2 +10,1 @@ */
+                assert(content->data.hunk->orig_offset == 10);
+                assert(content->data.hunk->orig_count == 2);
+                assert(content->data.hunk->new_offset == 10);
+                assert(content->data.hunk->new_count == 1);
+            }
+            break;
+
+        case PATCH_CONTENT_HUNK_LINE:
+            line_count++;
+            assert(content->data.line != NULL);
+            break;
+
+        case PATCH_CONTENT_NO_NEWLINE:
+            no_newline_count++;
+            assert(content->data.no_newline.line != NULL);
+            assert(content->data.no_newline.length > 0);
+            /* Should contain "No newline" */
+            assert(strstr(content->data.no_newline.line, "No newline") != NULL);
+            break;
+
+        default:
+            /* Other content types are fine */
+            break;
+        }
+    }
+
+    assert(result == PATCH_SCAN_EOF);
+    assert(hunk_count == 2);
+    assert(line_count == 4); /* -old_line, +new_line, context, -removed */
+    assert(no_newline_count == 3); /* Three "No newline" markers */
+
+    patch_scanner_destroy(scanner);
+    fclose(fp);
+
+    printf("✓ No newline handling test passed\n");
+}
+
 int main(void)
 {
     printf("Running patch scanner basic tests...\n\n");
@@ -447,6 +618,12 @@ int main(void)
 
     /* Test header order validation */
     test_header_order_validation();
+
+    /* Test hunk parsing */
+    test_hunk_parsing();
+
+    /* Test no newline handling */
+    test_no_newline_handling();
 
     printf("\n✓ All basic tests passed!\n");
     return 0;

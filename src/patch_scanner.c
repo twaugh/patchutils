@@ -284,7 +284,18 @@ int patch_scanner_next(patch_scanner_t *scanner, const patch_content_t **content
         case STATE_IN_HUNK:
             if (line[0] == ' ' || line[0] == '+' || line[0] == '-') {
                 /* Hunk line */
-                scanner_emit_hunk_line(scanner, line);
+                int result = scanner_emit_hunk_line(scanner, line);
+                if (result != PATCH_SCAN_OK) {
+                    scanner->state = STATE_ERROR;
+                    return result;
+                }
+
+                /* Check if hunk is complete */
+                if (scanner->hunk_orig_remaining == 0 && scanner->hunk_new_remaining == 0) {
+                    scanner->state = STATE_IN_PATCH;
+                    scanner->in_hunk = 0;
+                }
+
                 *content = &scanner->current_content;
                 return PATCH_SCAN_OK;
             } else if (line[0] == '\\') {
@@ -294,12 +305,17 @@ int patch_scanner_next(patch_scanner_t *scanner, const patch_content_t **content
                 return PATCH_SCAN_OK;
             } else if (!strncmp(line, "@@ ", sizeof("@@ ") - 1)) {
                 /* Next hunk */
-                scanner_emit_hunk_header(scanner, line);
+                int result = scanner_emit_hunk_header(scanner, line);
+                if (result != PATCH_SCAN_OK) {
+                    scanner->state = STATE_ERROR;
+                    return result;
+                }
                 *content = &scanner->current_content;
                 return PATCH_SCAN_OK;
             } else {
                 /* End of patch */
                 scanner->state = STATE_SEEKING_PATCH;
+                scanner->in_hunk = 0;
 
                 /* Process current line in seeking state */
                 if (scanner_is_potential_patch_start(line)) {
@@ -627,14 +643,88 @@ static int scanner_emit_headers(patch_scanner_t *scanner)
 
 static int scanner_emit_hunk_header(patch_scanner_t *scanner, const char *line)
 {
-    /* TODO: Parse hunk header properly */
-    (void)line; /* unused parameter - TODO: parse actual hunk header */
-    scanner->current_hunk.orig_offset = 1;
-    scanner->current_hunk.orig_count = 1;
-    scanner->current_hunk.new_offset = 1;
-    scanner->current_hunk.new_count = 1;
-    scanner->current_hunk.context = NULL;
+    char *endptr;
+    unsigned long res;
+    char *p;
+    const char *context_start;
+
+    /* Parse @@ -<orig_offset>[,<orig_count>] +<new_offset>[,<new_count>] @@[<context>] */
+
+    /* Find original offset after '-' */
+    p = strchr(line, '-');
+    if (!p) {
+        return PATCH_SCAN_ERROR;
+    }
+    p++;
+    res = strtoul(p, &endptr, 10);
+    if (p == endptr) {
+        return PATCH_SCAN_ERROR;
+    }
+    scanner->current_hunk.orig_offset = res;
+
+    /* Parse original count after ',' if present */
+    if (*endptr == ',') {
+        p = endptr + 1;
+        res = strtoul(p, &endptr, 10);
+        if (p == endptr) {
+            return PATCH_SCAN_ERROR;
+        }
+        scanner->current_hunk.orig_count = res;
+    } else {
+        scanner->current_hunk.orig_count = 1;
+    }
+
+    /* Find new offset after '+' */
+    p = strchr(endptr, '+');
+    if (!p) {
+        return PATCH_SCAN_ERROR;
+    }
+    p++;
+    res = strtoul(p, &endptr, 10);
+    if (p == endptr) {
+        return PATCH_SCAN_ERROR;
+    }
+    scanner->current_hunk.new_offset = res;
+
+    /* Parse new count after ',' if present */
+    if (*endptr == ',') {
+        p = endptr + 1;
+        res = strtoul(p, &endptr, 10);
+        if (p == endptr) {
+            return PATCH_SCAN_ERROR;
+        }
+        scanner->current_hunk.new_count = res;
+    } else {
+        scanner->current_hunk.new_count = 1;
+    }
+
+    /* Find context after the closing @@ */
+    context_start = strstr(endptr, "@@");
+    if (context_start) {
+        context_start += 2;
+        if (*context_start == ' ') {
+            context_start++;
+        }
+        if (*context_start != '\0' && *context_start != '\n') {
+            /* Copy context, removing trailing newline if present */
+            size_t context_len = strlen(context_start);
+            if (context_len > 0 && context_start[context_len - 1] == '\n') {
+                context_len--;
+            }
+            scanner->current_hunk.context = xstrndup(context_start, context_len);
+        } else {
+            scanner->current_hunk.context = NULL;
+        }
+    } else {
+        scanner->current_hunk.context = NULL;
+    }
+
     scanner->current_hunk.position = scanner->current_position;
+
+    /* Initialize hunk line tracking */
+    scanner->hunk_orig_remaining = scanner->current_hunk.orig_count;
+    scanner->hunk_new_remaining = scanner->current_hunk.new_count;
+    scanner->in_hunk = 1;
 
     scanner->current_content.type = PATCH_CONTENT_HUNK_HEADER;
     scanner->current_content.line_number = scanner->line_number;
@@ -646,7 +736,39 @@ static int scanner_emit_hunk_header(patch_scanner_t *scanner, const char *line)
 
 static int scanner_emit_hunk_line(patch_scanner_t *scanner, const char *line)
 {
-    scanner->current_line.type = (enum patch_hunk_line_type)line[0];
+    char line_type = line[0];
+
+    /* Validate line type */
+    if (line_type != ' ' && line_type != '+' && line_type != '-') {
+        return PATCH_SCAN_ERROR;
+    }
+
+    /* Update remaining line counts based on line type */
+    switch (line_type) {
+    case ' ':
+        /* Context line - counts against both original and new */
+        if (scanner->hunk_orig_remaining > 0) {
+            scanner->hunk_orig_remaining--;
+        }
+        if (scanner->hunk_new_remaining > 0) {
+            scanner->hunk_new_remaining--;
+        }
+        break;
+    case '-':
+        /* Deletion - counts against original only */
+        if (scanner->hunk_orig_remaining > 0) {
+            scanner->hunk_orig_remaining--;
+        }
+        break;
+    case '+':
+        /* Addition - counts against new only */
+        if (scanner->hunk_new_remaining > 0) {
+            scanner->hunk_new_remaining--;
+        }
+        break;
+    }
+
+    scanner->current_line.type = (enum patch_hunk_line_type)line_type;
     scanner->current_line.content = line + 1;
     scanner->current_line.length = strlen(line) - 1;
     scanner->current_line.position = scanner->current_position;
