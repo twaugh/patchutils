@@ -454,10 +454,10 @@ static int scanner_is_potential_patch_start(const char *line)
 
 static int scanner_is_header_continuation(patch_scanner_t *scanner, const char *line)
 {
-    /* TODO: Implement proper header continuation logic */
-    /* For now, simple heuristics */
+    /* Check if line is a valid patch header line */
     (void)scanner; /* unused parameter */
-    return (!strncmp(line, "+++ ", sizeof("+++ ") - 1) ||
+    return (!strncmp(line, "diff --git ", sizeof("diff --git ") - 1) ||
+            !strncmp(line, "+++ ", sizeof("+++ ") - 1) ||
             !strncmp(line, "--- ", sizeof("--- ") - 1) ||
             !strncmp(line, "index ", sizeof("index ") - 1) ||
             !strncmp(line, "new file mode ", sizeof("new file mode ") - 1) ||
@@ -469,7 +469,9 @@ static int scanner_is_header_continuation(patch_scanner_t *scanner, const char *
             !strncmp(line, "rename from ", sizeof("rename from ") - 1) ||
             !strncmp(line, "rename to ", sizeof("rename to ") - 1) ||
             !strncmp(line, "copy from ", sizeof("copy from ") - 1) ||
-            !strncmp(line, "copy to ", sizeof("copy to ") - 1));
+            !strncmp(line, "copy to ", sizeof("copy to ") - 1) ||
+            strstr(line, "Binary files ") ||
+            !strncmp(line, "GIT binary patch", sizeof("GIT binary patch") - 1));
 }
 
 static int scanner_validate_headers(patch_scanner_t *scanner)
@@ -531,6 +533,9 @@ static int scanner_validate_headers(patch_scanner_t *scanner)
     /* Determine if we have a valid patch header structure */
     if (scanner->current_headers.type == PATCH_TYPE_CONTEXT) {
         return has_context_old && has_context_new;
+    } else if (scanner->current_headers.type == PATCH_TYPE_GIT_EXTENDED) {
+        /* Git validation was already done above, just return success */
+        return 1;
     } else {
         return has_old_file && has_new_file;
     }
@@ -1054,7 +1059,23 @@ static int scanner_validate_git_header_order(patch_scanner_t *scanner)
         }
     }
 
-    return seen_git_diff && seen_old_file && seen_new_file;
+    /* Check if this is a binary patch that doesn't need --- and +++ lines */
+    int has_binary_marker = 0;
+    for (i = 0; i < scanner->num_header_lines; i++) {
+        const char *line = scanner->header_lines[i];
+        if (strstr(line, "Binary files ") || !strncmp(line, "GIT binary patch", sizeof("GIT binary patch") - 1)) {
+            has_binary_marker = 1;
+            break;
+        }
+    }
+
+    if (has_binary_marker) {
+        /* Binary patches only require diff --git line and binary marker */
+        return seen_git_diff;
+    } else {
+        /* Regular patches need all three lines */
+        return seen_git_diff && seen_old_file && seen_new_file;
+    }
 }
 
 static int scanner_is_git_extended_header(const char *line)
