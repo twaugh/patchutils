@@ -100,6 +100,8 @@ static void scanner_init_content(patch_scanner_t *scanner, enum patch_content_ty
 static int scanner_emit_non_patch(patch_scanner_t *scanner, const char *line, size_t length);
 static int scanner_emit_headers(patch_scanner_t *scanner);
 static int scanner_emit_hunk_header(patch_scanner_t *scanner, const char *line);
+static int scanner_emit_context_hunk_header(patch_scanner_t *scanner, const char *line);
+static int scanner_emit_context_new_hunk_header(patch_scanner_t *scanner, const char *line);
 static int scanner_emit_hunk_line(patch_scanner_t *scanner, const char *line);
 static int scanner_emit_no_newline(patch_scanner_t *scanner, const char *line);
 static int scanner_emit_binary(patch_scanner_t *scanner, const char *line);
@@ -256,11 +258,20 @@ int patch_scanner_next(patch_scanner_t *scanner, const patch_content_t **content
 
         case STATE_IN_PATCH:
             if (!strncmp(line, "@@ ", sizeof("@@ ") - 1)) {
-                /* Hunk header */
+                /* Unified diff hunk header */
                 scanner->state = STATE_IN_HUNK;
                 scanner_emit_hunk_header(scanner, line);
                 *content = &scanner->current_content;
                 return PATCH_SCAN_OK;
+            } else if (!strncmp(line, "*** ", sizeof("*** ") - 1) && strstr(line, " ****")) {
+                /* Context diff old hunk header: *** 1,3 **** */
+                scanner->state = STATE_IN_HUNK;
+                scanner_emit_context_hunk_header(scanner, line);
+                *content = &scanner->current_content;
+                return PATCH_SCAN_OK;
+            } else if (!strncmp(line, "***************", sizeof("***************") - 1)) {
+                /* Context diff separator - skip it */
+                continue;
             } else if (!strncmp(line, "Binary files ", sizeof("Binary files ") - 1) ||
                        !strncmp(line, "GIT binary patch", sizeof("GIT binary patch") - 1)) {
                 /* Binary content */
@@ -304,8 +315,26 @@ int patch_scanner_next(patch_scanner_t *scanner, const patch_content_t **content
                 *content = &scanner->current_content;
                 return PATCH_SCAN_OK;
             } else if (!strncmp(line, "@@ ", sizeof("@@ ") - 1)) {
-                /* Next hunk */
+                /* Next unified diff hunk */
                 int result = scanner_emit_hunk_header(scanner, line);
+                if (result != PATCH_SCAN_OK) {
+                    scanner->state = STATE_ERROR;
+                    return result;
+                }
+                *content = &scanner->current_content;
+                return PATCH_SCAN_OK;
+            } else if (!strncmp(line, "--- ", sizeof("--- ") - 1) && strstr(line, " ----")) {
+                /* Context diff new hunk header: --- 1,3 ---- */
+                int result = scanner_emit_context_new_hunk_header(scanner, line);
+                if (result != PATCH_SCAN_OK) {
+                    scanner->state = STATE_ERROR;
+                    return result;
+                }
+                /* Continue to next line - this just updates hunk info */
+                continue;
+            } else if (!strncmp(line, "*** ", sizeof("*** ") - 1) && strstr(line, " ****")) {
+                /* Next context diff hunk */
+                int result = scanner_emit_context_hunk_header(scanner, line);
                 if (result != PATCH_SCAN_OK) {
                     scanner->state = STATE_ERROR;
                     return result;
@@ -742,12 +771,99 @@ static int scanner_emit_hunk_header(patch_scanner_t *scanner, const char *line)
     return PATCH_SCAN_OK;
 }
 
+static int scanner_emit_context_hunk_header(patch_scanner_t *scanner, const char *line)
+{
+    char *endptr;
+    unsigned long res;
+    char *p;
+
+    /* Parse *** <orig_offset>[,<orig_count>] **** */
+
+    /* Find original offset after '*** ' */
+    p = (char *)line + sizeof("*** ") - 1;
+
+    /* Parse original offset */
+    res = strtoul(p, &endptr, 10);
+    if (endptr == p) {
+        return PATCH_SCAN_ERROR;
+    }
+    scanner->current_hunk.orig_offset = res;
+
+    /* Check for comma and count */
+    if (*endptr == ',') {
+        p = endptr + 1;
+        res = strtoul(p, &endptr, 10);
+        if (endptr == p) {
+            return PATCH_SCAN_ERROR;
+        }
+        scanner->current_hunk.orig_count = res;
+    } else {
+        scanner->current_hunk.orig_count = 1;
+    }
+
+    /* For context diffs, we need to wait for the --- line to get new file info */
+    scanner->current_hunk.new_offset = 0;
+    scanner->current_hunk.new_count = 0;
+
+    /* No context string in context diff hunk headers */
+    scanner->current_hunk.context = NULL;
+    scanner->current_hunk.position = scanner->current_position;
+
+    /* Don't initialize hunk line tracking yet - wait for --- line */
+    scanner->hunk_orig_remaining = scanner->current_hunk.orig_count;
+    scanner->hunk_new_remaining = 0; /* Will be set when we see --- line */
+    scanner->in_hunk = 1;
+
+    scanner_init_content(scanner, PATCH_CONTENT_HUNK_HEADER);
+    scanner->current_content.data.hunk = &scanner->current_hunk;
+
+    return PATCH_SCAN_OK;
+}
+
+static int scanner_emit_context_new_hunk_header(patch_scanner_t *scanner, const char *line)
+{
+    char *endptr;
+    unsigned long res;
+    char *p;
+
+    /* Parse --- <new_offset>[,<new_count>] ---- */
+
+    /* Find new offset after '--- ' */
+    p = (char *)line + sizeof("--- ") - 1;
+
+    /* Parse new offset */
+    res = strtoul(p, &endptr, 10);
+    if (endptr == p) {
+        return PATCH_SCAN_ERROR;
+    }
+    scanner->current_hunk.new_offset = res;
+
+    /* Check for comma and count */
+    if (*endptr == ',') {
+        p = endptr + 1;
+        res = strtoul(p, &endptr, 10);
+        if (endptr == p) {
+            return PATCH_SCAN_ERROR;
+        }
+        scanner->current_hunk.new_count = res;
+    } else {
+        scanner->current_hunk.new_count = 1;
+    }
+
+    /* Now we have complete hunk info, initialize line tracking */
+    scanner->hunk_new_remaining = scanner->current_hunk.new_count;
+
+    /* This is not a new hunk header emission, it completes the previous one */
+    /* So we don't emit PATCH_CONTENT_HUNK_HEADER again, just continue processing lines */
+    return PATCH_SCAN_OK;
+}
+
 static int scanner_emit_hunk_line(patch_scanner_t *scanner, const char *line)
 {
     char line_type = line[0];
 
     /* Validate line type */
-    if (line_type != ' ' && line_type != '+' && line_type != '-') {
+    if (line_type != ' ' && line_type != '+' && line_type != '-' && line_type != '!') {
         return PATCH_SCAN_ERROR;
     }
 
@@ -770,6 +886,15 @@ static int scanner_emit_hunk_line(patch_scanner_t *scanner, const char *line)
         break;
     case '+':
         /* Addition - counts against new only */
+        if (scanner->hunk_new_remaining > 0) {
+            scanner->hunk_new_remaining--;
+        }
+        break;
+    case '!':
+        /* Changed line in context diff - counts against both */
+        if (scanner->hunk_orig_remaining > 0) {
+            scanner->hunk_orig_remaining--;
+        }
         if (scanner->hunk_new_remaining > 0) {
             scanner->hunk_new_remaining--;
         }
