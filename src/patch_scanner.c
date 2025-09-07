@@ -33,7 +33,6 @@
 static void scanner_parse_git_diff_line(patch_scanner_t *scanner, const char *line);
 static void scanner_parse_old_file_line(patch_scanner_t *scanner, const char *line);
 static void scanner_parse_new_file_line(patch_scanner_t *scanner, const char *line);
-static void scanner_parse_context_old_line(patch_scanner_t *scanner, const char *line);
 static void scanner_parse_index_line(patch_scanner_t *scanner, const char *line);
 static void scanner_parse_mode_line(patch_scanner_t *scanner, const char *line, int *mode_field);
 static void scanner_parse_similarity_line(patch_scanner_t *scanner, const char *line);
@@ -97,6 +96,7 @@ static int scanner_is_potential_patch_start(const char *line);
 static int scanner_is_header_continuation(patch_scanner_t *scanner, const char *line);
 static int scanner_validate_headers(patch_scanner_t *scanner);
 static int scanner_parse_headers(patch_scanner_t *scanner);
+static void scanner_init_content(patch_scanner_t *scanner, enum patch_content_type type);
 static int scanner_emit_non_patch(patch_scanner_t *scanner, const char *line, size_t length);
 static int scanner_emit_headers(patch_scanner_t *scanner);
 static int scanner_emit_hunk_header(patch_scanner_t *scanner, const char *line);
@@ -570,7 +570,7 @@ static int scanner_parse_headers(patch_scanner_t *scanner)
         }
         else if (!strncmp(line, "*** ", sizeof("*** ") - 1)) {
             scanner->current_headers.type = PATCH_TYPE_CONTEXT;
-            scanner_parse_context_old_line(scanner, line);
+            scanner_parse_old_file_line(scanner, line); /* Context diff old file line */
         }
         else if (!strncmp(line, "index ", sizeof("index ") - 1)) {
             scanner_parse_index_line(scanner, line);
@@ -620,11 +620,17 @@ static int scanner_parse_headers(patch_scanner_t *scanner)
     return PATCH_SCAN_OK;
 }
 
-static int scanner_emit_non_patch(patch_scanner_t *scanner, const char *line, size_t length)
+/* Helper function to initialize common content fields */
+static void scanner_init_content(patch_scanner_t *scanner, enum patch_content_type type)
 {
-    scanner->current_content.type = PATCH_CONTENT_NON_PATCH;
+    scanner->current_content.type = type;
     scanner->current_content.line_number = scanner->line_number;
     scanner->current_content.position = scanner->current_position;
+}
+
+static int scanner_emit_non_patch(patch_scanner_t *scanner, const char *line, size_t length)
+{
+    scanner_init_content(scanner, PATCH_CONTENT_NON_PATCH);
     scanner->current_content.data.non_patch.line = line;
     scanner->current_content.data.non_patch.length = length;
 
@@ -633,9 +639,8 @@ static int scanner_emit_non_patch(patch_scanner_t *scanner, const char *line, si
 
 static int scanner_emit_headers(patch_scanner_t *scanner)
 {
-    scanner->current_content.type = PATCH_CONTENT_HEADERS;
-    scanner->current_content.line_number = scanner->line_number;
-    scanner->current_content.position = scanner->current_headers.start_position;
+    scanner_init_content(scanner, PATCH_CONTENT_HEADERS);
+    scanner->current_content.position = scanner->current_headers.start_position; /* Override with header position */
     scanner->current_content.data.headers = &scanner->current_headers;
 
     return PATCH_SCAN_OK;
@@ -726,9 +731,7 @@ static int scanner_emit_hunk_header(patch_scanner_t *scanner, const char *line)
     scanner->hunk_new_remaining = scanner->current_hunk.new_count;
     scanner->in_hunk = 1;
 
-    scanner->current_content.type = PATCH_CONTENT_HUNK_HEADER;
-    scanner->current_content.line_number = scanner->line_number;
-    scanner->current_content.position = scanner->current_position;
+    scanner_init_content(scanner, PATCH_CONTENT_HUNK_HEADER);
     scanner->current_content.data.hunk = &scanner->current_hunk;
 
     return PATCH_SCAN_OK;
@@ -773,9 +776,7 @@ static int scanner_emit_hunk_line(patch_scanner_t *scanner, const char *line)
     scanner->current_line.length = strlen(line) - 1;
     scanner->current_line.position = scanner->current_position;
 
-    scanner->current_content.type = PATCH_CONTENT_HUNK_LINE;
-    scanner->current_content.line_number = scanner->line_number;
-    scanner->current_content.position = scanner->current_position;
+    scanner_init_content(scanner, PATCH_CONTENT_HUNK_LINE);
     scanner->current_content.data.line = &scanner->current_line;
 
     return PATCH_SCAN_OK;
@@ -783,9 +784,7 @@ static int scanner_emit_hunk_line(patch_scanner_t *scanner, const char *line)
 
 static int scanner_emit_no_newline(patch_scanner_t *scanner, const char *line)
 {
-    scanner->current_content.type = PATCH_CONTENT_NO_NEWLINE;
-    scanner->current_content.line_number = scanner->line_number;
-    scanner->current_content.position = scanner->current_position;
+    scanner_init_content(scanner, PATCH_CONTENT_NO_NEWLINE);
     scanner->current_content.data.no_newline.line = line;
     scanner->current_content.data.no_newline.length = strlen(line);
 
@@ -794,9 +793,7 @@ static int scanner_emit_no_newline(patch_scanner_t *scanner, const char *line)
 
 static int scanner_emit_binary(patch_scanner_t *scanner, const char *line)
 {
-    scanner->current_content.type = PATCH_CONTENT_BINARY;
-    scanner->current_content.line_number = scanner->line_number;
-    scanner->current_content.position = scanner->current_position;
+    scanner_init_content(scanner, PATCH_CONTENT_BINARY);
     scanner->current_content.data.binary.line = line;
     scanner->current_content.data.binary.length = strlen(line);
     scanner->current_content.data.binary.is_git_binary = !strncmp(line, "GIT binary patch", sizeof("GIT binary patch") - 1);
@@ -875,12 +872,6 @@ static void scanner_parse_new_file_line(patch_scanner_t *scanner, const char *li
 {
     /* Parse "+++ filename" - extract filename, handle /dev/null */
     scanner->current_headers.new_name = scanner_extract_filename(line, sizeof("+++ ") - 1);
-}
-
-static void scanner_parse_context_old_line(patch_scanner_t *scanner, const char *line)
-{
-    /* Parse "*** filename" for context diff */
-    scanner_parse_old_file_line(scanner, line); /* Same logic, different prefix */
 }
 
 static void scanner_parse_index_line(patch_scanner_t *scanner, const char *line)
