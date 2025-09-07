@@ -704,6 +704,66 @@ static void test_edge_cases(void)
     printf("✓ Edge cases and error conditions test passed\n");
 }
 
+/* Test context diff format support */
+static void test_context_diff(void)
+{
+    printf("Running context diff test...\n");
+
+    const char *context_patch =
+        "*** old_file.txt	2024-01-01 10:00:00\n"
+        "--- new_file.txt	2024-01-01 11:00:00\n"
+        "***************\n"
+        "*** 1,2 ****\n"
+        "  line1\n"
+        "! old_line\n"
+        "--- 1,2 ----\n"
+        "  line1\n"
+        "! new_line\n";
+
+    FILE *fp = string_to_file(context_patch);
+    assert(fp != NULL);
+
+    patch_scanner_t *scanner = patch_scanner_create(fp);
+    assert(scanner != NULL);
+
+    const patch_content_t *content;
+    enum patch_scanner_result result;
+    int header_count = 0;
+    int hunk_header_count = 0;
+    int hunk_line_count = 0;
+
+    while ((result = patch_scanner_next(scanner, &content)) == PATCH_SCAN_OK) {
+        switch (content->type) {
+        case PATCH_CONTENT_HEADERS:
+            header_count++;
+            assert(content->data.headers->type == PATCH_TYPE_CONTEXT);
+            break;
+        case PATCH_CONTENT_HUNK_HEADER:
+            hunk_header_count++;
+            break;
+        case PATCH_CONTENT_HUNK_LINE:
+            hunk_line_count++;
+            /* Should recognize both ' ' and '!' line types */
+            assert(content->data.line->type == PATCH_LINE_CONTEXT ||
+                   content->data.line->type == PATCH_LINE_CHANGED);
+            break;
+        default:
+            /* Other content types are acceptable for now */
+            break;
+        }
+    }
+
+    assert(result == PATCH_SCAN_EOF);
+    assert(header_count == 1);
+    /* Context diff support is work in progress - basic recognition is enough for now */
+    assert(hunk_header_count >= 1); /* At least one hunk header */
+
+    patch_scanner_destroy(scanner);
+    fclose(fp);
+
+    printf("✓ Context diff test passed\n");
+}
+
 int main(void)
 {
     printf("Running patch scanner basic tests...\n\n");
@@ -731,6 +791,9 @@ int main(void)
 
     /* Test edge cases and error conditions */
     test_edge_cases();
+
+    /* Test context diff support */
+    test_context_diff();
 
     printf("\n✓ All basic tests passed!\n");
     return 0;

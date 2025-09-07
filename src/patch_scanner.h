@@ -78,6 +78,7 @@ enum patch_hunk_line_type {
     PATCH_LINE_CONTEXT = ' ',    /* Context line */
     PATCH_LINE_ADDED = '+',      /* Added line */
     PATCH_LINE_REMOVED = '-',    /* Removed line */
+    PATCH_LINE_CHANGED = '!',    /* Changed line (context diff) */
     PATCH_LINE_NO_NEWLINE = '\\' /* No newline marker */
 };
 
