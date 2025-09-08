@@ -77,6 +77,7 @@ struct patch_scanner {
     char **header_lines;        /* Raw header lines */
     unsigned int num_header_lines; /* Number of accumulated headers */
     unsigned int header_lines_allocated; /* Allocated header slots */
+    unsigned long header_start_line; /* Line number where current headers started */
 
     /* Current content being emitted */
     struct patch_content current_content; /* Content structure for emission */
@@ -174,6 +175,7 @@ int patch_scanner_next(patch_scanner_t *scanner, const patch_content_t **content
                 /* Start accumulating headers */
                 scanner->state = STATE_ACCUMULATING_HEADERS;
                 scanner->num_header_lines = 0;
+                scanner->header_start_line = scanner->line_number;
 
                 /* Store first header line */
                 if (scanner->num_header_lines >= scanner->header_lines_allocated) {
@@ -247,6 +249,7 @@ int patch_scanner_next(patch_scanner_t *scanner, const patch_content_t **content
                 if (scanner_is_potential_patch_start(line)) {
                     scanner->state = STATE_ACCUMULATING_HEADERS;
                     scanner->num_header_lines = 0;
+                    scanner->header_start_line = scanner->line_number;
                     scanner->header_lines[scanner->num_header_lines++] = xstrdup(line);
                     continue;
                 } else {
@@ -283,6 +286,7 @@ int patch_scanner_next(patch_scanner_t *scanner, const patch_content_t **content
                 scanner_reset_for_next_patch(scanner);
                 scanner->state = STATE_ACCUMULATING_HEADERS;
                 scanner->num_header_lines = 0;
+                scanner->header_start_line = scanner->line_number;
                 scanner->header_lines[scanner->num_header_lines++] = xstrdup(line);
                 continue;
             } else {
@@ -350,6 +354,7 @@ int patch_scanner_next(patch_scanner_t *scanner, const patch_content_t **content
                 if (scanner_is_potential_patch_start(line)) {
                     scanner->state = STATE_ACCUMULATING_HEADERS;
                     scanner->num_header_lines = 0;
+                    scanner->header_start_line = scanner->line_number;
                     scanner->header_lines[scanner->num_header_lines++] = xstrdup(line);
                     continue;
                 } else {
@@ -583,6 +588,7 @@ static int scanner_parse_headers(patch_scanner_t *scanner)
     scanner->current_headers.similarity_index = -1;
     scanner->current_headers.dissimilarity_index = -1;
     scanner->current_headers.start_position = scanner->current_position;
+    scanner->current_headers.start_line = scanner->header_start_line;
 
     /* Copy header lines */
     scanner->current_headers.header_lines = scanner->header_lines;
