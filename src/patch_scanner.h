@@ -112,6 +112,7 @@ struct patch_headers {
 
     /* Position information */
     long start_position;         /* File position where this patch starts */
+    unsigned long start_line;    /* Line number where this patch starts */
 };
 
 /* Hunk header information */
