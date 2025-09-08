@@ -764,6 +764,110 @@ static void test_context_diff(void)
     printf("✓ Context diff test passed\n");
 }
 
+static void test_line_number_tracking(void)
+{
+    printf("Testing line number tracking...\n");
+
+    /* Test case: multi-file patch with known line numbers */
+    const char *patch_content =
+        "--- file1\n"                    /* Line 1 */
+        "+++ file1\n"                    /* Line 2 */
+        "@@ -0,0 +1 @@\n"               /* Line 3 */
+        "+a\n"                          /* Line 4 */
+        "--- orig/file2\n"              /* Line 5 */
+        "+++ file2\n"                   /* Line 6 */
+        "@@ -0,0 +1 @@\n"               /* Line 7 */
+        "+b\n"                          /* Line 8 */
+        "--- file3\n"                   /* Line 9 */
+        "+++ file3.orig\n"              /* Line 10 */
+        "@@ -0,0 +1 @@\n"               /* Line 11 */
+        "+c\n";                         /* Line 12 */
+
+    FILE *fp = fmemopen((void*)patch_content, strlen(patch_content), "r");
+    assert(fp != NULL);
+
+    patch_scanner_t *scanner = patch_scanner_create(fp);
+    assert(scanner != NULL);
+
+    const patch_content_t *content;
+    enum patch_scanner_result result;
+    int file_count = 0;
+    unsigned long expected_lines[] = {1, 5, 9}; /* Expected start lines for each file */
+
+    printf("  Checking line numbers for each file header...\n");
+
+    while ((result = patch_scanner_next(scanner, &content)) == PATCH_SCAN_OK) {
+        if (content->type == PATCH_CONTENT_HEADERS) {
+            printf("    File %d: start_line = %lu (expected %lu)\n",
+                   file_count + 1, content->data.headers->start_line, expected_lines[file_count]);
+
+            /* Verify the line number matches expected */
+            assert(content->data.headers->start_line == expected_lines[file_count]);
+
+            /* Also test the scanner's current line number API */
+            unsigned long current_line = patch_scanner_line_number(scanner);
+            printf("      Scanner current line: %lu\n", current_line);
+
+            /* The scanner's current line should be past the headers we just parsed */
+            assert(current_line >= expected_lines[file_count]);
+
+            file_count++;
+        }
+    }
+
+    assert(result == PATCH_SCAN_EOF);
+    assert(file_count == 3); /* Should have found 3 files */
+
+    patch_scanner_destroy(scanner);
+    fclose(fp);
+
+    printf("  ✓ Line number tracking test passed\n");
+}
+
+static void test_line_number_edge_cases(void)
+{
+    printf("Testing line number edge cases...\n");
+
+    /* Test case: patch starting with non-patch content */
+    const char *patch_with_prefix =
+        "This is a comment line\n"      /* Line 1 */
+        "Another comment\n"             /* Line 2 */
+        "--- file1\n"                   /* Line 3 - first patch starts here */
+        "+++ file1\n"                   /* Line 4 */
+        "@@ -1 +1 @@\n"                 /* Line 5 */
+        "-old\n"                        /* Line 6 */
+        "+new\n";                       /* Line 7 */
+
+    FILE *fp = fmemopen((void*)patch_with_prefix, strlen(patch_with_prefix), "r");
+    assert(fp != NULL);
+
+    patch_scanner_t *scanner = patch_scanner_create(fp);
+    assert(scanner != NULL);
+
+    const patch_content_t *content;
+    enum patch_scanner_result result;
+    int headers_found = 0;
+
+    printf("  Checking line numbers with non-patch prefix...\n");
+
+    while ((result = patch_scanner_next(scanner, &content)) == PATCH_SCAN_OK) {
+        if (content->type == PATCH_CONTENT_HEADERS) {
+            printf("    Headers found at line %lu (expected 3)\n",
+                   content->data.headers->start_line);
+            assert(content->data.headers->start_line == 3);
+            headers_found++;
+        }
+    }
+
+    assert(result == PATCH_SCAN_EOF);
+    assert(headers_found == 1);
+
+    patch_scanner_destroy(scanner);
+    fclose(fp);
+
+    printf("  ✓ Line number edge cases test passed\n");
+}
+
 int main(void)
 {
     printf("Running patch scanner basic tests...\n\n");
@@ -794,6 +898,10 @@ int main(void)
 
     /* Test context diff support */
     test_context_diff();
+
+    /* Test line number tracking */
+    test_line_number_tracking();
+    test_line_number_edge_cases();
 
     printf("\n✓ All basic tests passed!\n");
     return 0;
