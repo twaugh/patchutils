@@ -69,6 +69,15 @@ void patlist_free(struct patlist **list);
 extern char *progname;
 void set_progname(const char * s);
 
+/* Patch-specific utility functions */
+struct patch_headers;
+
+/* Check if a file exists based on filename and timestamp */
+int patch_file_exists(const char *filename, const char *timestamp);
+
+/* Determine file status character (+, -, !) from patch headers */
+char patch_determine_file_status(const struct patch_headers *headers, int empty_as_absent);
+
 
 /* for non-glibc systems */
 #ifndef HAVE_GETLINE
