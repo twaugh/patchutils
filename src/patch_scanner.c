@@ -1203,10 +1203,24 @@ static int scanner_validate_git_header_order(patch_scanner_t *scanner)
     if (has_binary_marker) {
         /* Binary patches only require diff --git line and binary marker */
         return seen_git_diff;
-    } else {
-        /* Regular patches need all three lines */
-        return seen_git_diff && seen_old_file && seen_new_file;
     }
+
+    /* Check if this is a Git diff without hunks (e.g., new file, deleted file, mode change) */
+    if (seen_git_diff && !seen_old_file && !seen_new_file) {
+        /* Git diff with no --- and +++ lines - check if it has meaningful extended headers */
+        for (i = 0; i < scanner->num_header_lines; i++) {
+            const char *line = scanner->header_lines[i];
+            if (!strncmp(line, "new file mode ", sizeof("new file mode ") - 1) ||
+                !strncmp(line, "deleted file mode ", sizeof("deleted file mode ") - 1) ||
+                !strncmp(line, "index ", sizeof("index ") - 1)) {
+                /* Git diffs with these specific headers but no hunks are valid */
+                return 1;
+            }
+        }
+    }
+
+    /* Regular patches (including Git diffs with --- and +++ lines) need all three lines */
+    return seen_git_diff && seen_old_file && seen_new_file;
 }
 
 static int scanner_is_git_extended_header(const char *line)

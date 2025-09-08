@@ -868,6 +868,120 @@ static void test_line_number_edge_cases(void)
     printf("  ✓ Line number edge cases test passed\n");
 }
 
+static void test_git_no_hunks(void)
+{
+    printf("Testing Git diffs without hunks...\n");
+
+    /* Test case 1: Git new file without hunks */
+    const char *git_new_file =
+        "diff --git a/new-file.txt b/new-file.txt\n"
+        "new file mode 100644\n"
+        "index 0000000..abcdef1\n";
+
+    FILE *fp = fmemopen((void*)git_new_file, strlen(git_new_file), "r");
+    assert(fp != NULL);
+
+    patch_scanner_t *scanner = patch_scanner_create(fp);
+    assert(scanner != NULL);
+
+    const patch_content_t *content;
+    enum patch_scanner_result result;
+    int headers_found = 0;
+
+    printf("  Testing Git new file without hunks...\n");
+
+    while ((result = patch_scanner_next(scanner, &content)) == PATCH_SCAN_OK) {
+        if (content->type == PATCH_CONTENT_HEADERS) {
+            printf("    Found headers: git_type = %d\n", content->data.headers->git_type);
+            assert(content->data.headers->type == PATCH_TYPE_GIT_EXTENDED);
+            assert(content->data.headers->git_type == GIT_DIFF_NEW_FILE);
+            headers_found++;
+        }
+    }
+
+    assert(result == PATCH_SCAN_EOF);
+    assert(headers_found == 1); /* Should have found exactly 1 set of headers */
+
+    patch_scanner_destroy(scanner);
+    fclose(fp);
+
+    printf("  ✓ Git new file without hunks test passed\n");
+
+    /* Test case 2: Git deleted file without hunks */
+    const char *git_deleted_file =
+        "diff --git a/deleted-file.txt b/deleted-file.txt\n"
+        "deleted file mode 100644\n"
+        "index abcdef1..0000000\n";
+
+    fp = fmemopen((void*)git_deleted_file, strlen(git_deleted_file), "r");
+    assert(fp != NULL);
+
+    scanner = patch_scanner_create(fp);
+    assert(scanner != NULL);
+
+    headers_found = 0;
+
+    printf("  Testing Git deleted file without hunks...\n");
+
+    while ((result = patch_scanner_next(scanner, &content)) == PATCH_SCAN_OK) {
+        if (content->type == PATCH_CONTENT_HEADERS) {
+            printf("    Found headers: git_type = %d\n", content->data.headers->git_type);
+            assert(content->data.headers->type == PATCH_TYPE_GIT_EXTENDED);
+            assert(content->data.headers->git_type == GIT_DIFF_DELETED_FILE);
+            headers_found++;
+        }
+    }
+
+    assert(result == PATCH_SCAN_EOF);
+    assert(headers_found == 1); /* Should have found exactly 1 set of headers */
+
+    patch_scanner_destroy(scanner);
+    fclose(fp);
+
+    printf("  ✓ Git deleted file without hunks test passed\n");
+
+    /* Test case 3: Git binary file without hunks */
+    const char *git_binary_file =
+        "diff --git a/binary.bin b/binary.bin\n"
+        "new file mode 100644\n"
+        "index 0000000..1234567\n"
+        "Binary files /dev/null and b/binary.bin differ\n";
+
+    fp = fmemopen((void*)git_binary_file, strlen(git_binary_file), "r");
+    assert(fp != NULL);
+
+    scanner = patch_scanner_create(fp);
+    assert(scanner != NULL);
+
+    headers_found = 0;
+    int binary_found = 0;
+
+    printf("  Testing Git binary file...\n");
+
+    while ((result = patch_scanner_next(scanner, &content)) == PATCH_SCAN_OK) {
+        if (content->type == PATCH_CONTENT_HEADERS) {
+            printf("    Found headers: git_type = %d\n", content->data.headers->git_type);
+            assert(content->data.headers->type == PATCH_TYPE_GIT_EXTENDED);
+            assert(content->data.headers->git_type == GIT_DIFF_NEW_FILE);
+            headers_found++;
+        } else if (content->type == PATCH_CONTENT_BINARY) {
+            printf("    Found binary content\n");
+            binary_found++;
+        }
+    }
+
+    assert(result == PATCH_SCAN_EOF);
+    assert(headers_found == 1); /* Should have found exactly 1 set of headers */
+    assert(binary_found == 1);  /* Should have found binary content */
+
+    patch_scanner_destroy(scanner);
+    fclose(fp);
+
+    printf("  ✓ Git binary file test passed\n");
+
+    printf("✓ Git diffs without hunks test passed\n");
+}
+
 int main(void)
 {
     printf("Running patch scanner basic tests...\n\n");
@@ -902,6 +1016,9 @@ int main(void)
     /* Test line number tracking */
     test_line_number_tracking();
     test_line_number_edge_cases();
+
+    /* Test Git diffs without hunks */
+    test_git_no_hunks();
 
     printf("\n✓ All basic tests passed!\n");
     return 0;
