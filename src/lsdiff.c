@@ -260,13 +260,14 @@ static const char *get_best_filename(const struct patch_headers *headers)
             int i;
 
             /* Apply Git prefix stripping if requested */
-            if (headers->git_new_name) {
-                stripped_candidates[count] = strip_git_prefix_from_filename(headers->git_new_name);
+            /* Prefer git_old_name (a/) over git_new_name (b/) for Git diffs without hunks */
+            if (headers->git_old_name) {
+                stripped_candidates[count] = strip_git_prefix_from_filename(headers->git_old_name);
                 candidates[count] = stripped_candidates[count];
                 count++;
             }
-            if (headers->git_old_name) {
-                stripped_candidates[count] = strip_git_prefix_from_filename(headers->git_old_name);
+            if (headers->git_new_name) {
+                stripped_candidates[count] = strip_git_prefix_from_filename(headers->git_new_name);
                 candidates[count] = stripped_candidates[count];
                 count++;
             }
