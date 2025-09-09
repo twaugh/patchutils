@@ -1023,13 +1023,13 @@ static void scanner_parse_git_diff_line(patch_scanner_t *scanner, const char *li
     const char *b_start = strstr(line, " b/");
 
     if (a_start && b_start && a_start < b_start) {
-        a_start += 3; /* Skip " a/" */
+        a_start += 1; /* Skip " " but keep "a/" */
         const char *a_end = strchr(a_start, ' ');
-        if (a_end && a_end < b_start) {
+        if (a_end && a_end <= b_start) {
             scanner->current_headers.git_old_name = xstrndup(a_start, a_end - a_start);
         }
 
-        b_start += 3; /* Skip " b/" */
+        b_start += 1; /* Skip " " but keep "b/" */
         size_t len = strcspn(b_start, "\n\r");
         scanner->current_headers.git_new_name = xstrndup(b_start, len);
     }
