@@ -73,12 +73,12 @@ static int number_files = 0;          /* -N, --number-files */
 static int show_patch_names = -1;     /* -H/-h, --with-filename/--no-filename */
 static int empty_files_as_absent = 0; /* -E, --empty-files-as-absent */
 static int strip_components = 0;      /* -p, --strip-match */
+static int strip_output_components = 0; /* --strip */
 static int verbose = 0;               /* -v, --verbose */
 static int unzip = 0;                 /* -z, --decompress */
+static enum git_prefix_mode git_prefix_mode = GIT_PREFIX_KEEP; /* --git-prefixes */
 
 /* TODO: Missing options from original lsdiff:
- * --strip=N           - strip N leading path components (different from -p)
- * --git-prefixes=strip|keep - handle a/ and b/ prefixes in Git diffs
  * --addprefix=PREFIX  - add prefix to pathnames
  * --addoldprefix=PREFIX - add prefix to old file pathnames
  * --addnewprefix=PREFIX - add prefix to new file pathnames
@@ -98,6 +98,7 @@ static void process_patch_file(FILE *fp, const char *filename);
 static void display_filename(const char *filename, const char *patchname, char status, unsigned long linenum);
 static char determine_file_status(const struct patch_headers *headers);
 static const char *get_best_filename(const struct patch_headers *headers);
+static char *strip_git_prefix_from_filename(const char *filename);
 static const char *strip_path_components(const char *filename, int components);
 static int should_display_file(const char *filename);
 static void parse_range(struct range **r, const char *rstr);
@@ -118,6 +119,8 @@ static void syntax(int err)
     fprintf(f, "  -h, --no-filename            suppress patch file names\n");
     fprintf(f, "  -E, --empty-files-as-absent  treat empty files as absent\n");
     fprintf(f, "  -p N, --strip-match=N        strip N leading path components\n");
+    fprintf(f, "  --strip=N                    strip N leading path components from output\n");
+    fprintf(f, "  --git-prefixes=strip|keep    handle a/ and b/ prefixes in Git diffs (default: keep)\n");
     fprintf(f, "  -i PAT, --include=PAT        include only files matching PAT\n");
     fprintf(f, "  -x PAT, --exclude=PAT        exclude files matching PAT\n");
     fprintf(f, "  -I FILE, --include-from-file=FILE  include only files matching patterns in FILE\n");
@@ -232,38 +235,99 @@ static const char *choose_best_name(const char **names, int count)
     return names[best_idx];
 }
 
+/* Helper function to strip Git a/ or b/ prefixes from a filename */
+static char *strip_git_prefix_from_filename(const char *filename)
+{
+    if (git_prefix_mode == GIT_PREFIX_STRIP && filename &&
+        ((filename[0] == 'a' && filename[1] == '/') ||
+         (filename[0] == 'b' && filename[1] == '/'))) {
+        return xstrdup(filename + 2);
+    }
+    return filename ? xstrdup(filename) : NULL;
+}
+
 static const char *get_best_filename(const struct patch_headers *headers)
 {
     const char *filename = NULL;
 
-    /* TODO: Implement --git-prefixes=strip|keep option handling here */
-
-    /* Use best_name algorithm to choose filename */
+    /* Use best_name algorithm to choose filename with Git prefix handling */
     switch (headers->type) {
     case PATCH_TYPE_GIT_EXTENDED:
         {
+            char *stripped_candidates[4];
             const char *candidates[4];
             int count = 0;
+            int i;
 
-            if (headers->git_new_name) candidates[count++] = headers->git_new_name;
-            if (headers->git_old_name) candidates[count++] = headers->git_old_name;
-            if (headers->new_name) candidates[count++] = headers->new_name;
-            if (headers->old_name) candidates[count++] = headers->old_name;
+            /* Apply Git prefix stripping if requested */
+            if (headers->git_new_name) {
+                stripped_candidates[count] = strip_git_prefix_from_filename(headers->git_new_name);
+                candidates[count] = stripped_candidates[count];
+                count++;
+            }
+            if (headers->git_old_name) {
+                stripped_candidates[count] = strip_git_prefix_from_filename(headers->git_old_name);
+                candidates[count] = stripped_candidates[count];
+                count++;
+            }
+            if (headers->new_name) {
+                stripped_candidates[count] = strip_git_prefix_from_filename(headers->new_name);
+                candidates[count] = stripped_candidates[count];
+                count++;
+            }
+            if (headers->old_name) {
+                stripped_candidates[count] = strip_git_prefix_from_filename(headers->old_name);
+                candidates[count] = stripped_candidates[count];
+                count++;
+            }
 
             filename = choose_best_name(candidates, count);
+
+            /* Create a persistent copy since we'll free the stripped candidates */
+            static char *cached_filename = NULL;
+            if (cached_filename) free(cached_filename);
+            cached_filename = xstrdup(filename);
+            filename = cached_filename;
+
+            /* Free the stripped candidates */
+            for (i = 0; i < count; i++) {
+                free(stripped_candidates[i]);
+            }
         }
         break;
 
     case PATCH_TYPE_UNIFIED:
     case PATCH_TYPE_CONTEXT:
         {
+            char *stripped_candidates[2];
             const char *candidates[2];
             int count = 0;
+            int i;
 
-            if (headers->new_name) candidates[count++] = headers->new_name;
-            if (headers->old_name) candidates[count++] = headers->old_name;
+            /* Apply Git prefix stripping if requested */
+            if (headers->new_name) {
+                stripped_candidates[count] = strip_git_prefix_from_filename(headers->new_name);
+                candidates[count] = stripped_candidates[count];
+                count++;
+            }
+            if (headers->old_name) {
+                stripped_candidates[count] = strip_git_prefix_from_filename(headers->old_name);
+                candidates[count] = stripped_candidates[count];
+                count++;
+            }
 
             filename = choose_best_name(candidates, count);
+
+            /* Create a persistent copy since we'll free the stripped candidates */
+            static char *cached_filename2 = NULL;
+            if (cached_filename2) free(cached_filename2);
+            cached_filename2 = xstrdup(filename);
+            filename = cached_filename2;
+
+            /* Free the stripped candidates */
+            for (i = 0; i < count; i++) {
+                free(stripped_candidates[i]);
+            }
         }
         break;
     }
@@ -273,7 +337,7 @@ static const char *get_best_filename(const struct patch_headers *headers)
 
     /* TODO: Apply --addprefix, --addoldprefix, --addnewprefix options here */
 
-    return strip_path_components(filename, strip_components);
+    return strip_path_components(filename, strip_output_components);
 }
 
 static char determine_file_status(const struct patch_headers *headers)
@@ -336,6 +400,8 @@ static void process_patch_file(FILE *fp, const char *filename)
     const patch_content_t *content;
     enum patch_scanner_result result;
     unsigned long header_line = 1;
+    const char *current_file = NULL;
+    int hunk_number = 0;
 
     scanner = patch_scanner_create(fp);
     if (!scanner) {
@@ -352,9 +418,22 @@ static void process_patch_file(FILE *fp, const char *filename)
             header_line = content->data.headers->start_line;
 
             file_number++;
+            hunk_number = 0;  /* Reset hunk counter for new file */
 
             if (should_display_file(best_filename)) {
                 display_filename(best_filename, filename, status, header_line);
+                current_file = best_filename;  /* Track current file for verbose output */
+            } else {
+                current_file = NULL;  /* Don't show hunks for filtered files */
+            }
+        } else if (content->type == PATCH_CONTENT_HUNK_HEADER && verbose && current_file) {
+            /* In verbose mode, show hunk information */
+            hunk_number++;
+
+            if (show_line_numbers) {
+                printf("\t%lu\tHunk #%d\n", content->line_number, hunk_number);
+            } else {
+                printf("\tHunk #%d\n", hunk_number);
             }
         }
     }
@@ -392,9 +471,9 @@ int main(int argc, char *argv[])
             {"files", 1, 0, 'F'},
             {"verbose", 0, 0, 'v'},
             {"decompress", 0, 0, 'z'},
+            {"git-prefixes", 1, 0, 1000 + 'G'},
+            {"strip", 1, 0, 1000 + 'S'},
             /* TODO: Add missing long options:
-             * {"strip", 1, 0, 1000 + 'S'},
-             * {"git-prefixes", 1, 0, 1000 + 'G'},
              * {"addprefix", 1, 0, 1000 + 'A'},
              * {"addoldprefix", 1, 0, 1000 + 'O'},
              * {"addnewprefix", 1, 0, 1000 + 'N'},
@@ -458,9 +537,25 @@ int main(int argc, char *argv[])
         case 'z':
             unzip = 1;
             break;
+        case 1000 + 'G':
+            if (!strcmp(optarg, "strip")) {
+                git_prefix_mode = GIT_PREFIX_STRIP;
+            } else if (!strcmp(optarg, "keep")) {
+                git_prefix_mode = GIT_PREFIX_KEEP;
+            } else {
+                error(EXIT_FAILURE, 0, "invalid argument to --git-prefixes: %s (expected 'strip' or 'keep')", optarg);
+            }
+            break;
+        case 1000 + 'S':
+            {
+                char *end;
+                strip_output_components = strtoul(optarg, &end, 0);
+                if (optarg == end) {
+                    error(EXIT_FAILURE, 0, "invalid argument to --strip: %s", optarg);
+                }
+            }
+            break;
         /* TODO: Add missing option cases:
-         * case 1000 + 'S': // --strip=N
-         * case 1000 + 'G': // --git-prefixes=strip|keep
          * case 1000 + 'A': // --addprefix=PREFIX
          * case 1000 + 'O': // --addoldprefix=PREFIX
          * case 1000 + 'N': // --addnewprefix=PREFIX
