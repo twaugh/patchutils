@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <ctype.h>
 
 #include "patch_scanner.h"
 #include "util.h"
@@ -41,6 +42,7 @@ static void scanner_determine_git_diff_type(patch_scanner_t *scanner);
 
 /* Helper functions for common parsing patterns */
 static char *scanner_extract_filename(const char *line, int prefix_len);
+static const char *scanner_find_timestamp_start(const char *filename);
 static void scanner_parse_index_percentage(const char *line, const char *prefix, int *target_field);
 static void scanner_parse_filename_field(const char *line, int prefix_len, char **target_field);
 
@@ -1061,11 +1063,117 @@ static char *scanner_extract_filename(const char *line, int prefix_len)
 
     /* Find end of filename (before timestamp if present) */
     const char *end = filename;
-    while (*end && *end != '\t' && *end != '\n' && *end != '\r') {
-        end++;
+
+    /* Find timestamp using simple heuristics */
+    const char *timestamp_pos = scanner_find_timestamp_start(filename);
+
+    if (timestamp_pos) {
+        end = timestamp_pos;
+    } else {
+        /* No timestamp found - look for tab separator */
+        const char *tab_pos = strchr(filename, '\t');
+        if (tab_pos) {
+            end = tab_pos;
+        } else {
+            /* No timestamp or tab found - go to end of line */
+            while (*end && *end != '\n' && *end != '\r') {
+                end++;
+            }
+        }
+    }
+
+    /* Trim trailing whitespace from filename */
+    while (end > filename && (*(end-1) == ' ' || *(end-1) == '\t')) {
+        end--;
     }
 
     return xstrndup(filename, end - filename);
+}
+
+/* Helper function to find the start of a timestamp in a filename line
+ * Returns pointer to the beginning of the timestamp, or NULL if not found
+ *
+ * This uses simple heuristics to detect common timestamp patterns:
+ * - 4-digit years (19xx, 20xx)
+ * - Month names (Jan, Feb, etc.)
+ * - Day names (Mon, Tue, etc.) followed by comma or space
+ * - Time patterns (HH:MM)
+ */
+static const char *scanner_find_timestamp_start(const char *filename)
+{
+    const char *pos = filename;
+    const char *best_match = NULL;
+
+    /* Common timestamp markers to look for */
+    static const char *month_names[] = {
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", NULL
+    };
+    static const char *day_names[] = {
+        "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun", NULL
+    };
+
+    while (*pos) {
+        /* Skip to next potential timestamp boundary (whitespace) */
+        if (*pos != ' ' && *pos != '\t') {
+            pos++;
+            continue;
+        }
+
+        /* Found whitespace - check what follows */
+        const char *after_space = pos;
+        while (*after_space == ' ' || *after_space == '\t') after_space++;
+
+        if (!*after_space) break;
+
+        /* Check for 4-digit year */
+        if ((after_space[0] == '1' && after_space[1] == '9') ||
+            (after_space[0] == '2' && after_space[1] == '0')) {
+            if (isdigit(after_space[2]) && isdigit(after_space[3])) {
+                best_match = pos;
+                break;
+            }
+        }
+
+        /* Check for month names */
+        for (int i = 0; month_names[i]; i++) {
+            if (strncmp(after_space, month_names[i], 3) == 0 &&
+                (after_space[3] == ' ' || after_space[3] == '\t')) {
+                best_match = pos;
+                break;
+            }
+        }
+        if (best_match) break;
+
+        /* Check for day names */
+        for (int i = 0; day_names[i]; i++) {
+            if (strncmp(after_space, day_names[i], 3) == 0 &&
+                (after_space[3] == ',' || after_space[3] == ' ' || after_space[3] == '\t')) {
+                best_match = pos;
+                break;
+            }
+        }
+        if (best_match) break;
+
+        /* Check for time pattern (HH:MM) */
+        if (isdigit(after_space[0]) && isdigit(after_space[1]) && after_space[2] == ':' &&
+            isdigit(after_space[3]) && isdigit(after_space[4])) {
+            best_match = pos;
+            break;
+        }
+
+        pos++;
+    }
+
+    /* Trim leading whitespace from timestamp position */
+    if (best_match) {
+        while (best_match > filename &&
+               (*(best_match-1) == ' ' || *(best_match-1) == '\t')) {
+            best_match--;
+        }
+    }
+
+    return best_match;
 }
 
 static void scanner_parse_index_percentage(const char *line, const char *prefix, int *target_field)
