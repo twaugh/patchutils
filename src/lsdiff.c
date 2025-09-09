@@ -574,7 +574,7 @@ int main(int argc, char *argv[])
     /* Process input files */
     if (optind >= argc) {
         /* Read from stdin */
-        process_patch_file(stdin, "(stdin)");
+        process_patch_file(stdin, "(standard input)");
     } else {
         /* Process each file */
         for (i = optind; i < argc; i++) {
