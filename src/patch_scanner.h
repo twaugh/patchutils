@@ -22,6 +22,7 @@
 
 #include <stdio.h>
 #include <stddef.h>
+#include "diff.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -61,18 +62,6 @@ enum patch_type {
 };
 
 /* Git-specific diff types */
-enum git_diff_type {
-    GIT_DIFF_NORMAL = 0,         /* Regular diff with hunks */
-    GIT_DIFF_NEW_FILE,           /* New file creation */
-    GIT_DIFF_DELETED_FILE,       /* File deletion */
-    GIT_DIFF_RENAME,             /* File rename */
-    GIT_DIFF_PURE_RENAME,        /* Pure rename (100% similarity) */
-    GIT_DIFF_COPY,               /* File copy */
-    GIT_DIFF_MODE_ONLY,          /* Mode change only */
-    GIT_DIFF_MODE_CHANGE,        /* Mode change with content changes */
-    GIT_DIFF_BINARY              /* Binary file diff */
-};
-
 /* Hunk line types */
 enum patch_hunk_line_type {
     PATCH_LINE_CONTEXT = ' ',    /* Context line */

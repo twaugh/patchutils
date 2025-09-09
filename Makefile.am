@@ -34,7 +34,7 @@ src_rediff_SOURCES = src/rediff.c src/util.c src/util.h src/diff.c src/diff.h
 
 if USE_SCANNER_LSDIFF
 src_lsdiff_SOURCES = src/lsdiff.c src/util.c src/util.h \
-		src/patch_scanner.c src/patch_scanner.h
+		src/patch_scanner.c src/patch_scanner.h src/diff.c src/diff.h
 endif
 
 src_interdiff_LDADD = lib/libgnu.a @LIBOBJS@
