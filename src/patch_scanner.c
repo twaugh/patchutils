@@ -56,6 +56,7 @@ enum scanner_state {
     STATE_ACCUMULATING_HEADERS,  /* Collecting potential headers */
     STATE_IN_PATCH,             /* Processing patch content */
     STATE_IN_HUNK,              /* Processing hunk lines */
+    STATE_BINARY_READY,         /* Ready to emit binary content */
     STATE_ERROR                 /* Error state */
 };
 
@@ -89,6 +90,11 @@ struct patch_scanner {
     unsigned long hunk_orig_remaining; /* Remaining original lines in hunk */
     unsigned long hunk_new_remaining;  /* Remaining new lines in hunk */
     int in_hunk;                       /* Are we currently in a hunk? */
+
+    /* Simple one-line buffer for stdin-compatible peek-ahead */
+    char *next_line;                   /* Next line buffered for peek-ahead */
+    unsigned long next_line_number;    /* Line number of buffered line */
+    int has_next_line;                 /* Flag: next_line contains valid data */
 };
 
 /* Forward declarations */
@@ -108,6 +114,9 @@ static int scanner_emit_no_newline(patch_scanner_t *scanner, const char *line);
 static int scanner_emit_binary(patch_scanner_t *scanner, const char *line);
 static void scanner_free_headers(patch_scanner_t *scanner);
 static void scanner_reset_for_next_patch(patch_scanner_t *scanner);
+
+/* Stdin-compatible header completion logic */
+static int scanner_should_wait_for_unified_headers(patch_scanner_t *scanner);
 
 /* Public API implementation */
 
@@ -133,6 +142,11 @@ patch_scanner_t* patch_scanner_create(FILE *file)
     scanner->header_lines_allocated = 8;
     scanner->header_lines = xmalloc(sizeof(char*) * scanner->header_lines_allocated);
 
+    /* Initialize simple peek-ahead buffer */
+    scanner->next_line = NULL;
+    scanner->next_line_number = 0;
+    scanner->has_next_line = 0;
+
     return scanner;
 }
 
@@ -152,6 +166,15 @@ int patch_scanner_next(patch_scanner_t *scanner, const patch_content_t **content
 
     /* Main parsing loop - prevents recursion */
     for (;;) {
+        /* Handle states that don't require reading a new line */
+        if (scanner->state == STATE_BINARY_READY) {
+            /* Emit binary content for binary-only patches */
+            scanner_emit_binary(scanner, "Binary patch");
+            scanner->state = STATE_SEEKING_PATCH; /* Reset for next patch */
+            *content = &scanner->current_content;
+            return PATCH_SCAN_OK;
+        }
+
         /* Read next line */
         result = scanner_read_line(scanner);
         if (result == PATCH_SCAN_EOF) {
@@ -231,6 +254,16 @@ int patch_scanner_next(patch_scanner_t *scanner, const patch_content_t **content
                     /* We have valid headers - parse and emit them */
                     scanner_parse_headers(scanner);
                     scanner->state = STATE_IN_PATCH;
+
+                    /* Check if this is a binary-only patch (no hunks expected) */
+                    if (scanner->current_headers.is_binary &&
+                        (scanner->current_headers.git_type == GIT_DIFF_NEW_FILE ||
+                         scanner->current_headers.git_type == GIT_DIFF_DELETED_FILE ||
+                         scanner->current_headers.git_type == GIT_DIFF_BINARY)) {
+                        /* For binary patches, we need to emit both headers and binary content */
+                        scanner->state = STATE_BINARY_READY;
+                    }
+
                     scanner_emit_headers(scanner);
                     *content = &scanner->current_content;
                     return PATCH_SCAN_OK;
@@ -408,6 +441,11 @@ void patch_scanner_destroy(patch_scanner_t *scanner)
         free(scanner->line_buffer);
     }
 
+    /* Free simple peek-ahead buffer */
+    if (scanner->next_line) {
+        free(scanner->next_line);
+    }
+
     /* Free any allocated strings in current content structures */
     if (scanner->current_headers.old_name) {
         free(scanner->current_headers.old_name);
@@ -464,6 +502,35 @@ static int scanner_read_line(patch_scanner_t *scanner)
 {
     ssize_t result;
 
+    /* Check if we have a buffered line from peek-ahead */
+    if (scanner->has_next_line) {
+        /* Use the buffered line */
+        size_t len = strlen(scanner->next_line) + 1; /* +1 for null terminator */
+
+        /* Ensure line_buffer is large enough */
+        if (scanner->line_buffer_size < len) {
+            scanner->line_buffer = xrealloc(scanner->line_buffer, len);
+            scanner->line_buffer_size = len;
+        }
+
+        /* Copy buffered line to line_buffer */
+        strcpy(scanner->line_buffer, scanner->next_line);
+
+        /* Update line number */
+        scanner->line_number = scanner->next_line_number;
+
+        /* Clear the buffer */
+        free(scanner->next_line);
+        scanner->next_line = NULL;
+        scanner->has_next_line = 0;
+
+        /* Set current position (approximate) */
+        scanner->current_position = ftell(scanner->file);
+
+        return PATCH_SCAN_OK;
+    }
+
+    /* Normal line reading */
     scanner->current_position = ftell(scanner->file);
     result = getline(&scanner->line_buffer, &scanner->line_buffer_size, scanner->file);
 
@@ -589,8 +656,17 @@ static int scanner_validate_headers(patch_scanner_t *scanner)
     if (scanner->current_headers.type == PATCH_TYPE_CONTEXT) {
         return has_context_old && has_context_new;
     } else if (scanner->current_headers.type == PATCH_TYPE_GIT_EXTENDED) {
-        /* Git validation was already done above, just return success */
-        return 1;
+        /* Git extended headers are complete if:
+         * 1. Git validation passed (already done above), AND
+         * 2. Either no unified diff headers present, OR both --- and +++ are present
+         */
+        if (has_old_file || has_new_file) {
+            /* If we have any unified diff headers, we need both */
+            return has_old_file && has_new_file;
+        } else {
+            /* Pure Git metadata diff (no hunks) - complete */
+            return 1;
+        }
     } else {
         return has_old_file && has_new_file;
     }
@@ -1105,10 +1181,13 @@ static void scanner_determine_git_diff_type(patch_scanner_t *scanner)
              scanner->current_headers.old_mode != scanner->current_headers.new_mode) {
         scanner->current_headers.git_type = GIT_DIFF_MODE_CHANGE;
     }
-    else if (scanner->current_headers.is_binary) {
+    else if (scanner->current_headers.is_binary &&
+             scanner->current_headers.git_type != GIT_DIFF_NEW_FILE &&
+             scanner->current_headers.git_type != GIT_DIFF_DELETED_FILE) {
+        /* Only set as binary if it's not already a new file or deleted file */
         scanner->current_headers.git_type = GIT_DIFF_BINARY;
     }
-    /* GIT_DIFF_NEW_FILE and GIT_DIFF_DELETED_FILE are set during parsing */
+    /* GIT_DIFF_NEW_FILE and GIT_DIFF_DELETED_FILE are set during parsing and take precedence */
 }
 
 /* Header order validation functions */
@@ -1244,15 +1323,46 @@ static int scanner_validate_git_header_order(patch_scanner_t *scanner)
 
     /* Check if this is a Git diff without hunks (e.g., new file, deleted file, mode change) */
     if (seen_git_diff && !seen_old_file && !seen_new_file) {
-        /* Git diff with no --- and +++ lines - check if it has meaningful extended headers */
+        /* Git diff with no --- and +++ lines - use look-ahead to determine if complete */
+        int has_new_file = 0, has_deleted_file = 0, has_mode_change = 0, has_index = 0;
+
         for (i = 0; i < scanner->num_header_lines; i++) {
             const char *line = scanner->header_lines[i];
-            if (!strncmp(line, "new file mode ", sizeof("new file mode ") - 1) ||
-                !strncmp(line, "deleted file mode ", sizeof("deleted file mode ") - 1) ||
-                !strncmp(line, "index ", sizeof("index ") - 1)) {
-                /* Git diffs with these specific headers but no hunks are valid */
+            if (!strncmp(line, "new file mode ", sizeof("new file mode ") - 1)) {
+                has_new_file = 1;
+            } else if (!strncmp(line, "deleted file mode ", sizeof("deleted file mode ") - 1)) {
+                has_deleted_file = 1;
+            } else if (!strncmp(line, "old mode ", sizeof("old mode ") - 1) ||
+                       !strncmp(line, "new mode ", sizeof("new mode ") - 1)) {
+                has_mode_change = 1;
+            } else if (!strncmp(line, "index ", sizeof("index ") - 1)) {
+                has_index = 1;
+            }
+        }
+
+        /* For pure mode changes, complete immediately */
+        if (has_mode_change && has_index) {
+            return 1;
+        }
+
+        /* For new/deleted files, use look-ahead to check if --- and +++ lines are coming */
+        if ((has_new_file || has_deleted_file) && has_index) {
+            /* First check if we already have a binary marker in current headers */
+            int has_current_binary = 0;
+            for (i = 0; i < scanner->num_header_lines; i++) {
+                const char *line = scanner->header_lines[i];
+                if (strstr(line, "Binary files ")) {
+                    has_current_binary = 1;
+                    break;
+                }
+            }
+
+            /* If we already have binary content, complete immediately */
+            if (has_current_binary) {
                 return 1;
             }
+            /* For new/deleted files with index, check if unified diff headers are coming */
+            return scanner_should_wait_for_unified_headers(scanner);
         }
     }
 
@@ -1317,4 +1427,55 @@ static void scanner_reset_for_next_patch(patch_scanner_t *scanner)
 
     scanner_free_headers(scanner);
     scanner->in_hunk = 0;
+}
+
+/* Look-ahead implementation */
+
+/* Stdin-compatible peek-ahead for Git header completion */
+
+static int scanner_should_wait_for_unified_headers(patch_scanner_t *scanner)
+{
+    /* If we already have a buffered line, use it */
+    if (scanner->has_next_line) {
+        const char *next_line = scanner->next_line;
+
+        /* Check if the next line is a unified diff header */
+        if (!strncmp(next_line, "--- ", 4) || !strncmp(next_line, "+++ ", 4)) {
+            return 0; /* Don't complete yet - wait for unified headers */
+        } else if (strstr(next_line, "Binary files ")) {
+            return 0; /* Don't complete yet - wait for binary content */
+        } else {
+            return 1; /* Complete as Git metadata-only */
+        }
+    }
+
+    /* Read the next line and buffer it */
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t read = getline(&line, &len, scanner->file);
+
+    if (read == -1) {
+        /* EOF - complete as metadata-only */
+        free(line);
+        return 1;
+    }
+
+    /* Remove trailing newline */
+    if (read > 0 && line[read - 1] == '\n') {
+        line[read - 1] = '\0';
+    }
+
+    /* Store in buffer for later consumption */
+    scanner->next_line = line;
+    scanner->next_line_number = scanner->line_number + 1;
+    scanner->has_next_line = 1;
+
+    /* Check what type of line this is */
+    if (!strncmp(line, "--- ", 4) || !strncmp(line, "+++ ", 4)) {
+        return 0; /* Don't complete yet - wait for unified headers */
+    } else if (strstr(line, "Binary files ")) {
+        return 0; /* Don't complete yet - wait for binary content */
+    } else {
+        return 1; /* Complete as Git metadata-only */
+    }
 }
