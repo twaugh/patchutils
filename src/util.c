@@ -535,27 +535,35 @@ char patch_determine_file_status(const struct patch_headers *headers, int empty_
 		}
 	} else {
 		/* For unified/context diffs, check filenames and timestamps */
-		if (headers->old_name && headers->new_name) {
-			/* Extract timestamps from header lines */
-			const char *old_timestamp = NULL;
-			const char *new_timestamp = NULL;
+
+		/* First check for /dev/null filenames */
+		if (headers->old_name && !strcmp(headers->old_name, "/dev/null")) {
+			old_file_exists = 0;
+		}
+		if (headers->new_name && !strcmp(headers->new_name, "/dev/null")) {
+			new_file_exists = 0;
+		}
+
+		/* Then check timestamps if both files have real names */
+		if (headers->old_name && headers->new_name &&
+		    strcmp(headers->old_name, "/dev/null") != 0 &&
+		    strcmp(headers->new_name, "/dev/null") != 0) {
 
 			for (unsigned int i = 0; i < headers->num_headers; i++) {
 				const char *line = headers->header_lines[i];
 				if (strncmp(line, "--- ", 4) == 0) {
-					/* Extract timestamp after filename */
-					old_timestamp = line + 4 + strlen(headers->old_name);
+					/* Skip past "--- " and filename, find timestamp */
+					const char *tab = strchr(line + 4, '\t');
+					if (tab) {
+						old_file_exists = patch_file_exists(headers->old_name, tab + 1);
+					}
 				} else if (strncmp(line, "+++ ", 4) == 0) {
-					/* Extract timestamp after filename */
-					new_timestamp = line + 4 + strlen(headers->new_name);
+					/* Skip past "+++ " and filename, find timestamp */
+					const char *tab = strchr(line + 4, '\t');
+					if (tab) {
+						new_file_exists = patch_file_exists(headers->new_name, tab + 1);
+					}
 				}
-			}
-
-			if (old_timestamp) {
-				old_file_exists = patch_file_exists(headers->old_name, old_timestamp);
-			}
-			if (new_timestamp) {
-				new_file_exists = patch_file_exists(headers->new_name, new_timestamp);
 			}
 		}
 	}
