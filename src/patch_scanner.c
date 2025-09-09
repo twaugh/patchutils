@@ -481,9 +481,30 @@ static int scanner_read_line(patch_scanner_t *scanner)
 
 static int scanner_is_potential_patch_start(const char *line)
 {
-    return (!strncmp(line, "diff ", sizeof("diff ") - 1) ||
-            !strncmp(line, "--- ", sizeof("--- ") - 1) ||
-            !strncmp(line, "*** ", sizeof("*** ") - 1));
+    /* Check for diff command */
+    if (!strncmp(line, "diff ", sizeof("diff ") - 1)) {
+        return 1;
+    }
+
+    /* Check for unified diff old file line */
+    if (!strncmp(line, "--- ", sizeof("--- ") - 1)) {
+        /* Exclude context diff hunk headers like "--- 1,3 ----" */
+        if (strstr(line, " ----")) {
+            return 0;
+        }
+        return 1;
+    }
+
+    /* Check for context diff old file line */
+    if (!strncmp(line, "*** ", sizeof("*** ") - 1)) {
+        /* Exclude context diff hunk headers like "*** 1,3 ****" */
+        if (strstr(line, " ****")) {
+            return 0;
+        }
+        return 1;
+    }
+
+    return 0;
 }
 
 static int scanner_is_header_continuation(patch_scanner_t *scanner, const char *line)
