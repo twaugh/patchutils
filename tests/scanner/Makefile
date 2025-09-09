@@ -8,7 +8,7 @@ LDFLAGS =
 LIBS = ../../lib/libgnu.a
 
 # Source files
-SCANNER_SRCS = ../../src/patch_scanner.c ../../src/util.c
+SCANNER_SRCS = ../../src/patch_scanner.c ../../src/util.c ../../src/diff.c
 SCANNER_OBJS = $(SCANNER_SRCS:.c=.o)
 
 # Test programs
