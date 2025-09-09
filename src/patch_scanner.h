@@ -60,8 +60,6 @@ enum patch_type {
     PATCH_TYPE_CONTEXT,          /* Context diff format */
     PATCH_TYPE_GIT_EXTENDED      /* Git extended diff format */
 };
-
-/* Git-specific diff types */
 /* Hunk line types */
 enum patch_hunk_line_type {
     PATCH_LINE_CONTEXT = ' ',    /* Context line */
