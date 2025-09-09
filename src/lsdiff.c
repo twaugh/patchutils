@@ -259,27 +259,43 @@ static const char *get_best_filename(const struct patch_headers *headers)
             int count = 0;
             int i;
 
-            /* Apply Git prefix stripping if requested */
-            /* Prefer git_old_name (a/) over git_new_name (b/) for Git diffs without hunks */
-            if (headers->git_old_name) {
-                stripped_candidates[count] = strip_git_prefix_from_filename(headers->git_old_name);
-                candidates[count] = stripped_candidates[count];
-                count++;
-            }
-            if (headers->git_new_name) {
-                stripped_candidates[count] = strip_git_prefix_from_filename(headers->git_new_name);
-                candidates[count] = stripped_candidates[count];
-                count++;
-            }
-            if (headers->new_name) {
-                stripped_candidates[count] = strip_git_prefix_from_filename(headers->new_name);
-                candidates[count] = stripped_candidates[count];
-                count++;
-            }
-            if (headers->old_name) {
-                stripped_candidates[count] = strip_git_prefix_from_filename(headers->old_name);
-                candidates[count] = stripped_candidates[count];
-                count++;
+            /* Apply Git prefix stripping and choose candidate order based on patch type */
+
+            /* For Git diffs with unified diff headers (hunks), prefer new_name/git_new_name */
+            if (headers->new_name || headers->old_name) {
+                /* Git diff with hunks - prefer new file name */
+                if (headers->new_name) {
+                    stripped_candidates[count] = strip_git_prefix_from_filename(headers->new_name);
+                    candidates[count] = stripped_candidates[count];
+                    count++;
+                }
+                if (headers->git_new_name) {
+                    stripped_candidates[count] = strip_git_prefix_from_filename(headers->git_new_name);
+                    candidates[count] = stripped_candidates[count];
+                    count++;
+                }
+                if (headers->old_name) {
+                    stripped_candidates[count] = strip_git_prefix_from_filename(headers->old_name);
+                    candidates[count] = stripped_candidates[count];
+                    count++;
+                }
+                if (headers->git_old_name) {
+                    stripped_candidates[count] = strip_git_prefix_from_filename(headers->git_old_name);
+                    candidates[count] = stripped_candidates[count];
+                    count++;
+                }
+            } else {
+                /* Git diff without hunks - prefer git_old_name (traditional behavior) */
+                if (headers->git_old_name) {
+                    stripped_candidates[count] = strip_git_prefix_from_filename(headers->git_old_name);
+                    candidates[count] = stripped_candidates[count];
+                    count++;
+                }
+                if (headers->git_new_name) {
+                    stripped_candidates[count] = strip_git_prefix_from_filename(headers->git_new_name);
+                    candidates[count] = stripped_candidates[count];
+                    count++;
+                }
             }
 
             filename = choose_best_name(candidates, count);
