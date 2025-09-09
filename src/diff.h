@@ -18,6 +18,9 @@
  *
  */
 
+#ifndef DIFF_H
+#define DIFF_H
+
 #include <time.h>
 
 int num_pathname_components (const char *x);
@@ -79,3 +82,5 @@ char *strip_git_prefix_from_filename (const char *filename, enum git_prefix_mode
 enum git_diff_type detect_git_diff_type (char **headers, unsigned int num_headers);
 int extract_git_filenames (char **headers, unsigned int num_headers,
 			   char **old_name, char **new_name, enum git_prefix_mode prefix_mode);
+
+#endif /* DIFF_H */

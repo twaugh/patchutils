@@ -276,20 +276,13 @@ static void test_git_extended_headers(void)
     assert(headers->new_hash != NULL);
     assert(strcmp(headers->new_hash, "def456") == 0);
 
-    /* Should get second headers (unified diff) */
-    result = patch_scanner_next(scanner, &content);
-    assert(result == PATCH_SCAN_OK);
-    assert(content->type == PATCH_CONTENT_HEADERS);
+    /* Verify that Git extended headers also include unified diff info when present */
+    assert(headers->old_name != NULL);
+    assert(strcmp(headers->old_name, "a/old.txt") == 0);
+    assert(headers->new_name != NULL);
+    assert(strcmp(headers->new_name, "b/new.txt") == 0);
 
-    /* Verify unified diff header parsing */
-    const struct patch_headers *unified_headers = content->data.headers;
-    assert(unified_headers->type == PATCH_TYPE_UNIFIED);
-    assert(unified_headers->old_name != NULL);
-    assert(strcmp(unified_headers->old_name, "a/old.txt") == 0);
-    assert(unified_headers->new_name != NULL);
-    assert(strcmp(unified_headers->new_name, "b/new.txt") == 0);
-
-    /* Should get hunk header */
+    /* Should get hunk header directly (no second header event) */
     result = patch_scanner_next(scanner, &content);
     assert(result == PATCH_SCAN_OK);
     assert(content->type == PATCH_CONTENT_HUNK_HEADER);

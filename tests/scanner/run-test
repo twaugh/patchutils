@@ -1,0 +1,24 @@
+#!/bin/sh
+
+# Test runner for patch scanner unit tests
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Build the scanner test using make
+echo "Building scanner test..."
+cd "${top_builddir-.}/tests/scanner"
+make >/dev/null 2>&1 || {
+    echo "Failed to build scanner test"
+    exit 1
+}
+cd "${top_builddir-.}"
+
+# Run the scanner tests
+echo "Running patch scanner unit tests..."
+tests/scanner/test_basic || {
+    echo "Scanner tests failed"
+    exit 1
+}
+
+echo "✓ Scanner tests passed"
+exit 0
