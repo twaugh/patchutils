@@ -764,6 +764,105 @@ static void test_context_diff(void)
     printf("✓ Context diff test passed\n");
 }
 
+static void test_context_diff_hunk_headers_not_file_headers(void)
+{
+    printf("Running context diff hunk header parsing test...\n");
+
+    /* This test specifically checks for the bug where context diff hunk headers
+     * like "*** 21,23 ****" were being incorrectly parsed as file headers.
+     * This caused extra output in lsdiff (e.g., "21,26 ----" appearing in output).
+     */
+    const char *context_patch_with_multiple_hunks =
+        "*** file.orig\tWed Mar 20 10:08:24 2002\n"
+        "--- file\tWed Mar 20 10:08:24 2002\n"
+        "***************\n"
+        "*** 1,7 ****\n"
+        "  a\n"
+        "  b\n"
+        "  c\n"
+        "! d\n"
+        "  e\n"
+        "  f\n"
+        "  g\n"
+        "--- 1,7 ----\n"
+        "  a\n"
+        "  b\n"
+        "  c\n"
+        "! D\n"
+        "  e\n"
+        "  f\n"
+        "  g\n"
+        "***************\n"
+        "*** 21,23 ****\n"
+        "--- 21,26 ----\n"
+        "  u\n"
+        "  v\n"
+        "  w\n"
+        "+ x\n"
+        "+ y\n"
+        "+ z\n";
+
+    FILE *fp = string_to_file(context_patch_with_multiple_hunks);
+    assert(fp != NULL);
+
+    patch_scanner_t *scanner = patch_scanner_create(fp);
+    assert(scanner != NULL);
+
+    const patch_content_t *content;
+    enum patch_scanner_result result;
+    int header_count = 0;
+    int hunk_header_count = 0;
+    char *file_old_name = NULL;
+    char *file_new_name = NULL;
+
+    while ((result = patch_scanner_next(scanner, &content)) == PATCH_SCAN_OK) {
+        switch (content->type) {
+        case PATCH_CONTENT_HEADERS:
+            header_count++;
+            assert(content->data.headers->type == PATCH_TYPE_CONTEXT);
+
+            /* Store the file names from the ONLY file header */
+            if (header_count == 1) {
+                file_old_name = strdup(content->data.headers->old_name ? content->data.headers->old_name : "NULL");
+                file_new_name = strdup(content->data.headers->new_name ? content->data.headers->new_name : "NULL");
+            }
+            break;
+        case PATCH_CONTENT_HUNK_HEADER:
+            hunk_header_count++;
+            break;
+        default:
+            break;
+        }
+    }
+
+    assert(result == PATCH_SCAN_EOF);
+
+    /* CRITICAL: There should be exactly ONE file header, not multiple */
+    assert(header_count == 1);
+
+    /* The file names should be the actual filenames, not hunk ranges */
+    assert(file_old_name != NULL);
+    assert(file_new_name != NULL);
+    assert(strcmp(file_old_name, "file.orig") == 0);
+    assert(strcmp(file_new_name, "file") == 0);
+
+    /* Should NOT contain hunk ranges like "21,23 ****" or "21,26 ----" */
+    assert(strstr(file_old_name, "21,23") == NULL);
+    assert(strstr(file_new_name, "21,26") == NULL);
+    assert(strstr(file_old_name, "****") == NULL);
+    assert(strstr(file_new_name, "----") == NULL);
+
+    /* Should have detected multiple hunk headers */
+    assert(hunk_header_count >= 2);
+
+    free(file_old_name);
+    free(file_new_name);
+    patch_scanner_destroy(scanner);
+    fclose(fp);
+
+    printf("✓ Context diff hunk header parsing test passed\n");
+}
+
 static void test_line_number_tracking(void)
 {
     printf("Testing line number tracking...\n");
@@ -1012,6 +1111,9 @@ int main(void)
 
     /* Test context diff support */
     test_context_diff();
+
+    /* Test context diff hunk header parsing bug fix */
+    test_context_diff_hunk_headers_not_file_headers();
 
     /* Test line number tracking */
     test_line_number_tracking();
