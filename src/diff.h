@@ -57,12 +57,14 @@ int read_timestamp (const char *timestamp,
 /* Git diff support */
 enum git_diff_type {
 	GIT_DIFF_NORMAL = 0,	/* Regular diff with hunks */
-	GIT_DIFF_RENAME,	/* Pure rename (similarity index 100%) */
-	GIT_DIFF_COPY,		/* File copy (similarity < 100%) */
-	GIT_DIFF_BINARY,	/* Binary file diff */
-	GIT_DIFF_MODE_ONLY,	/* Mode change only */
 	GIT_DIFF_NEW_FILE,	/* New file creation */
-	GIT_DIFF_DELETED_FILE	/* File deletion */
+	GIT_DIFF_DELETED_FILE,	/* File deletion */
+	GIT_DIFF_RENAME,	/* File rename */
+	GIT_DIFF_PURE_RENAME,	/* Pure rename (100% similarity) */
+	GIT_DIFF_COPY,		/* File copy */
+	GIT_DIFF_MODE_ONLY,	/* Mode change only */
+	GIT_DIFF_MODE_CHANGE,	/* Mode change with content changes */
+	GIT_DIFF_BINARY		/* Binary file diff */
 };
 
 enum git_prefix_mode {
