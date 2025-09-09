@@ -178,6 +178,20 @@ AC_MSG_RESULT(yes)
 AC_DEFINE_UNQUOTED(PATCH, "$PATCH", How patch(1) is called)
 AC_DEFINE_UNQUOTED(DIFF, "$DIFF", How diff(1) is called)
 
+dnl Scanner-based lsdiff implementation
+AC_MSG_CHECKING([whether to use scanner-based lsdiff implementation])
+AC_ARG_ENABLE([scanner-lsdiff],
+              [AS_HELP_STRING([--enable-scanner-lsdiff],
+                              [use new scanner-based lsdiff implementation instead of filterdiff symlink @<:@default=no@:>@])],
+              [], [enable_scanner_lsdiff=no])
+AC_MSG_RESULT($enable_scanner_lsdiff)
+
+AM_CONDITIONAL([USE_SCANNER_LSDIFF], [test "x$enable_scanner_lsdiff" = xyes])
+
+if test "x$enable_scanner_lsdiff" = xyes; then
+    AC_DEFINE([USE_SCANNER_LSDIFF], [1], [Use scanner-based lsdiff implementation])
+fi
+
 gl_INIT
 
 AC_CONFIG_FILES([

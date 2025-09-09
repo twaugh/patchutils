@@ -4,6 +4,10 @@ SUBDIRS = lib
 DISTCLEANFILES = src/stamp-h[0-9]* src/config.h
 
 bin_PROGRAMS = src/interdiff src/filterdiff src/rediff
+
+if USE_SCANNER_LSDIFF
+bin_PROGRAMS += src/lsdiff
+endif
 bin_SCRIPTS = \
 	scripts/fixcvsdiff \
 	scripts/splitdiff \
@@ -28,9 +32,18 @@ src_filterdiff_SOURCES = src/filterdiff.c src/util.c src/util.h src/diff.c \
 		src/diff.h
 src_rediff_SOURCES = src/rediff.c src/util.c src/util.h src/diff.c src/diff.h
 
+if USE_SCANNER_LSDIFF
+src_lsdiff_SOURCES = src/lsdiff.c src/util.c src/util.h \
+		src/patch_scanner.c src/patch_scanner.h
+endif
+
 src_interdiff_LDADD = lib/libgnu.a @LIBOBJS@
 src_filterdiff_LDADD = lib/libgnu.a @LIBOBJS@
 src_rediff_LDADD = lib/libgnu.a @LIBOBJS@
+
+if USE_SCANNER_LSDIFF
+src_lsdiff_LDADD = lib/libgnu.a @LIBOBJS@
+endif
 
 if HAVE_XMLTO
 # The man pages are generated from DocBook XML.
@@ -58,9 +71,12 @@ interdiff_links = \
 	src/flipdiff$(EXEEXT)
 
 filterdiff_links = \
-	src/lsdiff$(EXEEXT) \
 	src/grepdiff$(EXEEXT) \
 	src/patchview$(EXEEXT)
+
+if !USE_SCANNER_LSDIFF
+filterdiff_links += src/lsdiff$(EXEEXT)
+endif
 
 patchview_links = \
 	patchview/gitdiff$(EXEEXT) \
@@ -336,9 +352,15 @@ XFAIL_TESTS = \
 	tests/lsdiff-lines-option/run-test \
 	tests/lsdiff-exclusion-combined/run-test
 
+if USE_SCANNER_LSDIFF
 test-perms: src/combinediff$(EXEEXT) src/flipdiff$(EXEEXT) \
 		src/lsdiff$(EXEEXT) src/grepdiff$(EXEEXT) src/patchview$(EXEEXT) \
 		scripts/splitdiff
+else
+test-perms: src/combinediff$(EXEEXT) src/flipdiff$(EXEEXT) \
+		src/lsdiff$(EXEEXT) src/grepdiff$(EXEEXT) src/patchview$(EXEEXT) \
+		scripts/splitdiff
+endif
 	for script in $(bin_SCRIPTS); do \
 		if [ -f $(top_builddir)/$$script ]; then \
 			chmod a+x $(top_builddir)/$$script; \
