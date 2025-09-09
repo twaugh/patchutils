@@ -603,14 +603,30 @@ static int scanner_parse_headers(patch_scanner_t *scanner)
             scanner_parse_git_diff_line(scanner, line);
         }
         else if (!strncmp(line, "--- ", sizeof("--- ") - 1)) {
-            scanner_parse_old_file_line(scanner, line);
+            /* Check if this is a context diff by looking for a previous *** line */
+            int is_context_diff = 0;
+            for (unsigned int j = 0; j < scanner->num_header_lines; j++) {
+                if (!strncmp(scanner->header_lines[j], "*** ", sizeof("*** ") - 1)) {
+                    is_context_diff = 1;
+                    break;
+                }
+            }
+
+            if (is_context_diff) {
+                /* In context diff, --- line is the new file */
+                scanner_parse_new_file_line(scanner, line);
+            } else {
+                /* In unified diff, --- line is the old file */
+                scanner_parse_old_file_line(scanner, line);
+            }
         }
         else if (!strncmp(line, "+++ ", sizeof("+++ ") - 1)) {
             scanner_parse_new_file_line(scanner, line);
         }
         else if (!strncmp(line, "*** ", sizeof("*** ") - 1)) {
             scanner->current_headers.type = PATCH_TYPE_CONTEXT;
-            scanner_parse_old_file_line(scanner, line); /* Context diff old file line */
+            /* Parse context diff old file line: *** filename */
+            scanner->current_headers.old_name = scanner_extract_filename(line, sizeof("*** ") - 1);
         }
         else if (!strncmp(line, "index ", sizeof("index ") - 1)) {
             scanner_parse_index_line(scanner, line);
