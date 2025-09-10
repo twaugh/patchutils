@@ -391,6 +391,11 @@ int patch_scanner_next(patch_scanner_t *scanner, const patch_content_t **content
                 }
                 *content = &scanner->current_content;
                 return PATCH_SCAN_OK;
+            } else if (!strncmp(line, "***************", sizeof("***************") - 1)) {
+                /* Context diff hunk separator - complete current hunk and continue */
+                scanner->state = STATE_IN_PATCH;
+                scanner->in_hunk = 0;
+                continue;
             } else {
                 /* End of patch */
                 scanner->state = STATE_SEEKING_PATCH;
