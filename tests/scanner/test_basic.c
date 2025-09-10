@@ -381,6 +381,89 @@ static void test_git_index_after_rename(void)
     printf("✓ Git index after rename headers test passed\n");
 }
 
+static void test_git_mode_changes(void)
+{
+    printf("Running Git mode changes test...\n");
+
+    /* Test Git diff with mode changes to ensure no duplicate entries
+     * This tests the fix for the bug where files with Git extended headers
+     * AND hunks were processed twice, causing duplicate entries in lsdiff output.
+     *
+     * Regression test for: Scanner was completing headers early for mode changes,
+     * then processing the same file again when encountering unified diff headers.
+     */
+    const char *git_patch =
+        "diff --git a/script.sh b/script.sh\n"
+        "old mode 100755\n"
+        "new mode 100644\n"
+        "index abcdefg..1234567 100644\n"
+        "--- a/script.sh\n"
+        "+++ b/script.sh\n"
+        "@@ -1,3 +1,3 @@\n"
+        " #!/bin/bash\n"
+        "-echo \"old\"\n"
+        "+echo \"new\"\n"
+        " exit 0\n"
+        "diff --git a/mode-only.sh b/mode-only.sh\n"
+        "old mode 100755\n"
+        "new mode 100644\n";
+
+    FILE *f = fmemopen((void*)git_patch, strlen(git_patch), "r");
+    assert(f != NULL);
+
+    patch_scanner_t *scanner = patch_scanner_create(f);
+    assert(scanner != NULL);
+
+    const patch_content_t *content;
+    int result;
+    int header_count = 0;
+    int script_sh_headers = 0;
+    int mode_only_headers = 0;
+
+    /* Count header events to ensure no duplicates */
+    while ((result = patch_scanner_next(scanner, &content)) == PATCH_SCAN_OK) {
+        if (content->type == PATCH_CONTENT_HEADERS) {
+            header_count++;
+            const struct patch_headers *headers = content->data.headers;
+
+            /* Check for script.sh headers */
+            if (headers->old_name && strstr(headers->old_name, "script.sh")) {
+                script_sh_headers++;
+
+                /* Verify mode change details */
+                assert(headers->type == PATCH_TYPE_GIT_EXTENDED);
+                assert(headers->git_type == GIT_DIFF_MODE_CHANGE);
+                assert(headers->old_mode == 0100755);
+                assert(headers->new_mode == 0100644);
+            }
+
+            /* Check for mode-only.sh headers */
+            if (headers->git_old_name && strstr(headers->git_old_name, "mode-only.sh")) {
+                mode_only_headers++;
+
+                /* Verify mode-only change details */
+                assert(headers->type == PATCH_TYPE_GIT_EXTENDED);
+                assert(headers->git_type == GIT_DIFF_MODE_CHANGE);
+                assert(headers->old_mode == 0100755);
+                assert(headers->new_mode == 0100644);
+            }
+        }
+    }
+
+    assert(result == PATCH_SCAN_EOF);
+
+    /* Verify we got exactly the expected number of header events */
+    assert(header_count == 2);           /* Total: script.sh + mode-only.sh */
+    assert(script_sh_headers == 1);      /* NO duplicates for script.sh */
+    assert(mode_only_headers == 1);      /* mode-only.sh should be detected */
+
+    /* Clean up */
+    patch_scanner_destroy(scanner);
+    fclose(f);
+
+    printf("✓ Git mode changes test passed\n");
+}
+
 static void test_malformed_headers(void)
 {
     printf("Running malformed headers safety test...\n");
@@ -1523,6 +1606,9 @@ int main(void)
 
     /* Test Git index after rename headers (regression test) */
     test_git_index_after_rename();
+
+    /* Test Git mode changes (regression test for duplicate entries) */
+    test_git_mode_changes();
 
     /* Test malformed header safety */
     test_malformed_headers();
