@@ -333,7 +333,7 @@ int patch_scanner_next(patch_scanner_t *scanner, const patch_content_t **content
 
         case STATE_IN_HUNK:
 
-            if (line[0] == ' ' || line[0] == '+' ||
+            if (line[0] == ' ' || line[0] == '+' || line[0] == '!' ||
                 (line[0] == '-' && !(strncmp(line, "--- ", 4) == 0 && strstr(line, " ----")))) {
                 /* Hunk line - but exclude context diff "--- N ----" headers */
                 int result = scanner_emit_hunk_line(scanner, line);
@@ -344,8 +344,17 @@ int patch_scanner_next(patch_scanner_t *scanner, const patch_content_t **content
 
                 /* Check if hunk is complete */
                 if (scanner->hunk_orig_remaining == 0 && scanner->hunk_new_remaining == 0) {
-                    scanner->state = STATE_IN_PATCH;
-                    scanner->in_hunk = 0;
+                    /* For context diffs, make sure we've actually processed the new section */
+                    /* If new_count is 0 but new_remaining was never set (still 0 from init), */
+                    /* it means we haven't seen the "--- N ----" line yet */
+                    if (scanner->current_headers.type == PATCH_TYPE_CONTEXT &&
+                        scanner->current_hunk.new_count == 0 && scanner->hunk_new_remaining == 0) {
+                        /* Context diff: old section complete, but new section not started yet */
+                        /* Don't transition out of hunk state yet */
+                    } else {
+                        scanner->state = STATE_IN_PATCH;
+                        scanner->in_hunk = 0;
+                    }
                 }
 
                 *content = &scanner->current_content;
