@@ -304,6 +304,83 @@ static void test_git_extended_headers(void)
     printf("✓ Git extended headers test passed\n");
 }
 
+static void test_git_index_after_rename(void)
+{
+    printf("Running Git index after rename headers test...\n");
+
+    /* Test Git diff with index line coming after rename headers
+     * This tests the fix for the bug where headers were completed too early
+     * when rename from/to were seen before the index line.
+     *
+     * Regression test for: Scanner was completing headers after seeing
+     * "rename from" and "rename to" without waiting for additional Git
+     * extended headers like "index", causing old_hash/new_hash to be NULL.
+     */
+    const char *git_patch =
+        "diff --git a/src/old_file.c b/src/new_file.c\n"
+        "similarity index 92%\n"
+        "rename from src/old_file.c\n"
+        "rename to src/new_file.c\n"
+        "index 1234567..abcdefg 100644\n"
+        "--- a/src/old_file.c\n"
+        "+++ b/src/new_file.c\n"
+        "@@ -1,4 +1,5 @@\n"
+        " /* Original file */\n"
+        " #include <stdio.h>\n"
+        "+/* Added comment */\n"
+        " \n"
+        " int main() {\n";
+
+    FILE *f = fmemopen((void*)git_patch, strlen(git_patch), "r");
+    assert(f != NULL);
+
+    patch_scanner_t *scanner = patch_scanner_create(f);
+    assert(scanner != NULL);
+
+    const patch_content_t *content;
+    int result;
+
+    /* Should get headers with all fields properly parsed */
+    result = patch_scanner_next(scanner, &content);
+    assert(result == PATCH_SCAN_OK);
+    assert(content->type == PATCH_CONTENT_HEADERS);
+
+    /* Verify all Git extended header fields are parsed correctly */
+    const struct patch_headers *headers = content->data.headers;
+    assert(headers->type == PATCH_TYPE_GIT_EXTENDED);
+    assert(headers->git_type == GIT_DIFF_RENAME);
+    assert(headers->similarity_index == 92);
+
+    /* Verify rename information */
+    assert(headers->rename_from != NULL);
+    assert(strcmp(headers->rename_from, "src/old_file.c") == 0);
+    assert(headers->rename_to != NULL);
+    assert(strcmp(headers->rename_to, "src/new_file.c") == 0);
+
+    /* Verify index hashes are parsed (this was the original bug) */
+    assert(headers->old_hash != NULL);
+    assert(strcmp(headers->old_hash, "1234567") == 0);
+    assert(headers->new_hash != NULL);
+    assert(strcmp(headers->new_hash, "abcdefg") == 0);
+
+    /* Verify unified diff headers are also present */
+    assert(headers->old_name != NULL);
+    assert(strcmp(headers->old_name, "a/src/old_file.c") == 0);
+    assert(headers->new_name != NULL);
+    assert(strcmp(headers->new_name, "b/src/new_file.c") == 0);
+
+    /* Should get hunk header next */
+    result = patch_scanner_next(scanner, &content);
+    assert(result == PATCH_SCAN_OK);
+    assert(content->type == PATCH_CONTENT_HUNK_HEADER);
+
+    /* Clean up */
+    patch_scanner_destroy(scanner);
+    fclose(f);
+
+    printf("✓ Git index after rename headers test passed\n");
+}
+
 static void test_malformed_headers(void)
 {
     printf("Running malformed headers safety test...\n");
@@ -1443,6 +1520,9 @@ int main(void)
 
     /* Test Git extended headers */
     test_git_extended_headers();
+
+    /* Test Git index after rename headers (regression test) */
+    test_git_index_after_rename();
 
     /* Test malformed header safety */
     test_malformed_headers();
