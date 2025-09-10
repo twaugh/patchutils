@@ -1252,6 +1252,89 @@ static void test_context_diff_hunk_line_classification(void)
     printf("✓ Context diff hunk line classification test passed\n");
 }
 
+static void test_context_diff_multi_hunk_parsing(void)
+{
+    printf("Running context diff multi-hunk parsing test...\n");
+
+    /* This test specifically validates the fix for the NON-PATCH classification bug.
+     * The bug was that context diff change lines (!) were being incorrectly
+     * classified as NON-PATCH instead of proper HUNK_LINE events.
+     */
+    const char *test_patch =
+        "*** file1\n"
+        "--- file1\n"
+        "***************\n"
+        "*** 60 ****\n"      /* Hunk old section */
+        "! a\n"              /* Change line - was incorrectly NON-PATCH */
+        "--- 60 ----\n"      /* Hunk new section */
+        "! b\n";             /* Change line - was incorrectly NON-PATCH */
+
+    FILE *fp = string_to_file(test_patch);
+    assert(fp != NULL);
+    patch_scanner_t *scanner = patch_scanner_create(fp);
+    assert(scanner != NULL);
+
+    const patch_content_t *content;
+    enum patch_scanner_result result;
+
+    int header_count = 0;
+    int hunk_header_count = 0;
+    int change_line_count = 0;
+    int non_patch_count = 0;
+    int found_change_a = 0;
+    int found_change_b = 0;
+
+    while ((result = patch_scanner_next(scanner, &content)) == PATCH_SCAN_OK) {
+        switch (content->type) {
+        case PATCH_CONTENT_HEADERS:
+            header_count++;
+            break;
+
+        case PATCH_CONTENT_HUNK_HEADER:
+            hunk_header_count++;
+            break;
+
+        case PATCH_CONTENT_HUNK_LINE:
+            if (content->data.line->type == '!') {
+                change_line_count++;
+                const char *line_content = content->data.line->content;
+                if (strstr(line_content, "a")) {
+                    found_change_a = 1;
+                } else if (strstr(line_content, "b")) {
+                    found_change_b = 1;
+                }
+            }
+            break;
+
+        case PATCH_CONTENT_NON_PATCH:
+            non_patch_count++;
+            /* These specific lines should NOT appear as NON-PATCH */
+            const char *non_patch_content = content->data.non_patch.line;
+            assert(!strstr(non_patch_content, "! a"));
+            assert(!strstr(non_patch_content, "! b"));
+            break;
+
+        default:
+            break;
+        }
+    }
+
+    assert(result == PATCH_SCAN_EOF);
+
+    /* Basic structure validation */
+    assert(header_count == 1);           /* file1 */
+    assert(hunk_header_count == 1);      /* one hunk */
+    assert(change_line_count == 2);      /* ! a and ! b */
+
+    /* The key assertions: change lines were found as HUNK_LINE (not NON-PATCH) */
+    assert(found_change_a == 1);         /* ! a was parsed as HUNK_LINE */
+    assert(found_change_b == 1);         /* ! b was parsed as HUNK_LINE */
+
+    patch_scanner_destroy(scanner);
+    fclose(fp);
+    printf("✓ Context diff multi-hunk parsing test passed\n");
+}
+
 int main(void)
 {
     printf("Running patch scanner basic tests...\n\n");
@@ -1298,6 +1381,9 @@ int main(void)
 
     /* Test context diff hunk line classification bug fix */
     test_context_diff_hunk_line_classification();
+
+    /* Test context diff multi-hunk parsing with change lines */
+    test_context_diff_multi_hunk_parsing();
 
     printf("\n✓ All basic tests passed!\n");
     return 0;
