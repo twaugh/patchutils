@@ -445,6 +445,7 @@ struct pending_file {
     int old_is_empty;
     int new_is_empty;
     int should_display;
+    int is_context_diff;       /* Flag for context diff format */
 };
 
 static void process_patch_file(FILE *fp, const char *filename)
@@ -502,6 +503,7 @@ static void process_patch_file(FILE *fp, const char *filename)
                 pending.old_is_empty = 1;  /* Assume empty until proven otherwise */
                 pending.new_is_empty = 1;  /* Assume empty until proven otherwise */
                 pending.should_display = should_display_file(best_filename);
+                pending.is_context_diff = (content->data.headers->type == PATCH_TYPE_CONTEXT);
                 current_file = pending.should_display ? best_filename : NULL;
             } else {
                 /* Normal processing - display immediately */
@@ -517,11 +519,22 @@ static void process_patch_file(FILE *fp, const char *filename)
                 /* Analyze hunk to determine if files are empty */
                 const struct patch_hunk *hunk = content->data.hunk;
 
-                if (hunk->orig_count > 0) {
-                    pending.old_is_empty = 0;
-                }
-                if (hunk->new_count > 0) {
-                    pending.new_is_empty = 0;
+                if (pending.is_context_diff) {
+                    /* For context diffs, we'll track emptiness via hunk lines instead */
+                    /* The hunk header approach doesn't work because new_count isn't set yet */
+                    /* So we defer this and track via actual hunk content */
+                    if (hunk->orig_count > 0) {
+                        pending.old_is_empty = 0;
+                    }
+                    /* Don't check new_count here for context diffs - it's not reliable */
+                } else {
+                    /* For unified diffs, both counts are available immediately */
+                    if (hunk->orig_count > 0) {
+                        pending.old_is_empty = 0;
+                    }
+                    if (hunk->new_count > 0) {
+                        pending.new_is_empty = 0;
+                    }
                 }
             }
 
@@ -533,6 +546,26 @@ static void process_patch_file(FILE *fp, const char *filename)
                     printf("\t%lu\tHunk #%d\n", content->line_number, hunk_number);
                 } else {
                     printf("\tHunk #%d\n", hunk_number);
+                }
+            }
+        } else if (content->type == PATCH_CONTENT_HUNK_LINE) {
+            if (empty_files_as_absent && pending.best_filename && pending.is_context_diff) {
+                /* For context diffs, determine emptiness from hunk line content */
+                const struct patch_hunk_line *hunk_line = content->data.line;
+
+
+                switch (hunk_line->type) {
+                case ' ':  /* Context line - both files have content */
+                case '!':  /* Changed line - both files have content */
+                    pending.old_is_empty = 0;
+                    pending.new_is_empty = 0;
+                    break;
+                case '-':  /* Removed line - old file has content */
+                    pending.old_is_empty = 0;
+                    break;
+                case '+':  /* Added line - new file has content */
+                    pending.new_is_empty = 0;
+                    break;
                 }
             }
         }
