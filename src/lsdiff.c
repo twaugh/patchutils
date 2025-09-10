@@ -448,6 +448,9 @@ struct pending_file {
     int is_context_diff;       /* Flag for context diff format */
 };
 
+/* Global cumulative line counter for tracking across multiple files */
+static unsigned long global_line_offset = 0;
+
 static void process_patch_file(FILE *fp, const char *filename)
 {
     patch_scanner_t *scanner;
@@ -488,8 +491,8 @@ static void process_patch_file(FILE *fp, const char *filename)
             const char *best_filename = get_best_filename(content->data.headers);
             char status = determine_file_status(content->data.headers);
 
-            /* Use the line number where the headers started */
-            header_line = content->data.headers->start_line;
+            /* Use the line number where the headers started, adjusted for global offset */
+            header_line = global_line_offset + content->data.headers->start_line;
 
             file_number++;
             hunk_number = 0;  /* Reset hunk counter for new file */
@@ -542,8 +545,12 @@ static void process_patch_file(FILE *fp, const char *filename)
                 /* In verbose mode, show hunk information */
                 hunk_number++;
 
+                /* Show patch name prefix if enabled, with '-' suffix for hunk lines */
+                if (show_patch_names > 0)
+                    printf("%s-", filename);
+
                 if (show_line_numbers) {
-                    printf("\t%lu\tHunk #%d\n", content->line_number, hunk_number);
+                    printf("\t%lu\tHunk #%d\n", global_line_offset + content->line_number, hunk_number);
                 } else {
                     printf("\tHunk #%d\n", hunk_number);
                 }
@@ -596,6 +603,9 @@ static void process_patch_file(FILE *fp, const char *filename)
             fprintf(stderr, "Warning: Error parsing patch in %s\n", filename);
     }
 
+    /* Update global line offset for next file (subtract 1 to avoid double-counting) */
+    global_line_offset += patch_scanner_line_number(scanner) - 1;
+
     patch_scanner_destroy(scanner);
 }
 
@@ -603,6 +613,9 @@ int main(int argc, char *argv[])
 {
     int i;
     FILE *fp;
+
+    /* Reset global line offset for each invocation */
+    global_line_offset = 0;
 
     setlocale(LC_TIME, "C");
 
