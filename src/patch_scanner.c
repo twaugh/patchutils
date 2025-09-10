@@ -1480,9 +1480,9 @@ static int scanner_validate_git_header_order(patch_scanner_t *scanner)
             return scanner_should_wait_for_unified_headers(scanner);
         }
 
-        /* For pure mode changes, complete immediately */
-        if (has_mode_change && has_index) {
-            return 1;
+        /* For pure mode changes, use look-ahead to check if unified headers are coming */
+        if (has_mode_change) {
+            return scanner_should_wait_for_unified_headers(scanner);
         }
 
         /* For new/deleted files, use look-ahead to check if --- and +++ lines are coming */
