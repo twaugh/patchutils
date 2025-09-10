@@ -568,8 +568,93 @@ char patch_determine_file_status(const struct patch_headers *headers, int empty_
 		}
 	}
 
-	/* TODO: Handle empty_as_absent logic if needed */
-	(void)empty_as_absent; /* Suppress unused parameter warning for now */
+	/* Handle empty_as_absent logic */
+	if (empty_as_absent && old_file_exists && new_file_exists) {
+		/* Both files exist, but check if one is effectively empty based on hunk data */
+		int old_is_empty = 1;  /* Assume empty until proven otherwise */
+		int new_is_empty = 1;  /* Assume empty until proven otherwise */
+
+		/* Parse hunk headers from the patch to determine if files are empty */
+		for (unsigned int i = 0; i < headers->num_headers; i++) {
+			const char *line = headers->header_lines[i];
+
+			/* Look for unified diff hunk headers: @@ -offset,count +offset,count @@ */
+			if (strncmp(line, "@@ ", 3) == 0) {
+				unsigned long orig_count = 1, new_count = 1;  /* Default counts */
+				char *p;
+
+				/* Find original count after '-' */
+				p = strchr(line, '-');
+				if (p) {
+					p++;
+					/* Skip offset */
+					strtoul(p, &p, 10);
+					/* Look for count after comma */
+					if (*p == ',') {
+						p++;
+						orig_count = strtoul(p, NULL, 10);
+					}
+					/* If no comma, count is 1 (already set) */
+				}
+
+				/* Find new count after '+' */
+				p = strchr(line, '+');
+				if (p) {
+					p++;
+					/* Skip offset */
+					strtoul(p, &p, 10);
+					/* Look for count after comma */
+					if (*p == ',') {
+						p++;
+						new_count = strtoul(p, NULL, 10);
+					}
+					/* If no comma, count is 1 (already set) */
+				}
+
+				/* If any hunk has content, the file is not empty */
+				if (orig_count > 0) {
+					old_is_empty = 0;
+				}
+				if (new_count > 0) {
+					new_is_empty = 0;
+				}
+			}
+			/* Handle context diff hunk headers: *** offset,count **** */
+			else if (strncmp(line, "*** ", 4) == 0 && strstr(line, " ****")) {
+				char *comma = strchr(line + 4, ',');
+				if (comma) {
+					unsigned long orig_count = strtoul(comma + 1, NULL, 10);
+					if (orig_count > 0) {
+						old_is_empty = 0;
+					}
+				} else {
+					/* Single line context header */
+					old_is_empty = 0;
+				}
+			}
+			/* Handle context diff new file headers: --- offset,count ---- */
+			else if (strncmp(line, "--- ", 4) == 0 && strstr(line, " ----")) {
+				char *comma = strchr(line + 4, ',');
+				if (comma) {
+					unsigned long new_count = strtoul(comma + 1, NULL, 10);
+					if (new_count > 0) {
+						new_is_empty = 0;
+					}
+				} else {
+					/* Single line context header */
+					new_is_empty = 0;
+				}
+			}
+		}
+
+		/* Apply empty-as-absent logic */
+		if (old_is_empty && !new_is_empty) {
+			return '+'; /* Treat as new file (old was empty) */
+		} else if (!old_is_empty && new_is_empty) {
+			return '-'; /* Treat as deleted file (new is empty) */
+		}
+		/* If both empty or both non-empty, fall through to normal logic */
+	}
 
 	/* Determine status based on file existence */
 	if (!old_file_exists && new_file_exists)
