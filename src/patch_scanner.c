@@ -1445,10 +1445,12 @@ static int scanner_validate_git_header_order(patch_scanner_t *scanner)
         return seen_git_diff;
     }
 
-    /* Check if this is a Git diff without hunks (e.g., new file, deleted file, mode change) */
+    /* Check if this is a Git diff without hunks (e.g., new file, deleted file, mode change, pure rename) */
     if (seen_git_diff && !seen_old_file && !seen_new_file) {
         /* Git diff with no --- and +++ lines - use look-ahead to determine if complete */
         int has_new_file = 0, has_deleted_file = 0, has_mode_change = 0, has_index = 0;
+        int has_rename_from = 0, has_rename_to = 0;
+        int has_copy_from = 0, has_copy_to = 0;
 
         for (i = 0; i < scanner->num_header_lines; i++) {
             const char *line = scanner->header_lines[i];
@@ -1461,7 +1463,20 @@ static int scanner_validate_git_header_order(patch_scanner_t *scanner)
                 has_mode_change = 1;
             } else if (!strncmp(line, "index ", sizeof("index ") - 1)) {
                 has_index = 1;
+            } else if (!strncmp(line, "rename from ", sizeof("rename from ") - 1)) {
+                has_rename_from = 1;
+            } else if (!strncmp(line, "rename to ", sizeof("rename to ") - 1)) {
+                has_rename_to = 1;
+            } else if (!strncmp(line, "copy from ", sizeof("copy from ") - 1)) {
+                has_copy_from = 1;
+            } else if (!strncmp(line, "copy to ", sizeof("copy to ") - 1)) {
+                has_copy_to = 1;
             }
+        }
+
+        /* For pure renames/copies, complete immediately if we have both from/to */
+        if ((has_rename_from && has_rename_to) || (has_copy_from && has_copy_to)) {
+            return 1;
         }
 
         /* For pure mode changes, complete immediately */
