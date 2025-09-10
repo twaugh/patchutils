@@ -78,11 +78,10 @@ static int verbose = 0;               /* -v, --verbose */
 static int unzip = 0;                 /* -z, --decompress */
 static enum git_prefix_mode git_prefix_mode = GIT_PREFIX_KEEP; /* --git-prefixes */
 
-/* TODO: Missing options from original lsdiff:
- * --addprefix=PREFIX  - add prefix to pathnames
- * --addoldprefix=PREFIX - add prefix to old file pathnames
- * --addnewprefix=PREFIX - add prefix to new file pathnames
- */
+/* Path prefix options */
+static char *add_prefix = NULL;         /* --addprefix */
+static char *add_old_prefix = NULL;     /* --addoldprefix */
+static char *add_new_prefix = NULL;     /* --addnewprefix */
 
 /* Pattern matching */
 static struct patlist *pat_include = NULL;  /* -i, --include */
@@ -377,9 +376,26 @@ static const char *get_best_filename(const struct patch_headers *headers)
     if (!filename)
         filename = "(unknown)";
 
-    /* TODO: Apply --addprefix, --addoldprefix, --addnewprefix options here */
+    /* Apply path prefixes */
+    const char *stripped_filename = strip_path_components(filename, strip_output_components);
 
-    return strip_path_components(filename, strip_output_components);
+    if (add_prefix) {
+        static char *prefixed_filename = NULL;
+        if (prefixed_filename) free(prefixed_filename);
+
+        /* Concatenate prefix with filename */
+        size_t prefix_len = strlen(add_prefix);
+        size_t filename_len = strlen(stripped_filename);
+        prefixed_filename = xmalloc(prefix_len + filename_len + 1);
+        strcpy(prefixed_filename, add_prefix);
+        strcat(prefixed_filename, stripped_filename);
+
+        return prefixed_filename;
+    }
+
+    /* TODO: Apply --addoldprefix, --addnewprefix options here */
+
+    return stripped_filename;
 }
 
 static char determine_file_status(const struct patch_headers *headers)
@@ -639,11 +655,9 @@ int main(int argc, char *argv[])
             {"decompress", 0, 0, 'z'},
             {"git-prefixes", 1, 0, 1000 + 'G'},
             {"strip", 1, 0, 1000 + 'S'},
-            /* TODO: Add missing long options:
-             * {"addprefix", 1, 0, 1000 + 'A'},
-             * {"addoldprefix", 1, 0, 1000 + 'O'},
-             * {"addnewprefix", 1, 0, 1000 + 'N'},
-             */
+            {"addprefix", 1, 0, 1000 + 'A'},
+            {"addoldprefix", 1, 0, 1000 + 'O'},
+            {"addnewprefix", 1, 0, 1000 + 'N'},
             {0, 0, 0, 0}
         };
 
@@ -721,11 +735,15 @@ int main(int argc, char *argv[])
                 }
             }
             break;
-        /* TODO: Add missing option cases:
-         * case 1000 + 'A': // --addprefix=PREFIX
-         * case 1000 + 'O': // --addoldprefix=PREFIX
-         * case 1000 + 'N': // --addnewprefix=PREFIX
-         */
+        case 1000 + 'A':
+            add_prefix = optarg;
+            break;
+        case 1000 + 'O':
+            add_old_prefix = optarg;
+            break;
+        case 1000 + 'N':
+            add_new_prefix = optarg;
+            break;
         default:
             syntax(1);
         }
