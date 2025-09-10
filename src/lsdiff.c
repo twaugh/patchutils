@@ -436,6 +436,17 @@ static void display_filename(const char *filename, const char *patchname, char s
     printf("%s\n", filename);
 }
 
+/* Structure to hold pending file information for -E processing */
+struct pending_file {
+    char *best_filename;
+    const char *patchname;
+    char initial_status;
+    unsigned long header_line;
+    int old_is_empty;
+    int new_is_empty;
+    int should_display;
+};
+
 static void process_patch_file(FILE *fp, const char *filename)
 {
     patch_scanner_t *scanner;
@@ -444,6 +455,7 @@ static void process_patch_file(FILE *fp, const char *filename)
     unsigned long header_line = 1;
     const char *current_file = NULL;
     int hunk_number = 0;
+    struct pending_file pending = {0};
 
     scanner = patch_scanner_create(fp);
     if (!scanner) {
@@ -453,6 +465,25 @@ static void process_patch_file(FILE *fp, const char *filename)
 
     while ((result = patch_scanner_next(scanner, &content)) == PATCH_SCAN_OK) {
         if (content->type == PATCH_CONTENT_HEADERS) {
+            /* If we have a pending file from -E processing, display it now */
+            if (empty_files_as_absent && pending.best_filename) {
+                char final_status = pending.initial_status;
+
+                /* Apply empty-as-absent logic */
+                if (pending.old_is_empty && !pending.new_is_empty) {
+                    final_status = '+'; /* Treat as new file */
+                } else if (!pending.old_is_empty && pending.new_is_empty) {
+                    final_status = '-'; /* Treat as deleted file */
+                }
+
+                if (pending.should_display) {
+                    display_filename(pending.best_filename, pending.patchname, final_status, pending.header_line);
+                }
+
+                free(pending.best_filename);
+                pending.best_filename = NULL;
+            }
+
             const char *best_filename = get_best_filename(content->data.headers);
             char status = determine_file_status(content->data.headers);
 
@@ -462,22 +493,67 @@ static void process_patch_file(FILE *fp, const char *filename)
             file_number++;
             hunk_number = 0;  /* Reset hunk counter for new file */
 
-            if (should_display_file(best_filename)) {
-                display_filename(best_filename, filename, status, header_line);
-                current_file = best_filename;  /* Track current file for verbose output */
+            if (empty_files_as_absent) {
+                /* Store pending file info for -E processing */
+                pending.best_filename = xstrdup(best_filename);
+                pending.patchname = filename;
+                pending.initial_status = status;
+                pending.header_line = header_line;
+                pending.old_is_empty = 1;  /* Assume empty until proven otherwise */
+                pending.new_is_empty = 1;  /* Assume empty until proven otherwise */
+                pending.should_display = should_display_file(best_filename);
+                current_file = pending.should_display ? best_filename : NULL;
             } else {
-                current_file = NULL;  /* Don't show hunks for filtered files */
+                /* Normal processing - display immediately */
+                if (should_display_file(best_filename)) {
+                    display_filename(best_filename, filename, status, header_line);
+                    current_file = best_filename;  /* Track current file for verbose output */
+                } else {
+                    current_file = NULL;  /* Don't show hunks for filtered files */
+                }
             }
-        } else if (content->type == PATCH_CONTENT_HUNK_HEADER && verbose && current_file) {
-            /* In verbose mode, show hunk information */
-            hunk_number++;
+        } else if (content->type == PATCH_CONTENT_HUNK_HEADER) {
+            if (empty_files_as_absent && pending.best_filename) {
+                /* Analyze hunk to determine if files are empty */
+                const struct patch_hunk *hunk = content->data.hunk;
 
-            if (show_line_numbers) {
-                printf("\t%lu\tHunk #%d\n", content->line_number, hunk_number);
-            } else {
-                printf("\tHunk #%d\n", hunk_number);
+                if (hunk->orig_count > 0) {
+                    pending.old_is_empty = 0;
+                }
+                if (hunk->new_count > 0) {
+                    pending.new_is_empty = 0;
+                }
+            }
+
+            if (verbose && current_file) {
+                /* In verbose mode, show hunk information */
+                hunk_number++;
+
+                if (show_line_numbers) {
+                    printf("\t%lu\tHunk #%d\n", content->line_number, hunk_number);
+                } else {
+                    printf("\tHunk #%d\n", hunk_number);
+                }
             }
         }
+    }
+
+    /* Handle final pending file if -E processing */
+    if (empty_files_as_absent && pending.best_filename) {
+        char final_status = pending.initial_status;
+
+        /* Apply empty-as-absent logic */
+        if (pending.old_is_empty && !pending.new_is_empty) {
+            final_status = '+'; /* Treat as new file */
+        } else if (!pending.old_is_empty && pending.new_is_empty) {
+            final_status = '-'; /* Treat as deleted file */
+        }
+
+        if (pending.should_display) {
+            display_filename(pending.best_filename, pending.patchname, final_status, pending.header_line);
+        }
+
+        free(pending.best_filename);
     }
 
     if (result == PATCH_SCAN_ERROR) {
