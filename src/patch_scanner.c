@@ -332,8 +332,10 @@ int patch_scanner_next(patch_scanner_t *scanner, const patch_content_t **content
             }
 
         case STATE_IN_HUNK:
-            if (line[0] == ' ' || line[0] == '+' || line[0] == '-') {
-                /* Hunk line */
+
+            if (line[0] == ' ' || line[0] == '+' ||
+                (line[0] == '-' && !(strncmp(line, "--- ", 4) == 0 && strstr(line, " ----")))) {
+                /* Hunk line - but exclude context diff "--- N ----" headers */
                 int result = scanner_emit_hunk_line(scanner, line);
                 if (result != PATCH_SCAN_OK) {
                     scanner->state = STATE_ERROR;

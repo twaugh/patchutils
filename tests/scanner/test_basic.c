@@ -1144,6 +1144,114 @@ static void test_git_diff_prefix_preservation(void)
     printf("✓ Git diff prefix preservation test passed\n");
 }
 
+/* Test context diff hunk header classification bug fix */
+static void test_context_diff_hunk_line_classification(void)
+{
+    printf("Running context diff hunk line classification test...\n");
+
+    /* This test ensures that "--- N ----" lines are NOT treated as hunk lines
+     * but are properly processed as context diff new hunk headers.
+     * This was a critical bug where these lines were classified as removal lines. */
+    const char *context_patch_with_empty_files =
+        "*** file1\n"
+        "--- file1\n"
+        "***************\n"
+        "*** 0 ****\n"        // Old hunk (empty)
+        "--- 1 ----\n"        // New hunk (1 line) - this MUST NOT be a hunk line!
+        "+ added_line\n"      // This should be the hunk line
+        "*** file2\n"
+        "--- file2\n"
+        "***************\n"
+        "*** 1 ****\n"        // Old hunk (1 line)
+        "- removed_line\n"    // This should be a hunk line
+        "--- 0 ----\n";       // New hunk (empty) - this MUST NOT be a hunk line!
+
+    FILE *fp = string_to_file(context_patch_with_empty_files);
+    assert(fp != NULL);
+
+    patch_scanner_t *scanner = patch_scanner_create(fp);
+    assert(scanner != NULL);
+
+    const patch_content_t *content;
+    enum patch_scanner_result result;
+    int header_count = 0;
+    int hunk_header_count = 0;
+    int hunk_line_count = 0;
+    int plus_line_count = 0;   // Count of '+' hunk lines
+    int minus_line_count = 0;  // Count of '-' hunk lines
+
+    /* Track specific lines we encounter */
+    int found_minus_1_dash = 0;     // Found "--- 1 ----" as hunk line (BAD)
+    int found_minus_0_dash = 0;     // Found "--- 0 ----" as hunk line (BAD)
+    int found_added_line = 0;       // Found "+ added_line" as hunk line (GOOD)
+    int found_removed_line = 0;     // Found "- removed_line" as hunk line (GOOD)
+
+    while ((result = patch_scanner_next(scanner, &content)) == PATCH_SCAN_OK) {
+        switch (content->type) {
+        case PATCH_CONTENT_HEADERS:
+            header_count++;
+            assert(content->data.headers->type == PATCH_TYPE_CONTEXT);
+            break;
+        case PATCH_CONTENT_HUNK_HEADER:
+            hunk_header_count++;
+            break;
+        case PATCH_CONTENT_HUNK_LINE:
+            hunk_line_count++;
+
+            /* Check the specific content and type of hunk lines */
+            const char *line_content = content->data.line->content;
+            char line_type = content->data.line->type;
+
+            if (line_type == '+') {
+                plus_line_count++;
+                if (strstr(line_content, "added_line")) {
+                    found_added_line = 1;
+                }
+            } else if (line_type == '-') {
+                minus_line_count++;
+                if (strstr(line_content, "removed_line")) {
+                    found_removed_line = 1;
+                }
+                /* CRITICAL: These should NEVER appear as hunk lines */
+                if (strstr(line_content, "-- 1 ----")) {
+                    found_minus_1_dash = 1;
+                }
+                if (strstr(line_content, "-- 0 ----")) {
+                    found_minus_0_dash = 1;
+                }
+            }
+            break;
+        default:
+            /* Other content types are acceptable */
+            break;
+        }
+    }
+
+    assert(result == PATCH_SCAN_EOF);
+
+    /* Basic structural assertions */
+    assert(header_count == 2);      // Two files
+    assert(hunk_header_count >= 2); // At least two hunk headers (*** lines)
+
+    /* CRITICAL: Check that the bug is fixed */
+    assert(found_minus_1_dash == 0); /* "--- 1 ----" should NOT be a hunk line */
+    assert(found_minus_0_dash == 0); /* "--- 0 ----" should NOT be a hunk line */
+
+    /* Verify that actual hunk lines are correctly processed */
+    assert(found_added_line == 1);   /* "+ added_line" should be a hunk line */
+    assert(found_removed_line == 1); /* "- removed_line" should be a hunk line */
+
+    /* Verify line type counts are reasonable */
+    assert(plus_line_count == 1);    /* Only one '+' line */
+    assert(minus_line_count == 1);   /* Only one '-' line */
+    assert(hunk_line_count == 2);    /* Total hunk lines should be 2 */
+
+    patch_scanner_destroy(scanner);
+    fclose(fp);
+
+    printf("✓ Context diff hunk line classification test passed\n");
+}
+
 int main(void)
 {
     printf("Running patch scanner basic tests...\n\n");
@@ -1187,6 +1295,9 @@ int main(void)
 
     /* Test Git diff prefix preservation */
     test_git_diff_prefix_preservation();
+
+    /* Test context diff hunk line classification bug fix */
+    test_context_diff_hunk_line_classification();
 
     printf("\n✓ All basic tests passed!\n");
     return 0;
