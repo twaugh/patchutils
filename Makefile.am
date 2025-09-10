@@ -8,6 +8,9 @@ bin_PROGRAMS = src/interdiff src/filterdiff src/rediff
 if USE_SCANNER_LSDIFF
 bin_PROGRAMS += src/lsdiff
 endif
+
+# Development/debug utilities (not installed by default)
+noinst_PROGRAMS = src/scanner_debug
 bin_SCRIPTS = \
 	scripts/fixcvsdiff \
 	scripts/splitdiff \
@@ -44,6 +47,11 @@ src_rediff_LDADD = lib/libgnu.a @LIBOBJS@
 if USE_SCANNER_LSDIFF
 src_lsdiff_LDADD = lib/libgnu.a @LIBOBJS@
 endif
+
+# Scanner debug utility
+src_scanner_debug_SOURCES = src/scanner_debug.c src/patch_scanner.c src/patch_scanner.h \
+		src/util.c src/util.h src/diff.c src/diff.h
+src_scanner_debug_LDADD = lib/libgnu.a @LIBOBJS@
 
 if HAVE_XMLTO
 # The man pages are generated from DocBook XML.
