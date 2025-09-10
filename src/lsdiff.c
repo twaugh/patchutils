@@ -566,6 +566,8 @@ static void process_patch_file(FILE *fp, const char *filename)
                 case '+':  /* Added line - new file has content */
                     pending.new_is_empty = 0;
                     break;
+                case '\\': /* No newline marker - doesn't affect emptiness */
+                    break;
                 }
             }
         }
