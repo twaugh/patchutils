@@ -721,6 +721,14 @@ int main(int argc, char *argv[])
         show_patch_names = (optind + 1 < argc) ? 1 : 0;
     }
 
+    /* Handle -p without -i/-x: print warning and use as --strip */
+    if (strip_components > 0 && !pat_include && !pat_exclude) {
+        fprintf(stderr, "guessing that you meant --strip instead of -p\n");
+        if (strip_output_components == 0) {
+            strip_output_components = strip_components;
+        }
+    }
+
     /* Process input files */
     if (optind >= argc) {
         /* Read from stdin */
