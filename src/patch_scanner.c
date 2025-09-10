@@ -1252,6 +1252,7 @@ static void scanner_parse_index_line(patch_scanner_t *scanner, const char *line)
     /* Parse "index abc123..def456 100644" */
     const char *start = line + sizeof("index ") - 1;
     const char *dots = strstr(start, "..");
+
     if (dots) {
         scanner->current_headers.old_hash = xstrndup(start, dots - start);
 
@@ -1474,9 +1475,9 @@ static int scanner_validate_git_header_order(patch_scanner_t *scanner)
             }
         }
 
-        /* For pure renames/copies, complete immediately if we have both from/to */
+        /* For renames/copies, use look-ahead to check if more headers or --- and +++ lines are coming */
         if ((has_rename_from && has_rename_to) || (has_copy_from && has_copy_to)) {
-            return 1;
+            return scanner_should_wait_for_unified_headers(scanner);
         }
 
         /* For pure mode changes, complete immediately */
@@ -1578,11 +1579,13 @@ static int scanner_should_wait_for_unified_headers(patch_scanner_t *scanner)
     if (scanner->has_next_line) {
         const char *next_line = scanner->next_line;
 
-        /* Check if the next line is a unified diff header */
+        /* Check if the next line is a unified diff header or Git extended header */
         if (!strncmp(next_line, "--- ", 4) || !strncmp(next_line, "+++ ", 4)) {
             return 0; /* Don't complete yet - wait for unified headers */
         } else if (strstr(next_line, "Binary files ")) {
             return 0; /* Don't complete yet - wait for binary content */
+        } else if (scanner_is_git_extended_header(next_line)) {
+            return 0; /* Don't complete yet - wait for more Git extended headers */
         } else {
             return 1; /* Complete as Git metadata-only */
         }
@@ -1614,6 +1617,8 @@ static int scanner_should_wait_for_unified_headers(patch_scanner_t *scanner)
         return 0; /* Don't complete yet - wait for unified headers */
     } else if (strstr(line, "Binary files ")) {
         return 0; /* Don't complete yet - wait for binary content */
+    } else if (scanner_is_git_extended_header(line)) {
+        return 0; /* Don't complete yet - wait for more Git extended headers */
     } else {
         return 1; /* Complete as Git metadata-only */
     }
