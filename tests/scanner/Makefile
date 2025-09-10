@@ -41,3 +41,4 @@ clean:
 	rm -f $(TESTS) $(TEST_OBJS) $(SCANNER_OBJS)
 
 .PHONY: all check clean
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
