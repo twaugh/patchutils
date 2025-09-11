@@ -1643,15 +1643,16 @@ static void test_context_diff_empty_file_hunk_ranges(void)
         unsigned long orig_count;
         unsigned long new_offset;
         unsigned long new_count;
+        unsigned long expected_line_number;  /* Line where hunk header should be reported */
     } expected_hunks[] = {
         /* file1, hunk 1: *** 0 **** + --- 1 ---- */
-        {0, 0, 1, 1},
+        {0, 0, 1, 1, 4},   /* Line 4: *** 0 **** */
         /* file1, hunk 2: *** 60 **** + --- 60 ---- */
-        {60, 1, 60, 1},
+        {60, 1, 60, 1, 7}, /* Line 7: *** 60 **** */
         /* file2, hunk 1: *** 0 **** + --- 1 ---- */
-        {0, 0, 1, 1},
+        {0, 0, 1, 1, 14},  /* Line 14: *** 0 **** */
         /* file3, hunk 1: *** 1 **** + --- 0 ---- */
-        {1, 1, 0, 0}
+        {1, 1, 0, 0, 20}   /* Line 20: *** 1 **** */
     };
     int expected_hunk_count = sizeof(expected_hunks) / sizeof(expected_hunks[0]);
 
@@ -1667,20 +1668,25 @@ static void test_context_diff_empty_file_hunk_ranges(void)
 
             const struct patch_hunk *hunk = content->data.hunk;
 
-            printf("    Hunk %d: orig=%lu,%lu new=%lu,%lu (expected orig=%lu,%lu new=%lu,%lu)\n",
+            printf("    Hunk %d: orig=%lu,%lu new=%lu,%lu line=%lu (expected orig=%lu,%lu new=%lu,%lu line=%lu)\n",
                    hunk_header_count + 1,
                    hunk->orig_offset, hunk->orig_count,
                    hunk->new_offset, hunk->new_count,
+                   content->line_number,
                    expected_hunks[hunk_header_count].orig_offset,
                    expected_hunks[hunk_header_count].orig_count,
                    expected_hunks[hunk_header_count].new_offset,
-                   expected_hunks[hunk_header_count].new_count);
+                   expected_hunks[hunk_header_count].new_count,
+                   expected_hunks[hunk_header_count].expected_line_number);
 
             /* CRITICAL: Verify the ranges are parsed correctly */
             assert(hunk->orig_offset == expected_hunks[hunk_header_count].orig_offset);
             assert(hunk->orig_count == expected_hunks[hunk_header_count].orig_count);
             assert(hunk->new_offset == expected_hunks[hunk_header_count].new_offset);
             assert(hunk->new_count == expected_hunks[hunk_header_count].new_count);
+
+            /* CRITICAL: Verify the hunk header line number is correct (lsdiff9 fix) */
+            assert(content->line_number == expected_hunks[hunk_header_count].expected_line_number);
 
             hunk_header_count++;
             break;
