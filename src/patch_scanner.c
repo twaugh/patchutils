@@ -100,6 +100,7 @@ struct patch_scanner {
     unsigned int context_buffer_emit_index; /* Next buffered line to emit */
     int context_buffering;                   /* Are we buffering old section? */
     int context_emitting_buffer;             /* Are we emitting buffered lines? */
+    unsigned long context_hunk_start_line;  /* Line number where hunk started (*** line) */
 
     /* Simple one-line buffer for stdin-compatible peek-ahead */
     char *next_line;                   /* Next line buffered for peek-ahead */
@@ -1094,6 +1095,9 @@ static int scanner_emit_context_hunk_header(patch_scanner_t *scanner, const char
     scanner->hunk_new_remaining = 0; /* Will be set when we see --- line */
     scanner->in_hunk = 1;
 
+    /* Store the line number where this hunk started (*** line) */
+    scanner->context_hunk_start_line = scanner->line_number;
+
     /* For context diffs, start buffering old section lines */
     int result = scanner_context_buffer_init(scanner);
     if (result != PATCH_SCAN_OK) {
@@ -1153,6 +1157,9 @@ static int scanner_emit_context_new_hunk_header(patch_scanner_t *scanner, const 
     /* Emit the complete hunk header with both old and new information */
     scanner_init_content(scanner, PATCH_CONTENT_HUNK_HEADER);
     scanner->current_content.data.hunk = &scanner->current_hunk;
+
+    /* Use the line number from the *** line, not the --- line */
+    scanner->current_content.line_number = scanner->context_hunk_start_line;
 
     return PATCH_SCAN_OK;
 }
