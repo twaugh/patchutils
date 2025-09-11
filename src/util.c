@@ -549,20 +549,46 @@ char patch_determine_file_status(const struct patch_headers *headers, int empty_
 		    strcmp(headers->old_name, "/dev/null") != 0 &&
 		    strcmp(headers->new_name, "/dev/null") != 0) {
 
+			int found_timestamp = 0;
 			for (unsigned int i = 0; i < headers->num_headers; i++) {
 				const char *line = headers->header_lines[i];
 				if (strncmp(line, "--- ", 4) == 0) {
 					/* Skip past "--- " and filename, find timestamp */
 					const char *tab = strchr(line + 4, '\t');
 					if (tab) {
-						old_file_exists = patch_file_exists(headers->old_name, tab + 1);
+						found_timestamp = 1;
+						if (headers->type == PATCH_TYPE_CONTEXT) {
+							/* In context diffs, --- refers to the new file */
+							new_file_exists = patch_file_exists(headers->new_name, tab + 1);
+						} else {
+							/* In unified diffs, --- refers to the old file */
+							old_file_exists = patch_file_exists(headers->old_name, tab + 1);
+						}
 					}
 				} else if (strncmp(line, "+++ ", 4) == 0) {
 					/* Skip past "+++ " and filename, find timestamp */
 					const char *tab = strchr(line + 4, '\t');
 					if (tab) {
+						found_timestamp = 1;
 						new_file_exists = patch_file_exists(headers->new_name, tab + 1);
 					}
+				} else if (strncmp(line, "*** ", 4) == 0 && headers->type == PATCH_TYPE_CONTEXT) {
+					/* Context diff old file header: *** old_file timestamp */
+					const char *tab = strchr(line + 4, '\t');
+					if (tab) {
+						found_timestamp = 1;
+						old_file_exists = patch_file_exists(headers->old_name, tab + 1);
+					}
+				}
+			}
+
+			/* For context diffs without timestamps, use filename heuristics */
+			if (!found_timestamp && headers->type == PATCH_TYPE_CONTEXT) {
+				/* If filenames are different, this might be a rename/new/delete case */
+				if (strcmp(headers->old_name, headers->new_name) != 0) {
+					/* Use empty-as-absent logic to determine the actual status */
+					/* This will be handled below in the empty_as_absent section */
+					/* For now, keep both as existing and let empty analysis decide */
 				}
 			}
 		}
@@ -622,26 +648,42 @@ char patch_determine_file_status(const struct patch_headers *headers, int empty_
 			/* Handle context diff hunk headers: *** offset,count **** */
 			else if (strncmp(line, "*** ", 4) == 0 && strstr(line, " ****")) {
 				char *comma = strchr(line + 4, ',');
+				unsigned long orig_count;
 				if (comma) {
-					unsigned long orig_count = strtoul(comma + 1, NULL, 10);
-					if (orig_count > 0) {
-						old_is_empty = 0;
-					}
+					orig_count = strtoul(comma + 1, NULL, 10);
 				} else {
-					/* Single line context header */
+					/* Single number format: *** number **** */
+					char *space = strstr(line + 4, " ****");
+					if (space) {
+						*space = '\0'; /* Temporarily null-terminate */
+						orig_count = strtoul(line + 4, NULL, 10);
+						*space = ' '; /* Restore the space */
+					} else {
+						orig_count = 1; /* Fallback */
+					}
+				}
+				if (orig_count > 0) {
 					old_is_empty = 0;
 				}
 			}
 			/* Handle context diff new file headers: --- offset,count ---- */
 			else if (strncmp(line, "--- ", 4) == 0 && strstr(line, " ----")) {
 				char *comma = strchr(line + 4, ',');
+				unsigned long new_count;
 				if (comma) {
-					unsigned long new_count = strtoul(comma + 1, NULL, 10);
-					if (new_count > 0) {
-						new_is_empty = 0;
-					}
+					new_count = strtoul(comma + 1, NULL, 10);
 				} else {
-					/* Single line context header */
+					/* Single number format: --- number ---- */
+					char *space = strstr(line + 4, " ----");
+					if (space) {
+						*space = '\0'; /* Temporarily null-terminate */
+						new_count = strtoul(line + 4, NULL, 10);
+						*space = ' '; /* Restore the space */
+					} else {
+						new_count = 1; /* Fallback */
+					}
+				}
+				if (new_count > 0) {
 					new_is_empty = 0;
 				}
 			}
