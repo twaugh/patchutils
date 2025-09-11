@@ -1591,6 +1591,117 @@ static void test_context_diff_hunk_separator_handling(void)
     printf("✓ Context diff hunk separator handling test passed\n");
 }
 
+/* Test context diff empty file hunk range parsing bug fix */
+static void test_context_diff_empty_file_hunk_ranges(void)
+{
+    printf("Running context diff empty file hunk range parsing test...\n");
+
+    /* This test validates that the context diff hunk range parsing bug
+     * that was causing lsdiff15 test failure has been fixed. The bug was that
+     * context diff hunk headers like "*** 0 ****" were being parsed as
+     * offset=0, count=1 instead of offset=0, count=0 (empty file).
+     *
+     * This test reproduces the exact lsdiff15 test case and verifies that
+     * all hunk ranges are now parsed correctly with the buffering fix.
+     */
+    const char *test_patch =
+        "*** file1\n"
+        "--- file1\n"
+        "***************\n"
+        "*** 0 ****\n"           /* Empty old file: should be offset=0, count=0 */
+        "--- 1 ----\n"           /* New file with 1 line: should be offset=1, count=1 */
+        "+ a\n"                  /* Added line */
+        "*** 60 ****\n"          /* Old file line 60: should be offset=60, count=1 */
+        "! a\n"                  /* Changed line */
+        "--- 60 ----\n"          /* New file line 60: should be offset=60, count=1 */
+        "! b\n"                  /* Changed line */
+        "*** orig/file2\n"
+        "--- file2\n"
+        "***************\n"
+        "*** 0 ****\n"           /* Empty old file: should be offset=0, count=0 */
+        "--- 1 ----\n"           /* New file with 1 line: should be offset=1, count=1 */
+        "+ a\n"                  /* Added line */
+        "*** file3\n"
+        "--- file3.orig\n"
+        "***************\n"
+        "*** 1 ****\n"           /* Old file with 1 line: should be offset=1, count=1 */
+        "- a\n"                  /* Removed line */
+        "--- 0 ----\n";          /* Empty new file: should be offset=0, count=0 */
+
+    FILE *fp = string_to_file(test_patch);
+    assert(fp != NULL);
+    patch_scanner_t *scanner = patch_scanner_create(fp);
+    assert(scanner != NULL);
+
+    const patch_content_t *content;
+    enum patch_scanner_result result;
+
+    int header_count = 0;
+    int hunk_header_count = 0;
+    struct {
+        unsigned long orig_offset;
+        unsigned long orig_count;
+        unsigned long new_offset;
+        unsigned long new_count;
+    } expected_hunks[] = {
+        /* file1, hunk 1: *** 0 **** + --- 1 ---- */
+        {0, 0, 1, 1},
+        /* file1, hunk 2: *** 60 **** + --- 60 ---- */
+        {60, 1, 60, 1},
+        /* file2, hunk 1: *** 0 **** + --- 1 ---- */
+        {0, 0, 1, 1},
+        /* file3, hunk 1: *** 1 **** + --- 0 ---- */
+        {1, 1, 0, 0}
+    };
+    int expected_hunk_count = sizeof(expected_hunks) / sizeof(expected_hunks[0]);
+
+    while ((result = patch_scanner_next(scanner, &content)) == PATCH_SCAN_OK) {
+        switch (content->type) {
+        case PATCH_CONTENT_HEADERS:
+            header_count++;
+            assert(content->data.headers->type == PATCH_TYPE_CONTEXT);
+            break;
+
+        case PATCH_CONTENT_HUNK_HEADER:
+            assert(hunk_header_count < expected_hunk_count);
+
+            const struct patch_hunk *hunk = content->data.hunk;
+
+            printf("    Hunk %d: orig=%lu,%lu new=%lu,%lu (expected orig=%lu,%lu new=%lu,%lu)\n",
+                   hunk_header_count + 1,
+                   hunk->orig_offset, hunk->orig_count,
+                   hunk->new_offset, hunk->new_count,
+                   expected_hunks[hunk_header_count].orig_offset,
+                   expected_hunks[hunk_header_count].orig_count,
+                   expected_hunks[hunk_header_count].new_offset,
+                   expected_hunks[hunk_header_count].new_count);
+
+            /* CRITICAL: Verify the ranges are parsed correctly */
+            assert(hunk->orig_offset == expected_hunks[hunk_header_count].orig_offset);
+            assert(hunk->orig_count == expected_hunks[hunk_header_count].orig_count);
+            assert(hunk->new_offset == expected_hunks[hunk_header_count].new_offset);
+            assert(hunk->new_count == expected_hunks[hunk_header_count].new_count);
+
+            hunk_header_count++;
+            break;
+
+        default:
+            /* Other content types are acceptable */
+            break;
+        }
+    }
+
+    assert(result == PATCH_SCAN_EOF);
+
+    /* Verify the correct structure was detected */
+    assert(header_count == 3);                          /* Three files */
+    assert(hunk_header_count == expected_hunk_count);   /* All hunks detected with correct ranges */
+
+    patch_scanner_destroy(scanner);
+    fclose(fp);
+    printf("✓ Context diff empty file hunk range parsing test passed\n");
+}
+
 int main(void)
 {
     printf("Running patch scanner basic tests...\n\n");
@@ -1649,6 +1760,9 @@ int main(void)
 
     /* Test context diff hunk separator handling */
     test_context_diff_hunk_separator_handling();
+
+    /* Test context diff empty file hunk range parsing */
+    test_context_diff_empty_file_hunk_ranges();
 
     printf("\n✓ All basic tests passed!\n");
     return 0;

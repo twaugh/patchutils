@@ -93,6 +93,14 @@ struct patch_scanner {
     unsigned long hunk_new_remaining;  /* Remaining new lines in hunk */
     int in_hunk;                       /* Are we currently in a hunk? */
 
+    /* Context diff buffering (bounded by hunk size) */
+    struct patch_hunk_line *context_buffer; /* Buffered old section lines */
+    unsigned int context_buffer_count;      /* Number of buffered lines */
+    unsigned int context_buffer_allocated;  /* Allocated buffer slots */
+    unsigned int context_buffer_emit_index; /* Next buffered line to emit */
+    int context_buffering;                   /* Are we buffering old section? */
+    int context_emitting_buffer;             /* Are we emitting buffered lines? */
+
     /* Simple one-line buffer for stdin-compatible peek-ahead */
     char *next_line;                   /* Next line buffered for peek-ahead */
     unsigned long next_line_number;    /* Line number of buffered line */
@@ -102,6 +110,10 @@ struct patch_scanner {
 /* Forward declarations */
 static int scanner_read_line(patch_scanner_t *scanner);
 static int scanner_is_potential_patch_start(const char *line);
+static int scanner_context_buffer_init(patch_scanner_t *scanner);
+static void scanner_context_buffer_clear(patch_scanner_t *scanner);
+static int scanner_context_buffer_add(patch_scanner_t *scanner, const struct patch_hunk_line *line);
+static int scanner_context_buffer_emit_next(patch_scanner_t *scanner, const patch_content_t **content);
 static int scanner_is_header_continuation(patch_scanner_t *scanner, const char *line);
 static int scanner_validate_headers(patch_scanner_t *scanner);
 static int scanner_parse_headers(patch_scanner_t *scanner);
@@ -119,6 +131,77 @@ static void scanner_reset_for_next_patch(patch_scanner_t *scanner);
 
 /* Stdin-compatible header completion logic */
 static int scanner_should_wait_for_unified_headers(patch_scanner_t *scanner);
+
+/* Context diff buffering functions */
+static int scanner_context_buffer_init(patch_scanner_t *scanner)
+{
+    if (scanner->context_buffer_allocated == 0) {
+        scanner->context_buffer_allocated = 16; /* Initial size */
+        scanner->context_buffer = malloc(scanner->context_buffer_allocated * sizeof(struct patch_hunk_line));
+        if (!scanner->context_buffer) {
+            return PATCH_SCAN_MEMORY_ERROR;
+        }
+    }
+    scanner->context_buffer_count = 0;
+    scanner->context_buffer_emit_index = 0;
+    scanner->context_buffering = 1;
+    scanner->context_emitting_buffer = 0;
+    return PATCH_SCAN_OK;
+}
+
+static void scanner_context_buffer_clear(patch_scanner_t *scanner)
+{
+    /* Free the content strings we allocated */
+    for (unsigned int i = 0; i < scanner->context_buffer_count; i++) {
+        free((void*)scanner->context_buffer[i].content);
+    }
+    scanner->context_buffer_count = 0;
+    scanner->context_buffer_emit_index = 0;
+    scanner->context_buffering = 0;
+    scanner->context_emitting_buffer = 0;
+}
+
+static int scanner_context_buffer_add(patch_scanner_t *scanner, const struct patch_hunk_line *line)
+{
+    /* Ensure we have space */
+    if (scanner->context_buffer_count >= scanner->context_buffer_allocated) {
+        unsigned int new_size = scanner->context_buffer_allocated * 2;
+        struct patch_hunk_line *new_buffer = realloc(scanner->context_buffer,
+                                                      new_size * sizeof(struct patch_hunk_line));
+        if (!new_buffer) {
+            return PATCH_SCAN_MEMORY_ERROR;
+        }
+        scanner->context_buffer = new_buffer;
+        scanner->context_buffer_allocated = new_size;
+    }
+
+    /* Copy the line data (we need to own the content string) */
+    scanner->context_buffer[scanner->context_buffer_count] = *line;
+    scanner->context_buffer[scanner->context_buffer_count].content = strdup(line->content);
+    if (!scanner->context_buffer[scanner->context_buffer_count].content) {
+        return PATCH_SCAN_MEMORY_ERROR;
+    }
+
+    scanner->context_buffer_count++;
+    return PATCH_SCAN_OK;
+}
+
+static int scanner_context_buffer_emit_next(patch_scanner_t *scanner, const patch_content_t **content)
+{
+    if (scanner->context_buffer_emit_index < scanner->context_buffer_count) {
+        /* Emit the next buffered line */
+        scanner_init_content(scanner, PATCH_CONTENT_HUNK_LINE);
+        scanner->current_content.data.line = &scanner->context_buffer[scanner->context_buffer_emit_index];
+        *content = &scanner->current_content;
+        scanner->context_buffer_emit_index++;
+        return PATCH_SCAN_OK;
+    } else {
+        /* All buffered lines emitted */
+        scanner->context_emitting_buffer = 0;
+        scanner_context_buffer_clear(scanner);
+        return PATCH_SCAN_EOF; /* Signal that buffered content is exhausted */
+    }
+}
 
 /* Public API implementation */
 
@@ -164,6 +247,15 @@ int patch_scanner_next(patch_scanner_t *scanner, const patch_content_t **content
 
     if (scanner->state == STATE_ERROR) {
         return PATCH_SCAN_ERROR;
+    }
+
+    /* Check if we need to emit buffered context diff lines */
+    if (scanner->context_emitting_buffer) {
+        int result = scanner_context_buffer_emit_next(scanner, content);
+        if (result == PATCH_SCAN_OK) {
+            return PATCH_SCAN_OK;
+        }
+        /* If result is PATCH_SCAN_EOF, continue with normal processing */
     }
 
     /* Main parsing loop - prevents recursion */
@@ -304,9 +396,13 @@ int patch_scanner_next(patch_scanner_t *scanner, const patch_content_t **content
             } else if (!strncmp(line, "*** ", sizeof("*** ") - 1) && strstr(line, " ****")) {
                 /* Context diff old hunk header: *** 1,3 **** */
                 scanner->state = STATE_IN_HUNK;
-                scanner_emit_context_hunk_header(scanner, line);
-                *content = &scanner->current_content;
-                return PATCH_SCAN_OK;
+                int result = scanner_emit_context_hunk_header(scanner, line);
+                if (result != PATCH_SCAN_OK) {
+                    scanner->state = STATE_ERROR;
+                    return result;
+                }
+                /* Don't return content yet - wait for complete hunk header from --- line */
+                continue;
             } else if (!strncmp(line, "***************", sizeof("***************") - 1)) {
                 /* Context diff separator - skip it */
                 continue;
@@ -340,6 +436,18 @@ int patch_scanner_next(patch_scanner_t *scanner, const patch_content_t **content
                 if (result != PATCH_SCAN_OK) {
                     scanner->state = STATE_ERROR;
                     return result;
+                }
+
+                /* For context diffs, check if we should buffer this line */
+                if (scanner->context_buffering) {
+                    /* Buffer this line instead of emitting it */
+                    result = scanner_context_buffer_add(scanner, &scanner->current_line);
+                    if (result != PATCH_SCAN_OK) {
+                        scanner->state = STATE_ERROR;
+                        return result;
+                    }
+                    /* Continue to next line without emitting */
+                    continue;
                 }
 
                 /* Check if hunk is complete */
@@ -380,17 +488,18 @@ int patch_scanner_next(patch_scanner_t *scanner, const patch_content_t **content
                     scanner->state = STATE_ERROR;
                     return result;
                 }
-                /* Continue to next line - this just updates hunk info */
-                continue;
+                /* Now we have complete hunk info - return the hunk header */
+                *content = &scanner->current_content;
+                return PATCH_SCAN_OK;
             } else if (!strncmp(line, "*** ", sizeof("*** ") - 1) && strstr(line, " ****")) {
-                /* Next context diff hunk */
+                /* Context diff old hunk header: *** 1,3 **** */
                 int result = scanner_emit_context_hunk_header(scanner, line);
                 if (result != PATCH_SCAN_OK) {
                     scanner->state = STATE_ERROR;
                     return result;
                 }
-                *content = &scanner->current_content;
-                return PATCH_SCAN_OK;
+                /* Continue to next line - wait for --- line to complete hunk header */
+                continue;
             } else if (!strncmp(line, "***************", sizeof("***************") - 1)) {
                 /* Context diff hunk separator - complete current hunk and continue */
                 scanner->state = STATE_IN_PATCH;
@@ -462,6 +571,12 @@ void patch_scanner_destroy(patch_scanner_t *scanner)
     /* Free simple peek-ahead buffer */
     if (scanner->next_line) {
         free(scanner->next_line);
+    }
+
+    /* Free context diff buffer */
+    if (scanner->context_buffer) {
+        scanner_context_buffer_clear(scanner);
+        free(scanner->context_buffer);
     }
 
     /* Free any allocated strings in current content structures */
@@ -596,9 +711,32 @@ static int scanner_is_header_continuation(patch_scanner_t *scanner, const char *
 {
     /* Check if line is a valid patch header line */
     (void)scanner; /* unused parameter */
+
+    /* Handle context diff file headers vs hunk headers */
+    if (!strncmp(line, "*** ", sizeof("*** ") - 1)) {
+        /* Context diff: *** filename is a header, but *** N **** is a hunk header */
+        if (strstr(line, " ****")) {
+            return 0; /* This is a hunk header like "*** 1,3 ****" */
+        }
+        return 1; /* This is a file header like "*** filename" */
+    }
+
+    /* Handle context diff new file headers vs hunk headers */
+    if (!strncmp(line, "--- ", sizeof("--- ") - 1)) {
+        /* Context diff: --- filename is a header, but --- N ---- is a hunk header */
+        if (strstr(line, " ----")) {
+            return 0; /* This is a hunk header like "--- 1,3 ----" */
+        }
+        return 1; /* This is a file header like "--- filename" */
+    }
+
+    /* Context diff hunk separator is not a header */
+    if (!strncmp(line, "***************", sizeof("***************") - 1)) {
+        return 0;
+    }
+
     return (!strncmp(line, "diff --git ", sizeof("diff --git ") - 1) ||
             !strncmp(line, "+++ ", sizeof("+++ ") - 1) ||
-            !strncmp(line, "--- ", sizeof("--- ") - 1) ||
             !strncmp(line, "index ", sizeof("index ") - 1) ||
             !strncmp(line, "new file mode ", sizeof("new file mode ") - 1) ||
             !strncmp(line, "deleted file mode ", sizeof("deleted file mode ") - 1) ||
@@ -935,7 +1073,12 @@ static int scanner_emit_context_hunk_header(patch_scanner_t *scanner, const char
         }
         scanner->current_hunk.orig_count = res;
     } else {
-        scanner->current_hunk.orig_count = 1;
+        /* In context diffs, offset 0 indicates empty file */
+        if (scanner->current_hunk.orig_offset == 0) {
+            scanner->current_hunk.orig_count = 0;
+        } else {
+            scanner->current_hunk.orig_count = 1;
+        }
     }
 
     /* For context diffs, we need to wait for the --- line to get new file info */
@@ -951,9 +1094,13 @@ static int scanner_emit_context_hunk_header(patch_scanner_t *scanner, const char
     scanner->hunk_new_remaining = 0; /* Will be set when we see --- line */
     scanner->in_hunk = 1;
 
-    scanner_init_content(scanner, PATCH_CONTENT_HUNK_HEADER);
-    scanner->current_content.data.hunk = &scanner->current_hunk;
+    /* For context diffs, start buffering old section lines */
+    int result = scanner_context_buffer_init(scanner);
+    if (result != PATCH_SCAN_OK) {
+        return result;
+    }
 
+    /* Don't emit hunk header yet - wait for complete info from --- line */
     return PATCH_SCAN_OK;
 }
 
@@ -984,14 +1131,29 @@ static int scanner_emit_context_new_hunk_header(patch_scanner_t *scanner, const 
         }
         scanner->current_hunk.new_count = res;
     } else {
-        scanner->current_hunk.new_count = 1;
+        /* In context diffs, offset 0 indicates empty file */
+        if (scanner->current_hunk.new_offset == 0) {
+            scanner->current_hunk.new_count = 0;
+        } else {
+            scanner->current_hunk.new_count = 1;
+        }
     }
 
     /* Now we have complete hunk info, initialize line tracking */
     scanner->hunk_new_remaining = scanner->current_hunk.new_count;
 
-    /* This is not a new hunk header emission, it completes the previous one */
-    /* So we don't emit PATCH_CONTENT_HUNK_HEADER again, just continue processing lines */
+    /* Stop buffering - we're now in the new section */
+    scanner->context_buffering = 0;
+
+    /* Start emitting buffered content after the hunk header */
+    if (scanner->context_buffer_count > 0) {
+        scanner->context_emitting_buffer = 1;
+    }
+
+    /* Emit the complete hunk header with both old and new information */
+    scanner_init_content(scanner, PATCH_CONTENT_HUNK_HEADER);
+    scanner->current_content.data.hunk = &scanner->current_hunk;
+
     return PATCH_SCAN_OK;
 }
 
