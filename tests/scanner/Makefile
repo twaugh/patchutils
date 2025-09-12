@@ -48,5 +48,8 @@ check: $(TESTS)
 clean:
 	rm -f $(TESTS) $(TEST_OBJS) $(SCANNER_OBJS)
 
-.PHONY: all check clean
-	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
+# Clean up everything including copied files
+distclean: clean
+	rm -f Makefile test_basic.c README.md
+
+.PHONY: all check clean distclean
