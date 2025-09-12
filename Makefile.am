@@ -396,6 +396,10 @@ lib/libgnu.a:
 distclean-local:
 	-rm -rf $(top_builddir)/test-arena
 	-rm -f lib-built
+	-if [ -f $(top_builddir)/tests/scanner/Makefile ]; then \
+		cd $(top_builddir)/tests/scanner && $(MAKE) distclean; \
+	fi
+	-rm -rf $(top_builddir)/tests/scanner
 
 if ENABLE_FUZZING
 # Fuzzing-specific instrumented binaries

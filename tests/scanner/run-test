@@ -1,20 +1,42 @@
 #!/bin/sh
 
 # Test runner for patch scanner unit tests
+# This script must be run via 'make check' to ensure proper environment setup
 
-. ${top_srcdir-.}/tests/common.sh
+# Check that we're running in the proper test environment
+if [ -z "$top_srcdir" ] || [ -z "$top_builddir" ]; then
+    echo "Error: This test must be run via 'make check'"
+    echo "The top_srcdir and top_builddir variables must be set by the build system"
+    exit 1
+fi
 
-# Build the scanner test using make
+# Convert top_srcdir to absolute path before common.sh changes working directory
+top_srcdir="$(cd "$top_srcdir" && pwd)"
+
+# Source the common test environment
+. "$top_srcdir/tests/common.sh"
+
+# Ensure the build directory exists
+mkdir -p "$top_builddir/tests/scanner"
+
+# Copy source files from srcdir to builddir (needed for distcheck)
+for file in Makefile test_basic.c README.md; do
+    if [ -f "$top_srcdir/tests/scanner/$file" ] && [ ! -f "$top_builddir/tests/scanner/$file" ]; then
+        cp "$top_srcdir/tests/scanner/$file" "$top_builddir/tests/scanner/$file"
+    fi
+done
+
+# Build the scanner test
 echo "Building scanner test..."
-cd "${top_builddir-.}/tests/scanner"
+cd "$top_builddir/tests/scanner"
 make >/dev/null 2>&1 || {
     echo "Failed to build scanner test"
     exit 1
 }
-cd "${top_builddir-.}"
 
 # Run the scanner tests
 echo "Running patch scanner unit tests..."
+cd "$top_builddir"
 tests/scanner/test_basic || {
     echo "Scanner tests failed"
     exit 1
