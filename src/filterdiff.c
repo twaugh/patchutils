@@ -1227,6 +1227,9 @@ static int filterdiff (FILE *f, const char *patchname)
 				else if (!strncmp (line, "Binary files ", 13)) {
 					/* Binary files line - this is diff content, break to process */
 					break;
+				} else if (!strncmp (line, "GIT binary patch", 16)) {
+					/* GIT binary patch line - this is diff content, break to process */
+					break;
 				} else if (strncmp (line, "old mode ", 9) &&
 				    strncmp (line, "new mode ", 9) &&
 				    strncmp (line, "deleted file mode ", 18) &&
