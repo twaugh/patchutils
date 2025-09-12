@@ -8,12 +8,47 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os == 'alpine' && 'ubuntu-latest' || 'ubuntu-latest' }}
+    container: ${{ matrix.os == 'alpine' && 'alpine:latest' || null }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Ubuntu tests
+          - name: "Ubuntu with PCRE2 + Coverage"
+            os: ubuntu
+            pcre2: true
+            coverage: true
+            configure_flags: "--with-pcre2"
+
+          - name: "Ubuntu without PCRE2"
+            os: ubuntu
+            pcre2: false
+            coverage: false
+            configure_flags: "--without-pcre2"
+
+          # Alpine (musl) tests
+          - name: "Musl with PCRE2"
+            os: alpine
+            pcre2: true
+            coverage: false
+            configure_flags: "--with-pcre2"
+
+          - name: "Musl without PCRE2"
+            os: alpine
+            pcre2: false
+            coverage: false
+            configure_flags: "--without-pcre2"
+
+    name: ${{ matrix.name }}
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install dependencies
+    # Install dependencies - Ubuntu
+    - name: Install dependencies (Ubuntu)
+      if: matrix.os == 'ubuntu'
       run: |
         sudo apt-get update
         sudo apt-get install -y \
@@ -28,23 +63,80 @@ jobs:
           gnulib \
           lcov
 
+    # Install dependencies - Alpine with PCRE2
+    - name: Install dependencies (Alpine with PCRE2)
+      if: matrix.os == 'alpine' && matrix.pcre2
+      run: |
+        apk add --no-cache \
+          build-base \
+          autoconf \
+          automake \
+          perl \
+          patch \
+          diffutils \
+          xmlto \
+          pcre2-dev \
+          bash \
+          git \
+          coreutils \
+          python3
+
+    # Install dependencies - Alpine without PCRE2
+    - name: Install dependencies (Alpine without PCRE2)
+      if: matrix.os == 'alpine' && !matrix.pcre2
+      run: |
+        apk add --no-cache \
+          build-base \
+          autoconf \
+          automake \
+          perl \
+          patch \
+          diffutils \
+          xmlto \
+          bash \
+          git \
+          coreutils \
+          python3
+
+    # Bootstrap - Ubuntu
     - name: Bootstrap
+      if: matrix.os == 'ubuntu'
       run: ./bootstrap
 
+    # Bootstrap - Alpine
+    - name: Bootstrap (Alpine)
+      if: matrix.os == 'alpine'
+      run: |
+        ./gnulib-update.sh
+        export PATH="/tmp/gnulib:$PATH"
+        ./bootstrap
+
+    # Configure
     - name: Configure
       run: |
-        ./configure \
-          --with-pcre2 \
-          CFLAGS="--coverage -g -O0" \
-          LDFLAGS="--coverage"
+        CFLAGS_EXTRA=""
+        LDFLAGS_EXTRA=""
 
+        if [ "${{ matrix.coverage }}" = "true" ]; then
+          CFLAGS_EXTRA="--coverage -g -O0"
+          LDFLAGS_EXTRA="--coverage"
+        fi
+
+        ./configure ${{ matrix.configure_flags }} \
+          ${CFLAGS_EXTRA:+CFLAGS="$CFLAGS_EXTRA"} \
+          ${LDFLAGS_EXTRA:+LDFLAGS="$LDFLAGS_EXTRA"}
+
+    # Build
     - name: Build
       run: make -j$(nproc)
 
+    # Test
     - name: Run tests
       run: make check
 
+    # Coverage reporting (only for coverage builds)
     - name: Generate coverage report
+      if: matrix.coverage
       run: |
         # Create coverage directory
         mkdir -p coverage
@@ -73,6 +165,7 @@ jobs:
         echo "FUNCTIONS_COVERED=$FUNCTIONS_COVERED" >> $GITHUB_ENV
 
     - name: Upload coverage to Codecov
+      if: matrix.coverage
       uses: codecov/codecov-action@v4
       with:
         file: ./coverage/coverage_filtered.info
@@ -81,6 +174,7 @@ jobs:
         fail_ci_if_error: false
         token: ${{ secrets.CODECOV_TOKEN }}
 
+    # Show failures
     - name: Show test results on failure
       if: failure()
       run: |
@@ -92,38 +186,10 @@ jobs:
           cat "$f" 2>/dev/null || echo "Cannot read file"
         done
 
-  test-without-pcre2:
+  # Separate distcheck job (doesn't fit well in matrix)
+  distcheck:
     runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
 
-    - name: Install dependencies (without PCRE2)
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          autoconf \
-          automake \
-          build-essential \
-          perl \
-          patch \
-          diffutils \
-          xmlto \
-          gnulib
-
-    - name: Bootstrap
-      run: ./bootstrap
-
-    - name: Configure without PCRE2
-      run: ./configure --without-pcre2
-
-    - name: Build
-      run: make -j$(nproc)
-
-    - name: Run tests
-      run: make check
-
-  test-distcheck:
-    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
 
@@ -150,46 +216,6 @@ jobs:
     - name: Build and test distribution
       run: make distcheck
 
-  test-musl:
-    runs-on: ubuntu-latest
-    container: alpine:latest
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Install dependencies
-      run: |
-        apk add --no-cache \
-          build-base \
-          autoconf \
-          automake \
-          perl \
-          patch \
-          diffutils \
-          xmlto \
-          pcre2-dev \
-          bash \
-          git \
-          coreutils \
-          python3
-
-    - name: Clone gnulib for bootstrap
-      run: |
-        ./gnulib-update.sh
-
-    - name: Bootstrap
-      run: |
-        export PATH="/tmp/gnulib:$PATH"
-        ./bootstrap
-
-    - name: Configure
-      run: ./configure --with-pcre2
-
-    - name: Build
-      run: make -j$(nproc)
-
-    - name: Run tests
-      run: make check
-
     - name: Show test results on failure
       if: failure()
       run: |
@@ -200,55 +226,3 @@ jobs:
           echo "=== $f ==="
           cat "$f" 2>/dev/null || echo "Cannot read file"
         done
-
-  test-musl-without-pcre2:
-    runs-on: ubuntu-latest
-    container: alpine:latest
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Install dependencies (without PCRE2)
-      run: |
-        apk add --no-cache \
-          build-base \
-          autoconf \
-          automake \
-          perl \
-          patch \
-          diffutils \
-          xmlto \
-          bash \
-          git \
-          coreutils \
-          python3
-
-    - name: Clone gnulib for bootstrap
-      run: |
-        ./gnulib-update.sh
-
-    - name: Bootstrap
-      run: |
-        export PATH="/tmp/gnulib:$PATH"
-        ./bootstrap
-
-    - name: Configure without PCRE2
-      run: ./configure --without-pcre2
-
-    - name: Build
-      run: make -j$(nproc)
-
-    - name: Run tests
-      run: make check
-
-    - name: Show test results on failure
-      if: failure()
-      run: |
-        echo "=== Test logs ==="
-        find . -name "*.log" -type f -exec echo "=== {} ===" \; -exec cat {} \;
-        echo "=== Test arena contents ==="
-        find test-arena -type f 2>/dev/null | head -20 | while read f; do
-          echo "=== $f ==="
-          cat "$f" 2>/dev/null || echo "Cannot read file"
-        done
-
-
