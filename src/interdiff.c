@@ -988,18 +988,28 @@ trim_context (FILE *f /* positioned at start of @@ line */,
 
 		if (read_atatline (line, &orig_offset, &orig_count,
 				   &new_offset, &new_count))
-			error (EXIT_FAILURE, 0, "Line not understood: %s",
-			       line);
+			goto line_not_understood;
 
 		orig_orig_count = new_orig_count = orig_count;
 		orig_new_count = new_new_count = new_count;
 		fgetpos (f, &pos);
 		while (orig_count || new_count) {
+			char *first_char;
+
 			if (getline (&line, &linelen, f) < 0)
 				break;
 
+			/* Skip past any color escape code for a +/- line */
+			if (line[0] == 0x1b) {
+				first_char = strpbrk(line, "+-");
+				if (!first_char)
+					goto line_not_understood;
+			} else {
+				first_char = line;
+			}
+
 			total_count++;
-			switch (line[0]) {
+			switch (*first_char) {
                         case '\n':
                                 whitespace_damage("input");
 			case ' ' :
@@ -1080,6 +1090,10 @@ trim_context (FILE *f /* positioned at start of @@ line */,
  split_hunk:
 	error (0, 0, "hunk-splitting is required in this case, but is not yet implemented");
 	error (1, 0, "use the -U option to work around this");
+	return 0;
+
+ line_not_understood:
+	error (EXIT_FAILURE, 0, "Line not understood: %s", line);
 	return 0;
 }
 
