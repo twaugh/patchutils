@@ -29,7 +29,9 @@ int num_pathname_components (const char *x);
  * Find the best name from a list.
  *
  * Of the names with the fewest path name components, select the
- * one with the shortest base name.
+ * one with the shortest base name.  Of any remaining candidates,
+ * select the one with the shortest name. In the case of a tie
+ * between source and target names, select the source name.
  *
  */
 char *best_name (int n, char **names);

@@ -211,7 +211,8 @@ static const char *choose_best_name(const char **names, int count)
         }
     }
 
-    /* Among remaining candidates, find shortest total name */
+    /* Among remaining candidates, find shortest total name.
+     * In case of tie, prefer source name (index 0). */
     for (i = 0; i < count; i++) {
         if (!names[i] || strcmp(names[i], "/dev/null") == 0)
             continue;
@@ -225,7 +226,7 @@ static const char *choose_best_name(const char **names, int count)
             continue;
 
         int n = strlen(names[i]);
-        if (best_n == -1 || n < best_n) {
+        if (best_n == -1 || n < best_n || (n == best_n && i == 0)) {
             best_n = n;
             best_idx = i;
         }
@@ -260,7 +261,7 @@ static const char *get_best_filename(const struct patch_headers *headers)
 
             /* Apply Git prefix stripping and choose candidate order based on patch type */
 
-            /* For Git diffs with unified diff headers (hunks), choose based on Git diff type */
+            /* For Git diffs with unified diff headers (hunks), prefer unified diff headers */
             if (headers->new_name || headers->old_name) {
                 /* Git diff with hunks - choose based on whether it's new, deleted, or modified */
                 if (headers->git_type == GIT_DIFF_NEW_FILE) {
@@ -308,6 +309,30 @@ static const char *get_best_filename(const struct patch_headers *headers)
                         count++;
                     }
                 }
+            } else if (headers->rename_from || headers->rename_to) {
+                /* Pure rename (no hunks): prefer rename headers (source first for tie-breaking) */
+                if (headers->rename_from) {
+                    stripped_candidates[count] = strip_git_prefix_from_filename(headers->rename_from);
+                    candidates[count] = stripped_candidates[count];
+                    count++;
+                }
+                if (headers->rename_to) {
+                    stripped_candidates[count] = strip_git_prefix_from_filename(headers->rename_to);
+                    candidates[count] = stripped_candidates[count];
+                    count++;
+                }
+            } else if (headers->copy_from || headers->copy_to) {
+                /* Pure copy (no hunks): prefer copy headers (source first for tie-breaking) */
+                if (headers->copy_from) {
+                    stripped_candidates[count] = strip_git_prefix_from_filename(headers->copy_from);
+                    candidates[count] = stripped_candidates[count];
+                    count++;
+                }
+                if (headers->copy_to) {
+                    stripped_candidates[count] = strip_git_prefix_from_filename(headers->copy_to);
+                    candidates[count] = stripped_candidates[count];
+                    count++;
+                }
             } else {
                 /* Git diff without hunks - prefer git_old_name (traditional behavior) */
                 if (headers->git_old_name) {
@@ -345,14 +370,14 @@ static const char *get_best_filename(const struct patch_headers *headers)
             int count = 0;
             int i;
 
-            /* Apply Git prefix stripping if requested */
-            if (headers->new_name) {
-                stripped_candidates[count] = strip_git_prefix_from_filename(headers->new_name);
+            /* Apply Git prefix stripping if requested - add source (old) first for tie-breaking */
+            if (headers->old_name) {
+                stripped_candidates[count] = strip_git_prefix_from_filename(headers->old_name);
                 candidates[count] = stripped_candidates[count];
                 count++;
             }
-            if (headers->old_name) {
-                stripped_candidates[count] = strip_git_prefix_from_filename(headers->old_name);
+            if (headers->new_name) {
+                stripped_candidates[count] = strip_git_prefix_from_filename(headers->new_name);
                 candidates[count] = stripped_candidates[count];
                 count++;
             }
