@@ -1,11 +1,19 @@
 # Makefile for patch scanner tests
 
-# Build configuration
+# Build configuration - inherit from parent build
 CC = gcc
-CFLAGS = -Wall -Wextra -g -std=c99 -DHAVE_CONFIG_H
+# Base flags
+BASE_CFLAGS = -Wall -Wextra -g -std=c99 -DHAVE_CONFIG_H
 INCLUDES = -I../../ -I../../src -I../../lib
-LDFLAGS =
 LIBS = ../../lib/libgnu.a
+
+# Inherit CFLAGS and LDFLAGS from parent build if available
+# This ensures we use the same coverage, optimization, and other flags
+PARENT_CFLAGS := $(shell grep '^CFLAGS' ../../Makefile 2>/dev/null | cut -d= -f2- || echo "")
+PARENT_LDFLAGS := $(shell grep '^LDFLAGS' ../../Makefile 2>/dev/null | cut -d= -f2- || echo "")
+
+CFLAGS = $(BASE_CFLAGS) $(PARENT_CFLAGS)
+LDFLAGS = $(PARENT_LDFLAGS)
 
 # Source files
 SCANNER_SRCS = ../../src/patch_scanner.c ../../src/util.c ../../src/diff.c
