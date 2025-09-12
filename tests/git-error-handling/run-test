@@ -130,6 +130,7 @@ ${LSDIFF} mixed-binary.patch 2>errors9 >result9 || exit 1
 
 cat << EOF | cmp - result9 || exit 1
 a/file1.bin
+a/file2.dat
 EOF
 
 # Test 10: Empty git diff (just headers, no content)
