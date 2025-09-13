@@ -278,6 +278,7 @@ TESTS = tests/newline1/run-test \
 	tests/crlf/run-test \
 	tests/whitespace-regression/run-test \
 	tests/interdiff-whitespace-w/run-test \
+	tests/interdiff-color-context/run-test \
 	tests/patch-ignore-whitespace/run-test \
 	tests/whitespace-w/run-test \
 	tests/filterdiff-inplace1/run-test \
@@ -304,7 +305,8 @@ TESTS = tests/newline1/run-test \
 # Feel free to send me patches. :-)
 XFAIL_TESTS = \
 	tests/delhunk5/run-test \
-	tests/delhunk6/run-test
+	tests/delhunk6/run-test \
+	tests/interdiff-color-context/run-test
 
 test-perms: src/combinediff$(EXEEXT) src/flipdiff$(EXEEXT) \
 		src/lsdiff$(EXEEXT) src/grepdiff$(EXEEXT) src/patchview$(EXEEXT) \
