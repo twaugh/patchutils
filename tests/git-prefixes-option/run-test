@@ -38,12 +38,12 @@ ${LSDIFF} mixed-git.patch 2>errors1 >result1 || exit 1
 
 # Expected output explanation:
 # - a/binary-file: from "diff --git a/binary-file b/binary-file" (keeps a/ prefix)
-# - new-name: from "rename to new-name" header (no prefix to keep - rename headers don't use a/b/ prefixes)
+# - b/new-name: best_name() chooses b/new-name over a/renamed-file (shorter basename: "new-name" vs "renamed-file")
 # - a/mode-only.sh: from "diff --git a/mode-only.sh b/mode-only.sh" (keeps a/ prefix)
 # - a/regular-file.txt: from "diff --git a/regular-file.txt b/regular-file.txt" (keeps a/ prefix)
 cat << EOF | cmp - result1 || exit 1
 a/binary-file
-new-name
+b/new-name
 a/mode-only.sh
 a/regular-file.txt
 EOF
@@ -54,7 +54,7 @@ ${LSDIFF} --git-prefixes=keep mixed-git.patch 2>errors2 >result2 || exit 1
 
 cat << EOF | cmp - result2 || exit 1
 a/binary-file
-new-name
+b/new-name
 a/mode-only.sh
 a/regular-file.txt
 EOF
@@ -65,7 +65,7 @@ ${LSDIFF} --git-prefixes=strip mixed-git.patch 2>errors3 >result3 || exit 1
 
 # Expected output explanation:
 # - binary-file: from "diff --git a/binary-file b/binary-file" (strips a/ prefix)
-# - new-name: from "rename to new-name" header (no prefix to strip - same as keep mode)
+# - new-name: best_name() chooses "new-name" over "renamed-file" (shorter basename)
 # - mode-only.sh: from "diff --git a/mode-only.sh b/mode-only.sh" (strips a/ prefix)
 # - regular-file.txt: from "diff --git a/regular-file.txt b/regular-file.txt" (strips a/ prefix)
 cat << EOF | cmp - result3 || exit 1

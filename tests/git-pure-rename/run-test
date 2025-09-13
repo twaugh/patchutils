@@ -55,12 +55,13 @@ ${LSDIFF} -s git-pure-rename.patch 2>errors1 >result1 || exit 1
 [ -s errors1 ] && exit 1
 
 # For pure renames, both files exist so status should be '!'
+# With --git-prefixes=keep (default), rename operations now use a/ prefix
 cat << EOF | cmp - result1 || exit 1
-! old-name.txt
+! a/old-name.txt
 EOF
 
 echo "=== Test 2: filterdiff include pure rename ==="
-${FILTERDIFF} -i "old*" git-pure-rename.patch 2>errors2 >result2 || exit 1
+${FILTERDIFF} -i "a/old*" git-pure-rename.patch 2>errors2 >result2 || exit 1
 [ -s errors2 ] && exit 1
 
 cat << 'EOF' | cmp - result2 || exit 1
@@ -74,7 +75,7 @@ echo "=== Test 3: filterdiff include by new name (should not match) ==="
 ${FILTERDIFF} -i "new*" git-pure-rename.patch 2>errors3 >result3 || exit 1
 [ -s errors3 ] && exit 1
 
-# Should be empty because best_name() chooses the old name for renames
+# Should be empty because best_name() chooses a/old-name.txt, which doesn't match "new*"
 [ -s result3 ] && exit 1
 
 echo "=== Test 4: filterdiff exclude pure rename ==="
@@ -97,12 +98,12 @@ ${LSDIFF} -s git-multiple-renames.patch 2>errors6 >result6 || exit 1
 [ -s errors6 ] && exit 1
 
 cat << EOF | cmp - result6 || exit 1
-! file1.txt
-! file2.txt
+! a/file1.txt
+! a/file2.txt
 EOF
 
 echo "=== Test 7: filterdiff with pattern matching one of multiple renames ==="
-${FILTERDIFF} -i "file1*" git-multiple-renames.patch 2>errors7 >result7 || exit 1
+${FILTERDIFF} -i "a/file1*" git-multiple-renames.patch 2>errors7 >result7 || exit 1
 [ -s errors7 ] && exit 1
 
 cat << 'EOF' | cmp - result7 || exit 1
@@ -113,7 +114,7 @@ rename to renamed1.txt
 EOF
 
 echo "=== Test 8: filterdiff with subdirectory rename ==="
-${FILTERDIFF} -i "src/*" git-rename-subdir.patch 2>errors8 >result8 || exit 1
+${FILTERDIFF} -i "a/src/*" git-rename-subdir.patch 2>errors8 >result8 || exit 1
 [ -s errors8 ] && exit 1
 
 cat << 'EOF' | cmp - result8 || exit 1
@@ -123,12 +124,23 @@ rename from src/old.c
 rename to src/new.c
 EOF
 
-echo "=== Test 9: Test git-prefixes with renames ==="
+echo "=== Test 9: Test git-prefixes=strip with renames ==="
 ${LSDIFF} --git-prefixes=strip -s git-pure-rename.patch 2>errors9 >result9 || exit 1
 [ -s errors9 ] && exit 1
 
 cat << EOF | cmp - result9 || exit 1
 ! old-name.txt
+EOF
+
+echo "=== Test 10: Test git-prefixes=strip with filterdiff ==="
+${FILTERDIFF} --git-prefixes=strip -i "old*" git-pure-rename.patch 2>errors10 >result10 || exit 1
+[ -s errors10 ] && exit 1
+
+cat << 'EOF' | cmp - result10 || exit 1
+diff --git a/old-name.txt b/new-name.txt
+similarity index 100%
+rename from old-name.txt
+rename to new-name.txt
 EOF
 
 # Skip grepdiff test - pure renames have no content to grep

@@ -875,10 +875,10 @@
 	        <option>--strip</option>). With <literal>keep</literal> (default),
 	        preserves existing behavior. Applies to both Git-specific diffs (binary files,
 	        renames, mode changes) and traditional diffs when part of a Git patch.
-	        Note: Git rename operations use <literal>rename from/to</literal> headers
-	        that contain literal filenames without <literal>a/</literal> or
-	        <literal>b/</literal> prefixes, so this option does not affect renamed
-	        filenames. The default will change to <literal>strip</literal> in version 0.5.0.</para>
+	        Note: With <literal>keep</literal>, copy and rename operations are treated as
+			if they had <literal>a/</literal> and <literal>b/</literal> prefixes for consistency
+			with other Git operations. The default will change to <literal>strip</literal>
+			in version 0.5.0.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -1066,7 +1066,11 @@ patch.file]]></screen></para>
 	  file renames, and permission mode changes. For example, to extract
 	  only the renames from a git diff:
 
-<screen><![CDATA[filterdiff -i '*/newname' git-patch-with-renames.patch]]></screen></para>
+<screen><![CDATA[# With --git-prefixes=strip (matches bare filename)
+filterdiff --git-prefixes=strip -i '*/newname' git-patch-with-renames.patch
+
+# With --git-prefixes=keep (default, matches with b/ prefix)
+filterdiff -i 'b/*/newname' git-patch-with-renames.patch]]></screen></para>
       </refsect1>
 
       <refsect1>
@@ -1395,10 +1399,10 @@ patch.file]]></screen></para>
 	        <option>--strip</option>). With <literal>keep</literal> (default),
 	        preserves existing behavior. Applies to both Git-specific diffs (binary files,
 	        renames, mode changes) and traditional diffs when part of a Git patch.
-	        Note: Git rename operations use <literal>rename from/to</literal> headers
-	        that contain literal filenames without <literal>a/</literal> or
-	        <literal>b/</literal> prefixes, so this option does not affect renamed
-	        filenames. The default will change to <literal>strip</literal> in version 0.5.0.</para>
+	        Note: With <literal>keep</literal>, copy and rename operations are treated as
+			if they had <literal>a/</literal> and <literal>b/</literal> prefixes for consistency
+	        with other Git operations. The default will change to <literal>strip</literal>
+			in version 0.5.0.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -1802,10 +1806,10 @@ will pipe patch of file #2 to vim - -R
 	        <option>--strip</option>). With <literal>keep</literal> (default),
 	        preserves existing behavior. Applies to both Git-specific diffs (binary files,
 	        renames, mode changes) and traditional diffs when part of a Git patch.
-	        Note: Git rename operations use <literal>rename from/to</literal> headers
-	        that contain literal filenames without <literal>a/</literal> or
-	        <literal>b/</literal> prefixes, so this option does not affect renamed
-	        filenames. The default will change to <literal>strip</literal> in version 0.5.0.</para>
+	        Note: With <literal>keep</literal>, copy and rename operations are treated as
+			if they had <literal>a/</literal> and <literal>b/</literal> prefixes for consistency
+	        with other Git operations. The default will change to <literal>strip</literal>
+			in version 0.5.0.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -2421,10 +2425,10 @@ will pipe patch of file #2 to vim - -R
 	        <option>--strip</option>). With <literal>keep</literal> (default),
 	        preserves existing behavior. Applies to both Git-specific diffs (binary files,
 	        renames, mode changes) and traditional diffs when part of a Git patch.
-	        Note: Git rename operations use <literal>rename from/to</literal> headers
-	        that contain literal filenames without <literal>a/</literal> or
-	        <literal>b/</literal> prefixes, so this option does not affect renamed
-	        filenames. The default will change to <literal>strip</literal> in version 0.5.0.</para>
+	        Note: With <literal>keep</literal>, copy and rename operations are treated as
+			if they had <literal>a/</literal> and <literal>b/</literal> prefixes for consistency
+	        with other Git operations. The default will change to <literal>strip</literal>
+			in version 0.5.0.</para>
 	    </listitem>
 	  </varlistentry>
 

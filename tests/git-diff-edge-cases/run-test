@@ -194,12 +194,12 @@ ${LSDIFF} -s mixed-git-types.patch 2>errors11 >result11 || exit 1
 
 cat << EOF | cmp - result11 || exit 1
 - a/deleted.txt
-! old.txt
+! a/old.txt
 ! a/script.sh
 EOF
 
 echo "=== Test 12: filterdiff with pattern matching mixed types ==="
-${FILTERDIFF} -i "*.txt" mixed-git-types.patch 2>errors12 >result12 || exit 1
+${FILTERDIFF} -i "a/*.txt" mixed-git-types.patch 2>errors12 >result12 || exit 1
 [ -s errors12 ] && exit 1
 
 cat << 'EOF' | cmp - result12 || exit 1
