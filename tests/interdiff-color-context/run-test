@@ -1,0 +1,187 @@
+#!/bin/sh
+
+# This is an interdiff(1) testcase.
+# Test: Verify that --color option doesn't break context trimming
+#
+# This test ensures that when interdiff uses the --color option,
+# the context trimming functionality (which prevents patch fuzz)
+# still works correctly. The test creates a scenario similar to
+# the fuzz1 test but with color output enabled.
+#
+# EXPECTED FAILURE: This test currently fails because interdiff cannot
+# parse colored diff output when --color=always produces ANSI escape
+# sequences. The test will pass when this bug is fixed.
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Create a base file with enough lines to test context trimming
+cat << EOF > file
+LINE 1
+line 2
+line 3
+line 4
+line 5
+if
+1
+fi
+if
+2
+fi
+A
+B
+C
+D
+E
+F
+EOF
+
+# Create first patch: change line 1 to uppercase
+cat << EOF > patch1
+--- file
++++ file
+@@ -1,4 +1,4 @@
+-line 1
++LINE 1
+ line 2
+ line 3
+ line 4
+EOF
+
+# Create second patch: remove some lines in the middle
+# This creates a situation where context trimming is needed
+cat << EOF > patch2
+--- file
++++ file
+@@ -5,9 +5,6 @@
+ line 5
+ if
+ 1
+-fi
+-if
+-2
+ fi
+ A
+ B
+EOF
+
+# Test 1: Run interdiff without --color (baseline)
+${INTERDIFF} patch1 patch2 2>errors-no-color >patch1-2-no-color
+[ -s errors-no-color -o "$?" -gt "0" ] && { cat errors-no-color; exit 1; }
+
+# Test 2: Run interdiff with --color=never (should be same as baseline)
+${INTERDIFF} --color=never patch1 patch2 2>errors-color-never >patch1-2-color-never
+[ -s errors-color-never -o "$?" -gt "0" ] && { cat errors-color-never; exit 1; }
+
+# Test 3: Run interdiff with --color=always (the main test)
+# First check if the underlying diff supports --color
+if diff --color=always -u /dev/null /dev/null >/dev/null 2>&1; then
+    ${INTERDIFF} --color=always patch1 patch2 2>errors-color-always >patch1-2-color-always
+    color_always_exit_code=$?
+
+    # This test should FAIL if interdiff can't handle colored diff output
+    # The bug is that interdiff fails to parse ANSI color codes in diff output
+    if [ -s errors-color-always -o "$color_always_exit_code" -gt "0" ]; then
+        if grep -q "Line not understood" errors-color-always; then
+            echo "FAIL: interdiff cannot parse colored diff output (--color=always broken)"
+            echo "ERROR: interdiff fails with 'Line not understood' when diff produces ANSI color codes"
+            cat errors-color-always
+            exit 1
+        else
+            echo "ERROR: --color=always failed for unexpected reason"
+            cat errors-color-always
+            exit 1
+        fi
+    else
+        color_always_supported=1
+        echo "SUCCESS: --color=always works correctly"
+    fi
+else
+    # If diff doesn't support --color, skip the color=always test
+    # but still test that context trimming works with other modes
+    color_always_supported=0
+    echo "SKIP: System diff doesn't support --color, skipping --color=always test"
+fi
+
+# Test 4: Run interdiff with --color (auto mode, should default to never in non-tty)
+${INTERDIFF} --color patch1 patch2 2>errors-color-auto >patch1-2-color-auto
+[ -s errors-color-auto -o "$?" -gt "0" ] && { cat errors-color-auto; exit 1; }
+
+# Verify that all generated patches can be applied without fuzz
+# This is the critical test - if context trimming is broken, patch will complain about fuzz
+
+# Test the baseline patch
+cp file file-test1
+${PATCH} file-test1 < patch1-2-no-color >patch-errors1 2>&1 || { cat patch-errors1; exit 1; }
+if grep -i fuzz patch-errors1; then
+    echo "ERROR: Baseline patch caused fuzz - context trimming broken"
+    exit 1
+fi
+
+# Test the --color=never patch (should be identical to baseline)
+cp file file-test2
+${PATCH} file-test2 < patch1-2-color-never >patch-errors2 2>&1 || { cat patch-errors2; exit 1; }
+if grep -i fuzz patch-errors2; then
+    echo "ERROR: --color=never patch caused fuzz"
+    exit 1
+fi
+
+# Test the --color=always patch (main test) - only if color is supported and working
+if [ "$color_always_supported" = "1" ]; then
+    cp file file-test3
+    ${PATCH} file-test3 < patch1-2-color-always >patch-errors3 2>&1 || { cat patch-errors3; exit 1; }
+    if grep -i fuzz patch-errors3; then
+        echo "ERROR: --color=always patch caused fuzz - context trimming broken with color"
+        exit 1
+    fi
+    echo "SUCCESS: --color=always patch applied without fuzz"
+else
+    echo "SKIP: --color=always patch test skipped (not supported or failed earlier)"
+fi
+
+# Test the --color (auto) patch
+cp file file-test4
+${PATCH} file-test4 < patch1-2-color-auto >patch-errors4 2>&1 || { cat patch-errors4; exit 1; }
+if grep -i fuzz patch-errors4; then
+    echo "ERROR: --color (auto) patch caused fuzz"
+    exit 1
+fi
+
+# Additional verification: ensure the patches produce the same logical result
+# (ignoring ANSI color codes which might be present in the --color=always version)
+if [ "$color_always_supported" = "1" ]; then
+    # Strip ANSI color codes from the color=always output for comparison
+    sed 's/\x1b\[[0-9;]*m//g' patch1-2-color-always > patch1-2-color-always-stripped
+
+    # Compare the logical content (the never and stripped always should be identical)
+    if ! cmp patch1-2-color-never patch1-2-color-always-stripped; then
+        echo "ERROR: --color=always produces different logical output than --color=never"
+        echo "=== --color=never ==="
+        cat patch1-2-color-never
+        echo "=== --color=always (stripped) ==="
+        cat patch1-2-color-always-stripped
+        exit 1
+    fi
+fi
+
+# Verify that all patched files end up in the same state
+if ! cmp file-test1 file-test2; then
+    echo "ERROR: Different results between no-color and --color=never"
+    exit 1
+fi
+
+if [ "$color_always_supported" = "1" ]; then
+    if ! cmp file-test1 file-test3; then
+        echo "ERROR: Different results between no-color and --color=always"
+        exit 1
+    fi
+fi
+
+if ! cmp file-test1 file-test4; then
+    echo "ERROR: Different results between no-color and --color (auto)"
+    exit 1
+fi
+
+# If we get here, the core functionality works (--color=never and --color auto work)
+# The test only fails if --color=always is broken (which it currently is)
+echo "SUCCESS: Context trimming works correctly with supported color modes"
+exit 0
