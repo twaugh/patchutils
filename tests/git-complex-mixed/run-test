@@ -73,7 +73,7 @@ b/new-file.txt
 a/deleted-file.old
 a/binary-data.bin
 a/script-mode.sh
-new-name.txt
+b/new-name.txt
 a/copied-file.c
 a/regular-change.h
 EOF
@@ -93,7 +93,7 @@ regular-change.h
 EOF
 
 # Test 3: Filter only new files
-${FILTERDIFF} -i "*.txt" complex-git.patch 2>errors3 >result3 || exit 1
+${FILTERDIFF} -i "*/*.txt" complex-git.patch 2>errors3 >result3 || exit 1
 [ -s errors3 ] && exit 1
 
 # Should include new-file.txt and new-name.txt (renamed file)
@@ -102,7 +102,7 @@ grep -q "new-name.txt" result3 || exit 1
 grep -q "binary-data.bin" result3 && exit 1  # Should not include binary
 
 # Test 4: Filter binary files specifically
-${FILTERDIFF} -i "*.bin" complex-git.patch 2>errors4 >result4 || exit 1
+${FILTERDIFF} -i "*/*.bin" complex-git.patch 2>errors4 >result4 || exit 1
 [ -s errors4 ] && exit 1
 
 cat << EOF | cmp - result4 || exit 1
@@ -113,7 +113,7 @@ Binary files /dev/null and b/binary-data.bin differ
 EOF
 
 # Test 5: Exclude deleted files
-${FILTERDIFF} -x "*.old" complex-git.patch 2>errors5 >result5 || exit 1
+${FILTERDIFF} -x "*/*.old" complex-git.patch 2>errors5 >result5 || exit 1
 [ -s errors5 ] && exit 1
 
 # Should not contain deleted-file.old

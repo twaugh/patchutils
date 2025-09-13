@@ -119,10 +119,10 @@ ${LSDIFF} copy-binary.patch 2>errors6 >result6 || exit 1
 [ -s errors6 ] && exit 1
 
 cat << EOF | cmp - result6 || exit 1
-data.bin
+a/data.bin
 EOF
 
-${FILTERDIFF} -i "data.bin" copy-binary.patch 2>errors7 >result7 || exit 1
+${FILTERDIFF} -i "a/data.bin" copy-binary.patch 2>errors7 >result7 || exit 1
 [ -s errors7 ] && exit 1
 
 cat << EOF | cmp - result7 || exit 1
@@ -157,7 +157,7 @@ ${LSDIFF} copy-rename-mixed.patch 2>errors8 >result8 || exit 1
 
 cat << EOF | cmp - result8 || exit 1
 a/file1.txt
-file2.txt
+a/file2.txt
 EOF
 
 # Test 6: Copy with very low similarity

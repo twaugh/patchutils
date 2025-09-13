@@ -1234,8 +1234,23 @@ extract_git_filenames (char **headers, unsigned int num_headers,
 
 	if (rename_from && rename_to) {
 		/* Use rename headers for filenames */
-		*old_name = xstrndup (rename_from, strcspn (rename_from, "\n\r"));
-		*new_name = xstrndup (rename_to, strcspn (rename_to, "\n\r"));
+		char *raw_old_name = xstrndup (rename_from, strcspn (rename_from, "\n\r"));
+		char *raw_new_name = xstrndup (rename_to, strcspn (rename_to, "\n\r"));
+
+		/* Apply prefix mode consistently with other git operations */
+		if (prefix_mode == GIT_PREFIX_KEEP) {
+			/* Add a/ and b/ prefixes to match behavior of diff --git line parsing */
+			*old_name = xmalloc (strlen(raw_old_name) + 3);
+			sprintf (*old_name, "a/%s", raw_old_name);
+			*new_name = xmalloc (strlen(raw_new_name) + 3);
+			sprintf (*new_name, "b/%s", raw_new_name);
+			free (raw_old_name);
+			free (raw_new_name);
+		} else {
+			/* GIT_PREFIX_STRIP: use raw filenames (current behavior) */
+			*old_name = raw_old_name;
+			*new_name = raw_new_name;
+		}
 	} else {
 		/* Parse filenames from "diff --git a/path b/path" line */
 		char *p = git_line + 11; /* Skip "diff --git " */
