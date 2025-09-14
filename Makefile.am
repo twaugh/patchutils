@@ -283,6 +283,7 @@ TESTS = tests/newline1/run-test \
 	tests/whitespace-w/run-test \
 	tests/filterdiff-inplace1/run-test \
 	tests/rediff-inplace1/run-test \
+	tests/rediff-empty-hunk/run-test \
 	tests/git-rename-issue22/run-test \
 	tests/git-binary-issue57/run-test \
 	tests/git-binary-formats/run-test \
@@ -306,7 +307,8 @@ TESTS = tests/newline1/run-test \
 XFAIL_TESTS = \
 	tests/delhunk5/run-test \
 	tests/delhunk6/run-test \
-	tests/interdiff-color-context/run-test
+	tests/interdiff-color-context/run-test \
+	tests/rediff-empty-hunk/run-test
 
 test-perms: src/combinediff$(EXEEXT) src/flipdiff$(EXEEXT) \
 		src/lsdiff$(EXEEXT) src/grepdiff$(EXEEXT) src/patchview$(EXEEXT) \
