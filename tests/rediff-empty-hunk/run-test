@@ -1,0 +1,94 @@
+#!/bin/sh
+
+# This is a rediff(1) testcase.
+# Test: rediff should handle empty hunks properly
+#
+# Bug report: When a hunk becomes empty after manual editing (i.e., all the
+# +/- lines are removed leaving only context lines), rediff produces malformed
+# output with very large numbers in the hunk header. This causes "corrupt patch"
+# errors when trying to apply the resulting patch with git apply or patch.
+#
+# The bug manifests as hunk headers like:
+#   @@ -13,0 +13,18446744073709551615 @@
+# instead of either removing the empty hunk entirely or producing a valid header.
+#
+# This test case reproduces the issue by:
+# 1. Creating an original patch with 2 hunks
+# 2. Creating a modified version where the second hunk has no +/- lines (empty)
+# 3. Running rediff and checking for the malformed output
+#
+# Expected behavior: rediff should either remove empty hunks or handle them
+# gracefully without producing malformed hunk headers.
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Create original patch with 2 hunks
+cat << "EOF" > original.patch
+--- hello
++++ hello
+@@ -10,7 +10,7 @@
+ 8
+ 9
+ 10
+-12
++12a
+ 13
+ 14
+ 15
+@@ -13,6 +13,7 @@
+ 11
+ 12a
+ 13
++b
+ 14
+ 15
+ 16
+EOF
+
+# Create modified version where second hunk is empty (no +/- lines, only context)
+cat << "EOF" > modified.patch
+--- hello
++++ hello
+@@ -10,7 +10,7 @@
+ 8
+ 9
+ 10
+-12
++12a
+ 13
+ 14
+ 15
+@@ -13,6 +13,6 @@
+ 11
+ 12a
+ 13
+ 14
+ 15
+ 16
+EOF
+
+# Run rediff - this should handle empty hunks properly
+${REDIFF} original.patch modified.patch > result.patch || exit 1
+
+# The expected correct behavior would be to either:
+# 1. Remove the empty hunk entirely (leaving only 1 hunk)
+# 2. Handle it gracefully without malformed headers
+#
+# Currently this produces malformed output with very large numbers
+# in hunk headers, which is the bug being tested.
+
+# Verify the result has proper patch format
+hunk_count=$(grep -c '^@@' result.patch)
+if [ "$hunk_count" -eq 0 ]; then
+    echo "ERROR: No hunks found in result"
+    exit 1
+fi
+
+# Check if the result can be applied to verify it's not corrupt
+seq 100 > hello
+if ! ${PATCH} hello < result.patch; then
+    echo "ERROR: Result patch cannot be applied (corrupt patch)"
+    exit 1
+fi
+
+echo "Test completed successfully"
