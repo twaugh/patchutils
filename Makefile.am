@@ -307,7 +307,6 @@ TESTS = tests/newline1/run-test \
 XFAIL_TESTS = \
 	tests/delhunk5/run-test \
 	tests/delhunk6/run-test \
-	tests/interdiff-color-context/run-test \
 	tests/rediff-empty-hunk/run-test
 
 test-perms: src/combinediff$(EXEEXT) src/flipdiff$(EXEEXT) \
