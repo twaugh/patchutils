@@ -33,6 +33,7 @@
 #endif /* HAVE_ERROR_H */
 #include <ctype.h>
 #include <errno.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -125,58 +126,66 @@ static struct patlist *pat_drop_context = NULL;
 
 static struct file_list *files_done = NULL;
 
-/*
- * Colorize a line based on its type and whether colors are enabled.
- * Returns a newly allocated string that must be freed by the caller.
- * Only colorizes when outputting to a terminal (stdout is a TTY).
- */
-static char *
-colorize_line (const char *line, enum line_type type, FILE *output_file)
-{
-	const char *color_start = "";
-	const char *color_end = "";
-	char *result;
-
-	/* Only colorize if colors are enabled AND we're outputting to stdout */
-	if (!use_colors || output_file != stdout) {
-		return xstrdup (line);
-	}
-
-	switch (type) {
-	case LINE_CONTEXT:
-		color_start = COLOR_CONTEXT;
-		break;
-	case LINE_ADDED:
-		color_start = COLOR_ADDED;
-		break;
-	case LINE_REMOVED:
-		color_start = COLOR_REMOVED;
-		break;
-	case LINE_HEADER:
-		color_start = COLOR_HEADER;
-		break;
-	case LINE_FILE:
-		color_start = COLOR_FILE;
-		break;
-	case LINE_HUNK:
-		color_start = COLOR_HUNK;
-		break;
-	}
-
-	if (color_start[0] != '\0') {
-		color_end = COLOR_RESET;
-	}
-
-	if (asprintf (&result, "%s%s%s", color_start, line, color_end) < 0) {
-		error (EXIT_FAILURE, errno, "Memory allocation failed");
-	}
-
-	return result;
-}
 static struct file_list *files_in_patch2 = NULL;
 static struct file_list *files_in_patch1 = NULL;
 
-/* checks whether file needs processing and sets context */
+/*
+ * Print colored output using a variadic format string.
+ * This avoids the need for memory allocation and deallocation
+ * that was required with the colorize_line approach.
+ */
+ static void
+ print_color (FILE *output_file, enum line_type type, const char *format, ...)
+ {
+	 const char *color_start = "";
+	 const char *color_end = "";
+	 va_list args;
+
+	 /* Only colorize if colors are enabled AND we're outputting to stdout */
+	 if (use_colors && output_file == stdout) {
+		 switch (type) {
+		 case LINE_CONTEXT:
+			 color_start = COLOR_CONTEXT;
+			 break;
+		 case LINE_ADDED:
+			 color_start = COLOR_ADDED;
+			 break;
+		 case LINE_REMOVED:
+			 color_start = COLOR_REMOVED;
+			 break;
+		 case LINE_HEADER:
+			 color_start = COLOR_HEADER;
+			 break;
+		 case LINE_FILE:
+			 color_start = COLOR_FILE;
+			 break;
+		 case LINE_HUNK:
+			 color_start = COLOR_HUNK;
+			 break;
+		 }
+
+		 if (color_start[0] != '\0') {
+			 color_end = COLOR_RESET;
+		 }
+	 }
+
+	 /* Print color start code */
+	 if (color_start[0] != '\0') {
+		 fputs (color_start, output_file);
+	 }
+
+	 /* Print the formatted content */
+	 va_start (args, format);
+	 vfprintf (output_file, format, args);
+	 va_end (args);
+
+	 /* Print color end code */
+	 if (color_end[0] != '\0') {
+		 fputs (color_end, output_file);
+	 }
+ }
+
+ /* checks whether file needs processing and sets context */
 static int
 check_filename (const char *fn)
 {
@@ -1052,9 +1061,7 @@ trim_context (FILE *f /* positioned at start of @@ line */,
 
 		if (line[0] == '\\') {
 			/* Pass '\' lines through unaltered. */
-			char *colored_line = colorize_line (line, LINE_CONTEXT, out);
-			fputs (colored_line, out);
-			free (colored_line);
+			print_color (out, LINE_CONTEXT, "%s", line);
 			continue;
 		}
 
@@ -1123,33 +1130,19 @@ trim_context (FILE *f /* positioned at start of @@ line */,
 
 		fsetpos (f, &pos);
 		{
-			char *hunk_header;
-			char *colored_hunk;
 			if (new_orig_count != 1 && new_new_count != 1) {
-				if (asprintf (&hunk_header, "@@ -%lu,%lu +%lu,%lu @@\n",
-					      orig_offset, new_orig_count, new_offset, new_new_count) < 0) {
-					error (EXIT_FAILURE, errno, "Memory allocation failed");
-				}
+				print_color (out, LINE_HUNK, "@@ -%lu,%lu +%lu,%lu @@\n",
+					     orig_offset, new_orig_count, new_offset, new_new_count);
 			} else if (new_orig_count != 1) {
-				if (asprintf (&hunk_header, "@@ -%lu,%lu +%lu @@\n",
-					      orig_offset, new_orig_count, new_offset) < 0) {
-					error (EXIT_FAILURE, errno, "Memory allocation failed");
-				}
+				print_color (out, LINE_HUNK, "@@ -%lu,%lu +%lu @@\n",
+					     orig_offset, new_orig_count, new_offset);
 			} else if (new_new_count != 1) {
-				if (asprintf (&hunk_header, "@@ -%lu +%lu,%lu @@\n",
-					      orig_offset, new_offset, new_new_count) < 0) {
-					error (EXIT_FAILURE, errno, "Memory allocation failed");
-				}
+				print_color (out, LINE_HUNK, "@@ -%lu +%lu,%lu @@\n",
+					     orig_offset, new_offset, new_new_count);
 			} else {
-				if (asprintf (&hunk_header, "@@ -%lu +%lu @@\n",
-					      orig_offset, new_offset) < 0) {
-					error (EXIT_FAILURE, errno, "Memory allocation failed");
-				}
+				print_color (out, LINE_HUNK, "@@ -%lu +%lu @@\n",
+					     orig_offset, new_offset);
 			}
-			colored_hunk = colorize_line (hunk_header, LINE_HUNK, out);
-			fputs (colored_hunk, out);
-			free (hunk_header);
-			free (colored_hunk);
 		}
 
 		while (total_count--) {
@@ -1179,9 +1172,7 @@ trim_context (FILE *f /* positioned at start of @@ line */,
 					type = LINE_CONTEXT;
 					break;
 				}
-				char *colored_line = colorize_line (line, type, out);
-				fputs (colored_line, out);
-				free (colored_line);
+				print_color (out, type, "%s", line);
 			}
 		}
 	}
@@ -1365,7 +1356,6 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 		/* First character */
 		if (human_readable) {
 			char *p, *q, c, d;
-			char *header_line;
 			c = d = '\0'; /* shut gcc up */
 			p = strchr (oldname + 4, '\t');
 			if (p) {
@@ -1377,34 +1367,14 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 				d = *q;
 				*q = '\0';
 			}
-			if (asprintf (&header_line, DIFF " %s %s %s\n", options, oldname + 4,
-				      newname + 4) < 0) {
-				error (EXIT_FAILURE, errno, "Memory allocation failed");
-			}
-			char *colored_header = colorize_line (header_line, LINE_HEADER, out);
-			fputs (colored_header, out);
-			free (header_line);
-			free (colored_header);
+			print_color (out, LINE_HEADER, DIFF " %s %s %s\n", options, oldname + 4,
+				     newname + 4);
 			if (p) *p = c;
 			if (q) *q = d;
 		}
 		{
-			char *old_line, *new_line;
-			char *colored_old, *colored_new;
-			if (asprintf (&old_line, "--- %s\n", oldname + 4) < 0) {
-				error (EXIT_FAILURE, errno, "Memory allocation failed");
-			}
-			if (asprintf (&new_line, "+++ %s\n", newname + 4) < 0) {
-				error (EXIT_FAILURE, errno, "Memory allocation failed");
-			}
-			colored_old = colorize_line (old_line, LINE_FILE, out);
-			colored_new = colorize_line (new_line, LINE_FILE, out);
-			fputs (colored_old, out);
-			fputs (colored_new, out);
-			free (old_line);
-			free (new_line);
-			free (colored_old);
-			free (colored_new);
+			print_color (out, LINE_FILE, "--- %s\n", oldname + 4);
+			print_color (out, LINE_FILE, "+++ %s\n", newname + 4);
 		}
 		rewind (tmpdiff);
 		trim_context (tmpdiff, file.unline, out);
