@@ -109,6 +109,9 @@ struct patch_scanner {
     char *next_line;                   /* Next line buffered for peek-ahead */
     unsigned long next_line_number;    /* Line number of buffered line */
     int has_next_line;                 /* Flag: next_line contains valid data */
+
+    /* Pending line for reprocessing after emitting accumulated headers */
+    char *pending_line;                /* Line to reprocess on next call */
 };
 
 /* Forward declarations */
@@ -280,12 +283,44 @@ int patch_scanner_next(patch_scanner_t *scanner, const patch_content_t **content
             return PATCH_SCAN_OK;
         }
 
-        /* Read next line */
-        result = scanner_read_line(scanner);
+        /* Check for pending line first */
+        if (scanner->pending_line) {
+            /* Use pending line instead of reading new one */
+            strncpy(scanner->line_buffer, scanner->pending_line, scanner->line_buffer_size - 1);
+            scanner->line_buffer[scanner->line_buffer_size - 1] = '\0';
+            free(scanner->pending_line);
+            scanner->pending_line = NULL;
+            result = PATCH_SCAN_OK;
+        } else {
+            /* Read next line */
+            result = scanner_read_line(scanner);
+        }
+
         if (result == PATCH_SCAN_EOF) {
             /* Handle EOF - if we were accumulating headers, emit them as non-patch */
             if (scanner->state == STATE_ACCUMULATING_HEADERS && scanner->num_header_lines > 0) {
-                /* TODO: Emit accumulated headers as non-patch content */
+                /* Create a single string with all accumulated headers */
+                size_t total_len = 0;
+                for (unsigned int i = 0; i < scanner->num_header_lines; i++) {
+                    total_len += strlen(scanner->header_lines[i]) + 1; /* +1 for newline */
+                }
+
+                char *combined = xmalloc(total_len + 1);
+                combined[0] = '\0';
+                for (unsigned int i = 0; i < scanner->num_header_lines; i++) {
+                    strcat(combined, scanner->header_lines[i]);
+                    if (i < scanner->num_header_lines - 1) {
+                        strcat(combined, "\n");
+                    }
+                }
+
+                scanner_emit_non_patch(scanner, combined, strlen(combined));
+                free(combined);
+                scanner_free_headers(scanner);
+                scanner->state = STATE_SEEKING_PATCH;
+
+                *content = &scanner->current_content;
+                return PATCH_SCAN_OK;
             }
             return PATCH_SCAN_EOF;
         } else if (result != PATCH_SCAN_OK) {
@@ -378,23 +413,34 @@ int patch_scanner_next(patch_scanner_t *scanner, const patch_content_t **content
                 continue;
             } else {
                 /* This line doesn't continue headers - accumulated lines weren't a patch */
-                /* TODO: Emit accumulated lines as non-patch content */
-                /* Reset and process current line */
+                /* Create a single string with all accumulated headers */
+                size_t total_len = 0;
+                for (unsigned int i = 0; i < scanner->num_header_lines; i++) {
+                    total_len += strlen(scanner->header_lines[i]) + 1; /* +1 for newline */
+                }
+
+                char *combined = xmalloc(total_len + 1);
+                combined[0] = '\0';
+                for (unsigned int i = 0; i < scanner->num_header_lines; i++) {
+                    strcat(combined, scanner->header_lines[i]);
+                    if (i < scanner->num_header_lines - 1) {
+                        strcat(combined, "\n");
+                    }
+                }
+
+                scanner_emit_non_patch(scanner, combined, strlen(combined));
+                free(combined);
                 scanner_free_headers(scanner);
                 scanner->state = STATE_SEEKING_PATCH;
 
-                /* Process current line in SEEKING state */
-                if (scanner_is_potential_patch_start(line)) {
-                    scanner->state = STATE_ACCUMULATING_HEADERS;
-                    scanner->num_header_lines = 0;
-                    scanner->header_start_line = scanner->line_number;
-                    scanner->header_lines[scanner->num_header_lines++] = xstrdup(line);
-                    continue;
-                } else {
-                    scanner_emit_non_patch(scanner, line, line_length);
-                    *content = &scanner->current_content;
-                    return PATCH_SCAN_OK;
+                /* Store current line for next call */
+                if (scanner->pending_line) {
+                    free(scanner->pending_line);
                 }
+                scanner->pending_line = xstrdup(line);
+
+                *content = &scanner->current_content;
+                return PATCH_SCAN_OK;
             }
 
         case STATE_IN_PATCH:
@@ -582,6 +628,11 @@ void patch_scanner_destroy(patch_scanner_t *scanner)
     /* Free simple peek-ahead buffer */
     if (scanner->next_line) {
         free(scanner->next_line);
+    }
+
+    /* Free pending line buffer */
+    if (scanner->pending_line) {
+        free(scanner->pending_line);
     }
 
     /* Free context diff buffer */
@@ -838,8 +889,7 @@ static int scanner_validate_headers(patch_scanner_t *scanner)
 
 static int scanner_parse_headers(patch_scanner_t *scanner)
 {
-    /* TODO: Implement proper header parsing */
-    /* For now, just extract basic filenames */
+    /* Parse headers and extract file information */
 
     memset(&scanner->current_headers, 0, sizeof(scanner->current_headers));
     scanner->current_headers.type = PATCH_TYPE_UNIFIED;
