@@ -17,14 +17,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
  * This is a scanner-based implementation of lsdiff using the unified patch scanner API.
- *
- * TODO: REMAINING IMPROVEMENTS
- * ============================
- * RANGE PARSING IMPROVEMENTS:
- *   Full range syntax for -F/--files option: "1,3-5,8", "3-", "-", "x1,3" (exclusion)
- *   Currently only supports single numbers
- *
- * See filterdiff.c for reference implementation of full range parsing.
  */
 
 #ifdef HAVE_CONFIG_H
@@ -74,6 +66,7 @@ static char *add_new_prefix = NULL;     /* --addnewprefix */
 static struct patlist *pat_include = NULL;  /* -i, --include */
 static struct patlist *pat_exclude = NULL;  /* -x, --exclude */
 static struct range *files = NULL;          /* -F, --files */
+static int files_exclude = 0;               /* -F with x prefix */
 
 /* File counter for -N option */
 static int file_number = 0;
@@ -431,17 +424,20 @@ static int should_display_file(const char *filename)
         struct range *r;
         int file_matches = 0;
 
-        /* TODO: Handle files_exclude flag and range exclusion (x prefix) */
-
+        /* Check if file number matches any range (-1UL is wildcard) */
         for (r = files; r; r = r->next) {
-            if (file_number >= r->start && file_number <= r->end) {
+            if ((r->start == -1UL || r->start <= file_number) &&
+                (r->end == -1UL || file_number <= r->end)) {
                 file_matches = 1;
                 break;
             }
         }
 
-        if (!file_matches)
-            return 0;
+        /* Handle exclusion logic */
+        if (files && !file_matches && !files_exclude)
+            return 0;  /* File doesn't match and we're including */
+        if (files && file_matches && files_exclude)
+            return 0;  /* File matches and we're excluding */
     }
 
     return 1;
@@ -721,6 +717,12 @@ int main(int argc, char *argv[])
             patlist_add_file(&pat_exclude, optarg);
             break;
         case 'F':
+            if (files)
+                syntax(1);
+            if (*optarg == 'x') {
+                files_exclude = 1;
+                optarg = optarg + 1;
+            }
             parse_range(&files, optarg);
             break;
         case 'v':
@@ -821,35 +823,51 @@ int main(int argc, char *argv[])
  * Used with -F option to select specific files from a patch by their
  * position (file number), which can then be used with filterdiff's
  * --files option for further processing.
- *
- * This is a simplified implementation that only supports single numbers.
- * The full implementation in filterdiff.c supports all range formats above.
- *
- * TODO: Implement full range parsing functionality:
- *   - Support ranges: "3-5", "3-", "-"
- *   - Support comma-separated lists: "1,3-5,8"
- *   - Support exclusion ranges with 'x' prefix: "x1,3"
- *   - Add proper error handling for invalid ranges
- *
- * Current implementation only supports single numbers like "3".
  */
 static void parse_range(struct range **r, const char *rstr)
 {
     unsigned long n;
     char *end;
-    struct range *new_range;
 
-    n = strtoul(rstr, &end, 0);
-    if (rstr == end)
-        return; /* Invalid number */
+    if (*rstr == '-')
+        n = -1UL;
+    else {
+        n = strtoul(rstr, &end, 0);
+        if (rstr == end) {
+            if (*end)
+                error(EXIT_FAILURE, 0,
+                      "not understood: '%s'", end);
+            else
+                error(EXIT_FAILURE, 0,
+                      "missing number in range list");
 
-    new_range = malloc(sizeof(struct range));
-    if (!new_range)
-        return;
+            *r = NULL;
+            return;
+        }
 
-    new_range->start = n;
-    new_range->end = n;
-    new_range->next = *r;
-    *r = new_range;
+        rstr = end;
+    }
+
+    *r = xmalloc(sizeof **r);
+    (*r)->start = (*r)->end = n;
+    (*r)->next = NULL;
+    if (*rstr == '-') {
+        rstr++;
+        n = strtoul(rstr, &end, 0);
+        if (rstr == end)
+            n = -1UL;
+
+        (*r)->end = n;
+        rstr = end;
+
+        if ((*r)->start != -1UL && (*r)->start > (*r)->end)
+            error(EXIT_FAILURE, 0, "invalid range: %lu-%lu",
+                  (*r)->start, (*r)->end);
+    }
+
+    if (*rstr == ',')
+        parse_range(&(*r)->next, rstr + 1);
+    else if (*rstr != '\0')
+        error(EXIT_FAILURE, 0, "not understood: '%s'", rstr);
 }
 
