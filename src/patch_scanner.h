@@ -1,5 +1,5 @@
 /*
- * patch_scanner.h - unified patch parsing API
+ * patch_scanner.h - patch parsing API
  * Copyright (C) 2024 Tim Waugh <twaugh@redhat.com>
  *
  * This program is free software; you can redistribute it and/or modify
