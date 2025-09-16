@@ -310,26 +310,26 @@ static const char *get_best_filename(const struct patch_headers *headers)
                     }
                 }
             } else if (headers->rename_from || headers->rename_to) {
-                /* Pure rename (no hunks): prefer rename headers (source first for tie-breaking) */
-                if (headers->rename_from) {
-                    stripped_candidates[count] = strip_git_prefix_from_filename(headers->rename_from);
+                /* Pure rename (no hunks): use git diff line filenames (source first for tie-breaking) */
+                if (headers->git_old_name) {
+                    stripped_candidates[count] = strip_git_prefix_from_filename(headers->git_old_name);
                     candidates[count] = stripped_candidates[count];
                     count++;
                 }
-                if (headers->rename_to) {
-                    stripped_candidates[count] = strip_git_prefix_from_filename(headers->rename_to);
+                if (headers->git_new_name) {
+                    stripped_candidates[count] = strip_git_prefix_from_filename(headers->git_new_name);
                     candidates[count] = stripped_candidates[count];
                     count++;
                 }
             } else if (headers->copy_from || headers->copy_to) {
-                /* Pure copy (no hunks): prefer copy headers (source first for tie-breaking) */
-                if (headers->copy_from) {
-                    stripped_candidates[count] = strip_git_prefix_from_filename(headers->copy_from);
+                /* Pure copy (no hunks): use git diff line filenames (source first for tie-breaking) */
+                if (headers->git_old_name) {
+                    stripped_candidates[count] = strip_git_prefix_from_filename(headers->git_old_name);
                     candidates[count] = stripped_candidates[count];
                     count++;
                 }
-                if (headers->copy_to) {
-                    stripped_candidates[count] = strip_git_prefix_from_filename(headers->copy_to);
+                if (headers->git_new_name) {
+                    stripped_candidates[count] = strip_git_prefix_from_filename(headers->git_new_name);
                     candidates[count] = stripped_candidates[count];
                     count++;
                 }
