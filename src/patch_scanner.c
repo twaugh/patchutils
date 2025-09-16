@@ -26,6 +26,8 @@
 #include <string.h>
 #include <errno.h>
 #include <ctype.h>
+#include <limits.h>
+#include <stdint.h>
 
 #include "patch_scanner.h"
 #include "util.h"
@@ -319,7 +321,13 @@ int patch_scanner_next(patch_scanner_t *scanner, const patch_content_t **content
                 /* Create a single string with all accumulated headers */
                 size_t total_len = 0;
                 for (unsigned int i = 0; i < scanner->num_header_lines; i++) {
-                    total_len += strlen(scanner->header_lines[i]) + 1; /* +1 for newline */
+                    size_t header_len = strlen(scanner->header_lines[i]) + 1; /* +1 for newline */
+                    /* Check for integer overflow */
+                    if (total_len > SIZE_MAX - header_len) {
+                        scanner->state = STATE_ERROR;
+                        return PATCH_SCAN_ERROR;
+                    }
+                    total_len += header_len;
                 }
 
                 char *combined = xmalloc(total_len + 1);
@@ -433,7 +441,13 @@ int patch_scanner_next(patch_scanner_t *scanner, const patch_content_t **content
                 /* Create a single string with all accumulated headers */
                 size_t total_len = 0;
                 for (unsigned int i = 0; i < scanner->num_header_lines; i++) {
-                    total_len += strlen(scanner->header_lines[i]) + 1; /* +1 for newline */
+                    size_t header_len = strlen(scanner->header_lines[i]) + 1; /* +1 for newline */
+                    /* Check for integer overflow */
+                    if (total_len > SIZE_MAX - header_len) {
+                        scanner->state = STATE_ERROR;
+                        return PATCH_SCAN_ERROR;
+                    }
+                    total_len += header_len;
                 }
 
                 char *combined = xmalloc(total_len + 1);
