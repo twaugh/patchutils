@@ -166,11 +166,11 @@ static struct file_list *files_in_patch1 = NULL;
 static int
 check_filename (const char *fn)
 {
-	if (patlist_match(pat_drop_context, fn)) {
+	if (patlist_match(pat_drop_context, fn))
 		max_context = 0;
-	} else {
+	else
 		max_context = max_context_real;
-	}
+
 	return 1;
 }
 
@@ -237,9 +237,8 @@ determine_ignore_components (struct file_list *list1, struct file_list *list2)
 			const char *stripped1 = stripped(l1->file, p);
 			for (struct file_list *l2 = list2; l2; l2 = l2->next) {
 				const char *stripped2 = stripped(l2->file, p);
-				if (!strcmp(stripped1, stripped2)) {
+				if (!strcmp(stripped1, stripped2))
 					return p;
-				}
 			}
 		}
 	}
@@ -2174,12 +2173,10 @@ interdiff (FILE *p1, FILE *p2, const char *patch1, const char *patch2)
 
 		if (flipdiff_inplace) {
 			/* Use atomic in-place writing for safety */
-			if (write_file_inplace(patch2, flip1) != 0) {
+			if (write_file_inplace(patch2, flip1) != 0)
 				error (EXIT_FAILURE, errno, "failed to write %s", patch2);
-			}
-			if (write_file_inplace(patch1, flip2) != 0) {
+			if (write_file_inplace(patch1, flip2) != 0)
 				error (EXIT_FAILURE, errno, "failed to write %s", patch1);
-			}
 		} else {
 			copy (flip1, stdout);
 			puts ("\n=== 8< === cut here === 8< ===\n");
