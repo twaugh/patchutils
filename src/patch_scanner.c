@@ -1,5 +1,5 @@
 /*
- * patch_scanner.c - unified patch parsing implementation
+ * patch_scanner.c - patch parsing implementation
  * Copyright (C) 2024 Tim Waugh <twaugh@redhat.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -681,9 +681,8 @@ static int scanner_read_line(patch_scanner_t *scanner)
     if (result == -1) {
         if (feof(scanner->file)) {
             return PATCH_SCAN_EOF;
-        } else {
-            return PATCH_SCAN_IO_ERROR;
         }
+        return PATCH_SCAN_IO_ERROR;
     }
 
     scanner->line_number++;
@@ -830,13 +829,11 @@ static int scanner_validate_headers(patch_scanner_t *scanner)
         if (has_old_file || has_new_file) {
             /* If we have any unified diff headers, we need both */
             return has_old_file && has_new_file;
-        } else {
-            /* Pure Git metadata diff (no hunks) - complete */
-            return 1;
         }
-    } else {
-        return has_old_file && has_new_file;
+        /* Pure Git metadata diff (no hunks) - complete */
+        return 1;
     }
+    return has_old_file && has_new_file;
 }
 
 static int scanner_parse_headers(patch_scanner_t *scanner)
@@ -1178,11 +1175,6 @@ static int scanner_emit_hunk_line(patch_scanner_t *scanner, const char *line)
 {
     char line_type = line[0];
 
-    /* Validate line type */
-    if (line_type != ' ' && line_type != '+' && line_type != '-' && line_type != '!') {
-        return PATCH_SCAN_ERROR;
-    }
-
     /* Update remaining line counts based on line type */
     switch (line_type) {
     case ' ':
@@ -1215,6 +1207,8 @@ static int scanner_emit_hunk_line(patch_scanner_t *scanner, const char *line)
             scanner->hunk_new_remaining--;
         }
         break;
+    default:
+        return PATCH_SCAN_ERROR;
     }
 
     scanner->current_line.type = (enum patch_hunk_line_type)line_type;
@@ -1765,9 +1759,8 @@ static int scanner_should_wait_for_unified_headers(patch_scanner_t *scanner)
             return 0; /* Don't complete yet - wait for binary content */
         } else if (scanner_is_git_extended_header(next_line)) {
             return 0; /* Don't complete yet - wait for more Git extended headers */
-        } else {
-            return 1; /* Complete as Git metadata-only */
         }
+        return 1; /* Complete as Git metadata-only */
     }
 
     /* Read the next line and buffer it */
@@ -1798,7 +1791,6 @@ static int scanner_should_wait_for_unified_headers(patch_scanner_t *scanner)
         return 0; /* Don't complete yet - wait for binary content */
     } else if (scanner_is_git_extended_header(line)) {
         return 0; /* Don't complete yet - wait for more Git extended headers */
-    } else {
-        return 1; /* Complete as Git metadata-only */
     }
+    return 1; /* Complete as Git metadata-only */
 }
