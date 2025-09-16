@@ -30,6 +30,9 @@
 #include "patch_scanner.h"
 #include "util.h"
 
+/* Maximum context buffer size (lines) to prevent excessive memory usage */
+#define MAX_CONTEXT_BUFFER_SIZE 65536
+
 /* Forward declarations for header parsing functions */
 static void scanner_parse_git_diff_line(patch_scanner_t *scanner, const char *line);
 static void scanner_parse_old_file_line(patch_scanner_t *scanner, const char *line);
@@ -166,7 +169,14 @@ static int scanner_context_buffer_add(patch_scanner_t *scanner, const struct pat
 {
     /* Ensure we have space */
     if (scanner->context_buffer_count >= scanner->context_buffer_allocated) {
+        /* Cap buffer size at reasonable maximum */
+        if (scanner->context_buffer_allocated >= MAX_CONTEXT_BUFFER_SIZE) {
+            return PATCH_SCAN_MEMORY_ERROR;
+        }
         unsigned int new_size = scanner->context_buffer_allocated * 2;
+        if (new_size > MAX_CONTEXT_BUFFER_SIZE) {
+            new_size = MAX_CONTEXT_BUFFER_SIZE;
+        }
         struct patch_hunk_line *new_buffer = realloc(scanner->context_buffer,
                                                       new_size * sizeof(struct patch_hunk_line));
         if (!new_buffer) {
