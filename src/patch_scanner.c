@@ -33,6 +33,12 @@
 /* Maximum context buffer size (lines) to prevent excessive memory usage */
 #define MAX_CONTEXT_BUFFER_SIZE 65536
 
+/* Maximum number of temporary strings to prevent excessive memory usage */
+#define MAX_TEMP_STRINGS 16384
+
+/* Maximum line length to prevent integer overflow */
+#define MAX_LINE_LENGTH (1024 * 1024)
+
 /* Forward declarations for header parsing functions */
 static void scanner_parse_git_diff_line(patch_scanner_t *scanner, const char *line);
 static void scanner_parse_old_file_line(patch_scanner_t *scanner, const char *line);
@@ -91,6 +97,11 @@ struct patch_scanner {
     struct patch_hunk current_hunk;       /* Current hunk */
     struct patch_hunk_line current_line;  /* Current hunk line */
 
+    /* Temporary storage for content strings (to avoid buffer reuse issues) */
+    char **temp_strings;           /* Array of allocated strings */
+    unsigned int temp_strings_count;      /* Number of allocated strings */
+    unsigned int temp_strings_allocated;  /* Allocated slots */
+
     /* Hunk processing state */
     unsigned long hunk_orig_remaining; /* Remaining original lines in hunk */
     unsigned long hunk_new_remaining;  /* Remaining new lines in hunk */
@@ -125,6 +136,7 @@ static int scanner_is_header_continuation(patch_scanner_t *scanner, const char *
 static int scanner_validate_headers(patch_scanner_t *scanner);
 static int scanner_parse_headers(patch_scanner_t *scanner);
 static void scanner_init_content(patch_scanner_t *scanner, enum patch_content_type type);
+static char *scanner_store_temp_string(patch_scanner_t *scanner, const char *str, size_t length);
 static int scanner_emit_non_patch(patch_scanner_t *scanner, const char *line, size_t length);
 static int scanner_emit_headers(patch_scanner_t *scanner);
 static int scanner_emit_hunk_header(patch_scanner_t *scanner, const char *line);
@@ -240,6 +252,11 @@ patch_scanner_t* patch_scanner_create(FILE *file)
     /* Initialize header accumulation */
     scanner->header_lines_allocated = 8;
     scanner->header_lines = xmalloc(sizeof(char*) * scanner->header_lines_allocated);
+
+    /* Initialize temporary string storage */
+    scanner->temp_strings_allocated = 16;
+    scanner->temp_strings = xmalloc(sizeof(char*) * scanner->temp_strings_allocated);
+    scanner->temp_strings_count = 0;
 
     /* Initialize simple peek-ahead buffer */
     scanner->next_line = NULL;
@@ -658,6 +675,16 @@ void patch_scanner_destroy(patch_scanner_t *scanner)
         free(scanner->current_hunk.context);
     }
 
+    /* Free temporary string storage */
+    if (scanner->temp_strings) {
+        for (unsigned int i = 0; i < scanner->temp_strings_count; i++) {
+            if (scanner->temp_strings[i]) {
+                free(scanner->temp_strings[i]);
+            }
+        }
+        free(scanner->temp_strings);
+    }
+
     free(scanner);
 }
 
@@ -995,10 +1022,53 @@ static void scanner_init_content(patch_scanner_t *scanner, enum patch_content_ty
     scanner->current_content.position = scanner->current_position;
 }
 
+static char *scanner_store_temp_string(patch_scanner_t *scanner, const char *str, size_t length)
+{
+    /* Reasonable limits to prevent excessive memory usage and integer overflow */
+    if (length > MAX_LINE_LENGTH) {
+        return NULL;
+    }
+
+    if (scanner->temp_strings_count >= MAX_TEMP_STRINGS) {
+        return NULL;
+    }
+
+    /* Expand array if needed */
+    if (scanner->temp_strings_count >= scanner->temp_strings_allocated) {
+        unsigned int new_allocated = scanner->temp_strings_allocated * 2;
+
+        /* Cap at maximum to prevent overflow */
+        if (new_allocated > MAX_TEMP_STRINGS) {
+            new_allocated = MAX_TEMP_STRINGS;
+        }
+
+        scanner->temp_strings_allocated = new_allocated;
+        scanner->temp_strings = xrealloc(scanner->temp_strings,
+                                       sizeof(char*) * scanner->temp_strings_allocated);
+    }
+
+    /* Allocate and copy string */
+    char *copy = xmalloc(length + 1);
+    memcpy(copy, str, length);
+    copy[length] = '\0';
+
+    /* Store in array */
+    scanner->temp_strings[scanner->temp_strings_count++] = copy;
+
+    return copy;
+}
+
 static int scanner_emit_non_patch(patch_scanner_t *scanner, const char *line, size_t length)
 {
     scanner_init_content(scanner, PATCH_CONTENT_NON_PATCH);
-    scanner->current_content.data.non_patch.line = line;
+
+    /* Store a copy of the line content to avoid buffer reuse issues */
+    char *line_copy = scanner_store_temp_string(scanner, line, length);
+    if (!line_copy) {
+        return PATCH_SCAN_ERROR;
+    }
+
+    scanner->current_content.data.non_patch.line = line_copy;
     scanner->current_content.data.non_patch.length = length;
 
     return PATCH_SCAN_OK;
@@ -1274,18 +1344,34 @@ static int scanner_emit_hunk_line(patch_scanner_t *scanner, const char *line)
 
 static int scanner_emit_no_newline(patch_scanner_t *scanner, const char *line)
 {
+    size_t length = strlen(line);
     scanner_init_content(scanner, PATCH_CONTENT_NO_NEWLINE);
-    scanner->current_content.data.no_newline.line = line;
-    scanner->current_content.data.no_newline.length = strlen(line);
+
+    /* Store a copy of the line content to avoid buffer reuse issues */
+    char *line_copy = scanner_store_temp_string(scanner, line, length);
+    if (!line_copy) {
+        return PATCH_SCAN_ERROR;
+    }
+
+    scanner->current_content.data.no_newline.line = line_copy;
+    scanner->current_content.data.no_newline.length = length;
 
     return PATCH_SCAN_OK;
 }
 
 static int scanner_emit_binary(patch_scanner_t *scanner, const char *line)
 {
+    size_t length = strlen(line);
     scanner_init_content(scanner, PATCH_CONTENT_BINARY);
-    scanner->current_content.data.binary.line = line;
-    scanner->current_content.data.binary.length = strlen(line);
+
+    /* Store a copy of the line content to avoid buffer reuse issues */
+    char *line_copy = scanner_store_temp_string(scanner, line, length);
+    if (!line_copy) {
+        return PATCH_SCAN_ERROR;
+    }
+
+    scanner->current_content.data.binary.line = line_copy;
+    scanner->current_content.data.binary.length = length;
     scanner->current_content.data.binary.is_git_binary = !strncmp(line, "GIT binary patch", sizeof("GIT binary patch") - 1);
 
     return PATCH_SCAN_OK;
