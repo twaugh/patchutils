@@ -18,26 +18,13 @@
  *
  * This is a scanner-based implementation of lsdiff using the unified patch scanner API.
  *
- * TODO: CRITICAL COMPATIBILITY ISSUES (30 test failures)
- * ======================================================
- * URGENT FIXES NEEDED (causing test failures):
- *   1. Line number tracking (-n): Option parsed but linenum always 0
- *   2. Filename selection: Scanner prefers new_name, tests expect old_name logic
- *   3. Empty files as absent (-E): Option parsed but logic not implemented
- *   4. Git status detection: Files without hunks not handled properly
- *
- * ADVANCED MISSING FEATURES (for full filterdiff.c parity):
- *   --strip=N             Strip N leading path components (different from -p)
- *   --git-prefixes=MODE   Handle a/ and b/ prefixes (strip|keep)
- *   --addprefix=PREFIX    Add prefix to all pathnames
- *   --addoldprefix=PREFIX Add prefix to old file pathnames
- *   --addnewprefix=PREFIX Add prefix to new file pathnames
- *
+ * TODO: REMAINING IMPROVEMENTS
+ * ============================
  * RANGE PARSING IMPROVEMENTS:
- *   Full range syntax: "1,3-5,8", "3-", "-", "x1,3" (exclusion)
+ *   Full range syntax for -F/--files option: "1,3-5,8", "3-", "-", "x1,3" (exclusion)
  *   Currently only supports single numbers
  *
- * See filterdiff.c for reference implementations of missing features.
+ * See filterdiff.c for reference implementation of full range parsing.
  */
 
 #ifdef HAVE_CONFIG_H
@@ -841,8 +828,10 @@ int main(int argc, char *argv[])
  * TODO: Implement full range parsing functionality:
  *   - Support ranges: "3-5", "3-", "-"
  *   - Support comma-separated lists: "1,3-5,8"
- *   - Support exclusion ranges with 'x' prefix
+ *   - Support exclusion ranges with 'x' prefix: "x1,3"
  *   - Add proper error handling for invalid ranges
+ *
+ * Current implementation only supports single numbers like "3".
  */
 static void parse_range(struct range **r, const char *rstr)
 {
