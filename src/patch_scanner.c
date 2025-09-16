@@ -56,10 +56,10 @@ static int scanner_is_git_extended_header(const char *line);
 enum scanner_state {
     STATE_SEEKING_PATCH,         /* Looking for start of patch */
     STATE_ACCUMULATING_HEADERS,  /* Collecting potential headers */
-    STATE_IN_PATCH,             /* Processing patch content */
-    STATE_IN_HUNK,              /* Processing hunk lines */
-    STATE_BINARY_READY,         /* Ready to emit binary content */
-    STATE_ERROR                 /* Error state */
+    STATE_IN_PATCH,              /* Processing patch content */
+    STATE_IN_HUNK,               /* Processing hunk lines */
+    STATE_BINARY_READY,          /* Ready to emit binary content */
+    STATE_ERROR                  /* Error state */
 };
 
 /* Internal scanner structure */
@@ -76,11 +76,11 @@ struct patch_scanner {
     enum scanner_state state;   /* Current parsing state */
 
     /* Header accumulation */
-    struct patch_headers *pending_headers; /* Headers being accumulated */
-    char **header_lines;        /* Raw header lines */
-    unsigned int num_header_lines; /* Number of accumulated headers */
-    unsigned int header_lines_allocated; /* Allocated header slots */
-    unsigned long header_start_line; /* Line number where current headers started */
+    struct patch_headers *pending_headers;  /* Headers being accumulated */
+    char **header_lines;                    /* Raw header lines */
+    unsigned int num_header_lines;          /* Number of accumulated headers */
+    unsigned int header_lines_allocated;    /* Allocated header slots */
+    unsigned long header_start_line;        /* Line number where current headers started */
 
     /* Current content being emitted */
     struct patch_content current_content; /* Content structure for emission */
@@ -94,13 +94,13 @@ struct patch_scanner {
     int in_hunk;                       /* Are we currently in a hunk? */
 
     /* Context diff buffering (bounded by hunk size) */
-    struct patch_hunk_line *context_buffer; /* Buffered old section lines */
-    unsigned int context_buffer_count;      /* Number of buffered lines */
-    unsigned int context_buffer_allocated;  /* Allocated buffer slots */
-    unsigned int context_buffer_emit_index; /* Next buffered line to emit */
+    struct patch_hunk_line *context_buffer;  /* Buffered old section lines */
+    unsigned int context_buffer_count;       /* Number of buffered lines */
+    unsigned int context_buffer_allocated;   /* Allocated buffer slots */
+    unsigned int context_buffer_emit_index;  /* Next buffered line to emit */
     int context_buffering;                   /* Are we buffering old section? */
     int context_emitting_buffer;             /* Are we emitting buffered lines? */
-    unsigned long context_hunk_start_line;  /* Line number where hunk started (*** line) */
+    unsigned long context_hunk_start_line;   /* Line number where hunk started (*** line) */
 
     /* Simple one-line buffer for stdin-compatible peek-ahead */
     char *next_line;                   /* Next line buffered for peek-ahead */
@@ -259,7 +259,7 @@ int patch_scanner_next(patch_scanner_t *scanner, const patch_content_t **content
         /* If result is PATCH_SCAN_EOF, continue with normal processing */
     }
 
-    /* Main parsing loop - prevents recursion */
+    /* Main parsing loop */
     for (;;) {
         /* Handle states that don't require reading a new line */
         if (scanner->state == STATE_BINARY_READY) {
