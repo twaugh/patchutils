@@ -1344,10 +1344,8 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 			if (p) *p = c;
 			if (q) *q = d;
 		}
-		{
-			print_color (out, LINE_FILE, "--- %s\n", oldname + 4);
-			print_color (out, LINE_FILE, "+++ %s\n", newname + 4);
-		}
+		print_color (out, LINE_FILE, "--- %s\n", oldname + 4);
+		print_color (out, LINE_FILE, "+++ %s\n", newname + 4);
 		rewind (tmpdiff);
 		trim_context (tmpdiff, file.unline, out);
 		fclose (tmpdiff);
