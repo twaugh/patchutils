@@ -59,23 +59,25 @@
 #define PATCH "patch"
 #endif
 
-/* ANSI color codes for diff output */
 #define COLOR_RESET     "\033[0m"
-#define COLOR_HEADER    "\033[1m"       /* Bold for headers */
-#define COLOR_FILE      "\033[1m"       /* Bold for filenames */
-#define COLOR_HUNK      "\033[36m"      /* Cyan for hunk headers */
-#define COLOR_ADDED     "\033[32m"      /* Green for added lines */
-#define COLOR_REMOVED   "\033[31m"      /* Red for removed lines */
-#define COLOR_CONTEXT   ""              /* No color for context lines */
 
 /* Line type for coloring */
 enum line_type {
-	LINE_CONTEXT,
+	LINE_FILE = 0,
+	LINE_HEADER,
+	LINE_HUNK,
 	LINE_ADDED,
 	LINE_REMOVED,
-	LINE_HEADER,
-	LINE_FILE,
-	LINE_HUNK
+};
+
+/* ANSI color codes for diff output */
+static char*color_codes[] = {
+
+	[LINE_FILE] = "\033[1m",      /* Bold for filenames */
+	[LINE_HEADER] = "\033[1m",    /* Bold for headers */
+	[LINE_HUNK] = "\033[36m",     /* Cyan for hunk headers */
+	[LINE_ADDED] = "\033[32m",    /* Green for added lines */
+	[LINE_REMOVED] = "\033[31m",  /* Red for removed lines */
 };
 
 /* This can be invoked as interdiff, combinediff, or flipdiff. */
@@ -131,58 +133,33 @@ static struct file_list *files_in_patch1 = NULL;
 
 /*
  * Print colored output using a variadic format string.
- * This avoids the need for memory allocation and deallocation
- * that was required with the colorize_line approach.
  */
  static void
  print_color (FILE *output_file, enum line_type type, const char *format, ...)
  {
-	 const char *color_start = "";
-	 const char *color_end = "";
-	 va_list args;
+	const char *color_start = "";
+	const char *color_end = "";
+	va_list args;
 
-	 /* Only colorize if colors are enabled AND we're outputting to stdout */
-	 if (use_colors && output_file == stdout) {
-		 switch (type) {
-		 case LINE_CONTEXT:
-			 color_start = COLOR_CONTEXT;
-			 break;
-		 case LINE_ADDED:
-			 color_start = COLOR_ADDED;
-			 break;
-		 case LINE_REMOVED:
-			 color_start = COLOR_REMOVED;
-			 break;
-		 case LINE_HEADER:
-			 color_start = COLOR_HEADER;
-			 break;
-		 case LINE_FILE:
-			 color_start = COLOR_FILE;
-			 break;
-		 case LINE_HUNK:
-			 color_start = COLOR_HUNK;
-			 break;
-		 }
+	/* Only colorize if colors are enabled AND we're outputting to stdout */
+	if (use_colors && output_file == stdout) {
+		color_start = color_codes[type];
+		if (color_start[0] != '\0')
+			color_end = COLOR_RESET;
+	}
 
-		 if (color_start[0] != '\0') {
-			 color_end = COLOR_RESET;
-		 }
-	 }
+	/* Print color start code */
+	if (color_start[0] != '\0')
+		fputs (color_start, output_file);
 
-	 /* Print color start code */
-	 if (color_start[0] != '\0') {
-		 fputs (color_start, output_file);
-	 }
+	/* Print the formatted content */
+	va_start (args, format);
+	vfprintf (output_file, format, args);
+	va_end (args);
 
-	 /* Print the formatted content */
-	 va_start (args, format);
-	 vfprintf (output_file, format, args);
-	 va_end (args);
-
-	 /* Print color end code */
-	 if (color_end[0] != '\0') {
-		 fputs (color_end, output_file);
-	 }
+	/* Print color end code */
+	if (color_end[0] != '\0')
+		fputs (color_end, output_file);
  }
 
  /* checks whether file needs processing and sets context */
@@ -1061,7 +1038,7 @@ trim_context (FILE *f /* positioned at start of @@ line */,
 
 		if (line[0] == '\\') {
 			/* Pass '\' lines through unaltered. */
-			print_color (out, LINE_CONTEXT, "%s", line);
+			fputs (line, out);
 			continue;
 		}
 
@@ -1146,6 +1123,7 @@ trim_context (FILE *f /* positioned at start of @@ line */,
 		}
 
 		while (total_count--) {
+			enum line_type type;
 			ssize_t got = getline (&line, &linelen, f);
 			assert (got > 0);
 
@@ -1157,23 +1135,18 @@ trim_context (FILE *f /* positioned at start of @@ line */,
 			if (total_count < strip_post)
 				continue;
 
-			{
-				enum line_type type;
-				switch (line[0]) {
-				case '+':
-					type = LINE_ADDED;
-					break;
-				case '-':
-					type = LINE_REMOVED;
-					break;
-				case ' ':
-				case '\n':
-				default:
-					type = LINE_CONTEXT;
-					break;
-				}
-				print_color (out, type, "%s", line);
+			switch (line[0]) {
+			case '+':
+				type = LINE_ADDED;
+				break;
+			case '-':
+				type = LINE_REMOVED;
+				break;
+			default:
+				fwrite (line, (size_t) got, 1, out);
+				continue;
 			}
+			print_color (out, type, "%s", line);
 		}
 	}
 
@@ -2385,9 +2358,8 @@ main (int argc, char *argv[])
 			const char *color_mode = optarg ? optarg : "auto";
 
 			/* Handle auto mode: check if stdout is a terminal */
-			if (strcmp(color_mode, "auto") == 0) {
+			if (strcmp(color_mode, "auto") == 0)
 				color_mode = isatty(STDOUT_FILENO) ? "always" : "never";
-			}
 
 			/* Set our internal color flag instead of passing to diff */
 			use_colors = (strcmp(color_mode, "always") == 0);
@@ -2424,9 +2396,8 @@ main (int argc, char *argv[])
 		       "-z and --in-place are mutually exclusive.");
 
 	/* Set default color behavior if no color option was specified */
-	if (!color_option_specified && isatty(STDOUT_FILENO)) {
+	if (!color_option_specified && isatty(STDOUT_FILENO))
 		use_colors = 1;
-	}
 
 	if (optind + 2 != argc)
 		syntax (1);
