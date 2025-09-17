@@ -485,7 +485,7 @@ endif
 EXTRA_DIST = $(man_MANS) \
 	tests/common.sh tests/soak-test \
 	$(TESTS) $(XFAIL_TESTS) \
-	tests/scanner/test_basic.c tests/scanner/test_accumulated_headers.c tests/scanner/Makefile tests/scanner/README.md \
+	tests/scanner/test_basic.c tests/scanner/test_accumulated_headers.c tests/scanner/test_input_validation.c tests/scanner/Makefile tests/scanner/README.md \
 	src/patch_scanner.c src/patch_scanner.h \
 	README.md BUGS COPYING TODO ChangeLog \
 	bootstrap \

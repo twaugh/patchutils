@@ -20,7 +20,7 @@ top_srcdir="$(cd "$top_srcdir" && pwd)"
 mkdir -p "$top_builddir/tests/scanner"
 
 # Copy source files from srcdir to builddir (needed for distcheck)
-for file in Makefile test_basic.c test_accumulated_headers.c README.md; do
+for file in Makefile test_basic.c test_accumulated_headers.c test_input_validation.c README.md; do
     if [ -f "$top_srcdir/tests/scanner/$file" ] && [ ! -f "$top_builddir/tests/scanner/$file" ]; then
         cp "$top_srcdir/tests/scanner/$file" "$top_builddir/tests/scanner/$file"
     fi
@@ -44,6 +44,11 @@ tests/scanner/test_basic || {
 
 tests/scanner/test_accumulated_headers || {
     echo "Scanner accumulated headers tests failed"
+    exit 1
+}
+
+tests/scanner/test_input_validation || {
+    echo "Scanner input validation tests failed"
     exit 1
 }
 

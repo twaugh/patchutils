@@ -20,7 +20,7 @@ SCANNER_SRCS = ../../src/patch_scanner.c ../../src/util.c ../../src/diff.c
 SCANNER_OBJS = $(SCANNER_SRCS:.c=.o)
 
 # Test programs
-TESTS = test_basic test_accumulated_headers
+TESTS = test_basic test_accumulated_headers test_input_validation
 TEST_SRCS = $(TESTS:=.c)
 TEST_OBJS = $(TESTS:=.o)
 
@@ -32,6 +32,9 @@ test_basic: test_basic.o $(SCANNER_OBJS)
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 test_accumulated_headers: test_accumulated_headers.o $(SCANNER_OBJS)
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
+
+test_input_validation: test_input_validation.o $(SCANNER_OBJS)
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 # Object files
