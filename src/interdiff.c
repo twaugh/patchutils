@@ -132,7 +132,7 @@ static struct file_list *files_in_patch1 = NULL;
 /*
  * Print colored output using a variadic format string.
  */
-static void
+static void __attribute__((__format__(printf, 3, 4)))
 print_color (FILE *output_file, enum line_type type, const char *format, ...)
 {
 	const char *color_start = NULL;
