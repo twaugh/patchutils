@@ -59,25 +59,24 @@
 #define PATCH "patch"
 #endif
 
-#define COLOR_RESET     "\033[0m"
-
 /* Line type for coloring */
 enum line_type {
-	LINE_FILE = 0,
+	LINE_FILE,
 	LINE_HEADER,
 	LINE_HUNK,
 	LINE_ADDED,
 	LINE_REMOVED,
+	LINE_MAX
 };
 
 /* ANSI color codes for diff output */
-static char*color_codes[] = {
+static const char *const color_codes[LINE_MAX] = {
 
 	[LINE_FILE] = "\033[1m",      /* Bold for filenames */
 	[LINE_HEADER] = "\033[1m",    /* Bold for headers */
 	[LINE_HUNK] = "\033[36m",     /* Cyan for hunk headers */
 	[LINE_ADDED] = "\033[32m",    /* Green for added lines */
-	[LINE_REMOVED] = "\033[31m",  /* Red for removed lines */
+	[LINE_REMOVED] = "\033[31m"   /* Red for removed lines */
 };
 
 /* This can be invoked as interdiff, combinediff, or flipdiff. */
@@ -127,7 +126,6 @@ static int debug = 0;
 static struct patlist *pat_drop_context = NULL;
 
 static struct file_list *files_done = NULL;
-
 static struct file_list *files_in_patch2 = NULL;
 static struct file_list *files_in_patch1 = NULL;
 
@@ -137,19 +135,15 @@ static struct file_list *files_in_patch1 = NULL;
  static void
  print_color (FILE *output_file, enum line_type type, const char *format, ...)
  {
-	const char *color_start = "";
-	const char *color_end = "";
+	const char *color_start = NULL;
 	va_list args;
 
 	/* Only colorize if colors are enabled AND we're outputting to stdout */
-	if (use_colors && output_file == stdout) {
+	if (use_colors && output_file == stdout)
 		color_start = color_codes[type];
-		if (color_start[0] != '\0')
-			color_end = COLOR_RESET;
-	}
 
 	/* Print color start code */
-	if (color_start[0] != '\0')
+	if (color_start)
 		fputs (color_start, output_file);
 
 	/* Print the formatted content */
@@ -158,8 +152,8 @@ static struct file_list *files_in_patch1 = NULL;
 	va_end (args);
 
 	/* Print color end code */
-	if (color_end[0] != '\0')
-		fputs (color_end, output_file);
+	if (color_start)
+		fputs ("\033[0m", output_file);
  }
 
  /* checks whether file needs processing and sets context */
