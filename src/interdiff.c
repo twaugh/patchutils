@@ -132,9 +132,9 @@ static struct file_list *files_in_patch1 = NULL;
 /*
  * Print colored output using a variadic format string.
  */
- static void
- print_color (FILE *output_file, enum line_type type, const char *format, ...)
- {
+static void
+print_color (FILE *output_file, enum line_type type, const char *format, ...)
+{
 	const char *color_start = NULL;
 	va_list args;
 
@@ -154,7 +154,7 @@ static struct file_list *files_in_patch1 = NULL;
 	/* Print color end code */
 	if (color_start)
 		fputs ("\033[0m", output_file);
- }
+}
 
  /* checks whether file needs processing and sets context */
 static int
