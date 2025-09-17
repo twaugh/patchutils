@@ -310,7 +310,9 @@ TESTS = tests/newline1/run-test \
 XFAIL_TESTS = \
 	tests/delhunk5/run-test \
 	tests/delhunk6/run-test \
-	tests/rediff-empty-hunk/run-test
+	tests/rediff-empty-hunk/run-test \
+	tests/lsdiff-hunks-option/run-test \
+	tests/lsdiff-lines-option/run-test
 
 test-perms: src/combinediff$(EXEEXT) src/flipdiff$(EXEEXT) \
 		src/lsdiff$(EXEEXT) src/grepdiff$(EXEEXT) src/patchview$(EXEEXT) \

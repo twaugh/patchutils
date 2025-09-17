@@ -12,10 +12,6 @@ cat << EOF > diff
 -A
 +a
 +b
-@@ -10 +11,2 @@
--C
-+c
-+d
 --- file2
 +++ file2
 @@ -5 +5,2 @@
@@ -26,40 +22,69 @@ cat << EOF > diff
 -G
 +g
 +h
+--- file3
++++ file3
+@@ -10 +10,2 @@
+-I
++i
++j
+@@ -15 +16,2 @@
+-K
++k
++l
+@@ -25 +27,2 @@
+-M
++m
++n
 EOF
 
-# Test --hunks 1 (first hunk from each file)
+# Test --hunks 1 (first hunk - all files have at least 1 hunk)
 ${LSDIFF} --hunks 1 diff 2>errors >hunks1 || exit 1
 [ -s errors ] && exit 1
 
 cat << EOF | cmp - hunks1 || exit 1
 file1
 file2
+file3
 EOF
 
-# Test --hunks 2 (second hunk from each file)
+# Test --hunks 2 (second hunk - only file2 and file3 have 2+ hunks)
 ${LSDIFF} --hunks 2 diff 2>errors >hunks2 || exit 1
 [ -s errors ] && exit 1
 
 cat << EOF | cmp - hunks2 || exit 1
-file1
 file2
+file3
 EOF
 
-# Test --hunks 3 (third hunk - lsdiff still shows files even if hunks don't match)
+# Test --hunks 3 (third hunk - only file3 has 3 hunks)
 ${LSDIFF} --hunks 3 diff 2>errors >hunks3 || exit 1
 [ -s errors ] && exit 1
 
 cat << EOF | cmp - hunks3 || exit 1
-file1
-file2
+file3
 EOF
 
-# Test --hunks 1-2 (range: first and second hunks)
+# Test --hunks 1-2 (range: first and second hunks - all files have hunk 1, file2 and file3 have hunk 2)
 ${LSDIFF} --hunks 1-2 diff 2>errors >hunks1-2 || exit 1
 [ -s errors ] && exit 1
 
 cat << EOF | cmp - hunks1-2 || exit 1
 file1
 file2
+file3
 EOF
+
+# Test --hunks 2-3 (range: second and third hunks - file2 has hunk 2, file3 has hunks 2 and 3)
+${LSDIFF} --hunks 2-3 diff 2>errors >hunks2-3 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - hunks2-3 || exit 1
+file2
+file3
+EOF
+
+# Test --hunks 4 (fourth hunk - no files have 4 hunks, should be empty)
+${LSDIFF} --hunks 4 diff 2>errors >hunks4 || exit 1
+[ -s errors ] && exit 1
+[ -s hunks4 ] && exit 1  # Should be empty
