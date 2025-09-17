@@ -1112,8 +1112,13 @@ static int scanner_emit_hunk_header(patch_scanner_t *scanner, const char *line)
         return PATCH_SCAN_ERROR;
     }
     p++;
+    errno = 0; /* Clear errno before strtoul call */
     res = strtoul(p, &endptr, 10);
     if (p == endptr) {
+        return PATCH_SCAN_ERROR;
+    }
+    /* Check for overflow - strtoul returns ULONG_MAX on overflow and sets errno */
+    if (res == ULONG_MAX && errno == ERANGE) {
         return PATCH_SCAN_ERROR;
     }
     scanner->current_hunk.orig_offset = res;
@@ -1121,8 +1126,13 @@ static int scanner_emit_hunk_header(patch_scanner_t *scanner, const char *line)
     /* Parse original count after ',' if present */
     if (*endptr == ',') {
         p = endptr + 1;
+        errno = 0;
         res = strtoul(p, &endptr, 10);
         if (p == endptr) {
+            return PATCH_SCAN_ERROR;
+        }
+        /* Check for overflow */
+        if (res == ULONG_MAX && errno == ERANGE) {
             return PATCH_SCAN_ERROR;
         }
         scanner->current_hunk.orig_count = res;
@@ -1136,8 +1146,13 @@ static int scanner_emit_hunk_header(patch_scanner_t *scanner, const char *line)
         return PATCH_SCAN_ERROR;
     }
     p++;
+    errno = 0;
     res = strtoul(p, &endptr, 10);
     if (p == endptr) {
+        return PATCH_SCAN_ERROR;
+    }
+    /* Check for overflow */
+    if (res == ULONG_MAX && errno == ERANGE) {
         return PATCH_SCAN_ERROR;
     }
     scanner->current_hunk.new_offset = res;
@@ -1145,8 +1160,13 @@ static int scanner_emit_hunk_header(patch_scanner_t *scanner, const char *line)
     /* Parse new count after ',' if present */
     if (*endptr == ',') {
         p = endptr + 1;
+        errno = 0;
         res = strtoul(p, &endptr, 10);
         if (p == endptr) {
+            return PATCH_SCAN_ERROR;
+        }
+        /* Check for overflow */
+        if (res == ULONG_MAX && errno == ERANGE) {
             return PATCH_SCAN_ERROR;
         }
         scanner->current_hunk.new_count = res;
@@ -1200,8 +1220,13 @@ static int scanner_emit_context_hunk_header(patch_scanner_t *scanner, const char
     p = (char *)line + sizeof("*** ") - 1;
 
     /* Parse original offset */
+    errno = 0;
     res = strtoul(p, &endptr, 10);
     if (endptr == p) {
+        return PATCH_SCAN_ERROR;
+    }
+    /* Check for overflow */
+    if (res == ULONG_MAX && errno == ERANGE) {
         return PATCH_SCAN_ERROR;
     }
     scanner->current_hunk.orig_offset = res;
@@ -1209,8 +1234,13 @@ static int scanner_emit_context_hunk_header(patch_scanner_t *scanner, const char
     /* Check for comma and count */
     if (*endptr == ',') {
         p = endptr + 1;
+        errno = 0;
         res = strtoul(p, &endptr, 10);
         if (endptr == p) {
+            return PATCH_SCAN_ERROR;
+        }
+        /* Check for overflow */
+        if (res == ULONG_MAX && errno == ERANGE) {
             return PATCH_SCAN_ERROR;
         }
         scanner->current_hunk.orig_count = res;
@@ -1261,8 +1291,13 @@ static int scanner_emit_context_new_hunk_header(patch_scanner_t *scanner, const 
     p = (char *)line + sizeof("--- ") - 1;
 
     /* Parse new offset */
+    errno = 0;
     res = strtoul(p, &endptr, 10);
     if (endptr == p) {
+        return PATCH_SCAN_ERROR;
+    }
+    /* Check for overflow */
+    if (res == ULONG_MAX && errno == ERANGE) {
         return PATCH_SCAN_ERROR;
     }
     scanner->current_hunk.new_offset = res;
@@ -1270,8 +1305,13 @@ static int scanner_emit_context_new_hunk_header(patch_scanner_t *scanner, const 
     /* Check for comma and count */
     if (*endptr == ',') {
         p = endptr + 1;
+        errno = 0;
         res = strtoul(p, &endptr, 10);
         if (endptr == p) {
+            return PATCH_SCAN_ERROR;
+        }
+        /* Check for overflow */
+        if (res == ULONG_MAX && errno == ERANGE) {
             return PATCH_SCAN_ERROR;
         }
         scanner->current_hunk.new_count = res;
@@ -1525,7 +1565,25 @@ static void scanner_parse_index_percentage(const char *line, const char *prefix,
         const char *start = line + prefix_len;
         /* Ensure we have a number before the % */
         if (start < percent) {
-            *target_field = (int)strtol(start, NULL, 10);
+            char *endptr;
+            long res = strtol(start, &endptr, 10);
+
+            /* Check for valid conversion */
+            if (endptr == start) {
+                return; /* No valid number found */
+            }
+
+            /* Validation: percentages must be 0-100 */
+            if (res < 0 || res > 100) {
+                return; /* Invalid percentage range */
+            }
+
+            /* Ensure the number is immediately followed by % (no extra characters) */
+            if (endptr != percent) {
+                return; /* Invalid format - extra characters between number and % */
+            }
+
+            *target_field = (int)res;
         }
     }
 }
@@ -1596,7 +1654,34 @@ static void scanner_parse_mode_line(patch_scanner_t *scanner, const char *line, 
     (void)scanner; /* unused parameter */
     const char *mode_str = strrchr(line, ' ');
     if (mode_str) {
-        *mode_field = (int)strtol(mode_str + 1, NULL, 8); /* Octal mode */
+        const char *mode_start = mode_str + 1;
+        char *endptr;
+        long res = strtol(mode_start, &endptr, 8); /* Octal mode */
+
+        /* Check for valid conversion */
+        if (endptr == mode_start) {
+            return; /* No valid number found */
+        }
+
+        /* Validation for file modes */
+
+        /* 1. Check that we consumed all characters (no trailing junk) */
+        if (*endptr != '\0' && *endptr != '\n' && *endptr != '\r') {
+            return; /* Invalid characters after mode */
+        }
+
+        /* 2. Check mode string length (reasonable bounds) */
+        size_t mode_len = endptr - mode_start;
+        if (mode_len < 1 || mode_len > 6) {
+            return; /* Invalid mode length */
+        }
+
+        /* 3. Check mode value bounds (reasonable range for file modes) */
+        if (res < 0 || res > 0177777) {
+            return; /* Outside reasonable range */
+        }
+
+        *mode_field = (int)res;
     }
 }
 
