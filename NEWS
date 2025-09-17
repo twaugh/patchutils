@@ -14,6 +14,10 @@ Patchutils news
 	compatibility (will change to 'strip' in version 0.5.0).
 	Addresses GitHub issues #22, #27, #59, and #68.
 
+	Fixed interdiff --color option handling and improved color output.
+	Replaced external diff --color dependency with internal ANSI color
+	codes. Addresses GitHub issue #119.
+
 	Code improvements and build system enhancements. Added redirectfd()
 	utility function to redirect stdout without reassignment. Enhanced
 	CI testing with musl support for better compatibility testing.
