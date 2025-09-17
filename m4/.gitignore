@@ -19,7 +19,6 @@
 /fcntl_h.m4
 /fstat.m4
 /getdtablesize.m4
-/getopt.m4
 /getprogname.m4
 /gnulib-common.m4
 /gnulib-comp.m4
@@ -38,7 +37,6 @@
 /msvc-nothrow.m4
 /multiarch.m4
 /musl.m4
-/nocrash.m4
 /off64_t.m4
 /off_t.m4
 /open-cloexec.m4
@@ -57,7 +55,6 @@
 /stdlib_h.m4
 /strerror.m4
 /string_h.m4
-/sys_cdefs_h.m4
 /sys_socket_h.m4
 /sys_stat_h.m4
 /sys_types_h.m4
@@ -69,3 +66,5 @@
 /zzgnulib.m4
 /getdelim.m4
 /getline.m4
+/fseterr.m4
+/gettext_h.m4
