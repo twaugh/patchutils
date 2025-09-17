@@ -186,6 +186,9 @@ TESTS = tests/newline1/run-test \
 	tests/lsdiff13/run-test \
 	tests/lsdiff14/run-test \
 	tests/lsdiff15/run-test \
+	tests/lsdiff-hunks-option/run-test \
+	tests/lsdiff-lines-option/run-test \
+	tests/lsdiff-verbose-levels/run-test \
 	tests/patchview1/run-test \
 	tests/patchview2/run-test \
 	tests/fuzz1/run-test \

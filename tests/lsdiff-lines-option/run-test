@@ -1,0 +1,65 @@
+#!/bin/sh
+
+# This is a lsdiff(1) testcase for --lines option.
+# Test: Select files containing hunks that touch specific line numbers
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > diff
+--- file1
++++ file1
+@@ -1 +1,2 @@
+-A
++a
++b
+@@ -10 +11,2 @@
+-C
++c
++d
+--- file2
++++ file2
+@@ -5 +5,2 @@
+-E
++e
++f
+@@ -20 +21,2 @@
+-G
++g
++h
+--- file3
++++ file3
+@@ -15 +15,2 @@
+-I
++i
++j
+EOF
+
+# Test --lines 1 (files with hunks touching line 1)
+${LSDIFF} --lines 1 diff 2>errors >lines1 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - lines1 || exit 1
+file1
+EOF
+
+# Test --lines 5 (files with hunks touching line 5)
+${LSDIFF} --lines 5 diff 2>errors >lines5 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - lines5 || exit 1
+file2
+EOF
+
+# Test --lines 10-15 (range: files with hunks touching lines 10-15)
+${LSDIFF} --lines 10-15 diff 2>errors >lines10-15 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - lines10-15 || exit 1
+file1
+file3
+EOF
+
+# Test --lines 100 (line that doesn't exist - should be empty)
+${LSDIFF} --lines 100 diff 2>errors >lines100 || exit 1
+[ -s errors ] && exit 1
+[ -s lines100 ] && exit 1  # Should be empty
