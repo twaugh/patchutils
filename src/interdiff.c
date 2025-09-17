@@ -66,11 +66,11 @@ enum line_type {
 	LINE_HUNK,
 	LINE_ADDED,
 	LINE_REMOVED,
-	LINE_MAX
+	LINE_TYPE_MAX
 };
 
 /* ANSI color codes for diff output */
-static const char *const color_codes[LINE_MAX] = {
+static const char *const color_codes[LINE_TYPE_MAX] = {
 
 	[LINE_FILE] = "\033[1m",      /* Bold for filenames */
 	[LINE_HEADER] = "\033[1m",    /* Bold for headers */
