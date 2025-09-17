@@ -70,6 +70,7 @@ static int files_exclude = 0;               /* -F with x prefix */
 
 /* File counter for -N option */
 static int file_number = 0;
+static unsigned long filecount = 0;
 
 /* Forward declarations */
 static void syntax(int err) __attribute__((noreturn));
@@ -449,11 +450,11 @@ static void display_filename(const char *filename, const char *patchname, char s
     if (show_patch_names > 0)
         printf("%s:", patchname);
 
-    if (number_files)
-        printf("%d\t", file_number);
-
     if (show_line_numbers)
         printf("%lu\t", linenum);
+
+    if (number_files)
+        printf("File #%-3lu\t", filecount);
 
     if (show_status)
         printf("%c ", status);
@@ -494,6 +495,8 @@ static void process_patch_file(FILE *fp, const char *filename)
 
     while ((result = patch_scanner_next(scanner, &content)) == PATCH_SCAN_OK) {
         if (content->type == PATCH_CONTENT_HEADERS) {
+            filecount++;
+
             /* If we have a pending file from -E processing, display it now */
             if (empty_files_as_absent && pending.best_filename) {
                 char final_status = pending.initial_status;
@@ -566,18 +569,27 @@ static void process_patch_file(FILE *fp, const char *filename)
                 }
             }
 
-            if (verbose && current_file) {
-                /* In verbose mode, show hunk information */
+            if (verbose > 0 && show_line_numbers && current_file) {
+                /* In numbered verbose mode, show hunk information */
                 hunk_number++;
+                const struct patch_hunk *hunk = content->data.hunk;
 
                 /* Show patch name prefix if enabled, with '-' suffix for hunk lines */
                 if (show_patch_names > 0)
                     printf("%s-", filename);
 
                 if (show_line_numbers) {
-                    printf("\t%lu\tHunk #%d\n", global_line_offset + content->line_number, hunk_number);
+                    printf("\t%lu\tHunk #%d", global_line_offset + content->line_number, hunk_number);
+                    if (verbose > 1 && hunk->context && hunk->context[0]) {
+                        printf("\t%s", hunk->context);
+                    }
+                    printf("\n");
                 } else {
-                    printf("\tHunk #%d\n", hunk_number);
+                    printf("\tHunk #%d", hunk_number);
+                    if (verbose > 1 && hunk->context && hunk->context[0]) {
+                        printf("\t%s", hunk->context);
+                    }
+                    printf("\n");
                 }
             }
         } else if (content->type == PATCH_CONTENT_HUNK_LINE) {
@@ -728,6 +740,8 @@ int main(int argc, char *argv[])
             break;
         case 'v':
             verbose++;
+            if (show_line_numbers && verbose > 1)
+                number_files = 1;
             break;
         case 'z':
             unzip = 1;
