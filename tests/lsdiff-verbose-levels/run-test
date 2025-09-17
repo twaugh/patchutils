@@ -1,0 +1,60 @@
+#!/bin/sh
+
+# This is a lsdiff(1) testcase for multiple verbose levels.
+# Test: -v, -vv, and -nvv for different levels of verbosity
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > diff
+--- file1
++++ file1
+@@ -1,3 +1,4 @@ function1
+ first line
+-old content
++new content
++added line
+ third line
+@@ -10,4 +11,3 @@ function2
+ context line
+-removed line
+ another line
+-old ending
++new ending
+--- file2
++++ file2
+@@ -5,2 +5,3 @@ main
+ some context
+-original text
++modified text
++extra line
+EOF
+
+# Test single -v (basic verbose - same as no flags for lsdiff)
+${LSDIFF} -v diff 2>errors >verbose1 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - verbose1 || exit 1
+file1
+file2
+EOF
+
+# Test double -vv (extra verbose - same as single -v for lsdiff)
+${LSDIFF} -vv diff 2>errors >verbose2 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - verbose2 || exit 1
+file1
+file2
+EOF
+
+# Test -nvv (numbered extra verbose)
+${LSDIFF} -nvv diff 2>errors >verbose_nvv || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - verbose_nvv || exit 1
+1	File #1  	file1
+	3	Hunk #1	function1
+	9	Hunk #2	function2
+15	File #2  	file2
+	17	Hunk #1	main
+EOF

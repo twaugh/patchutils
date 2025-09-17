@@ -1,0 +1,65 @@
+#!/bin/sh
+
+# This is a lsdiff(1) testcase for --hunks option.
+# Test: Select specific hunks from files
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > diff
+--- file1
++++ file1
+@@ -1 +1,2 @@
+-A
++a
++b
+@@ -10 +11,2 @@
+-C
++c
++d
+--- file2
++++ file2
+@@ -5 +5,2 @@
+-E
++e
++f
+@@ -20 +21,2 @@
+-G
++g
++h
+EOF
+
+# Test --hunks 1 (first hunk from each file)
+${LSDIFF} --hunks 1 diff 2>errors >hunks1 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - hunks1 || exit 1
+file1
+file2
+EOF
+
+# Test --hunks 2 (second hunk from each file)
+${LSDIFF} --hunks 2 diff 2>errors >hunks2 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - hunks2 || exit 1
+file1
+file2
+EOF
+
+# Test --hunks 3 (third hunk - lsdiff still shows files even if hunks don't match)
+${LSDIFF} --hunks 3 diff 2>errors >hunks3 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - hunks3 || exit 1
+file1
+file2
+EOF
+
+# Test --hunks 1-2 (range: first and second hunks)
+${LSDIFF} --hunks 1-2 diff 2>errors >hunks1-2 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - hunks1-2 || exit 1
+file1
+file2
+EOF
