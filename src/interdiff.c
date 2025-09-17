@@ -1099,20 +1099,18 @@ trim_context (FILE *f /* positioned at start of @@ line */,
 			printf ("Trim: %lu,%lu\n", strip_pre, strip_post);
 
 		fsetpos (f, &pos);
-		{
-			if (new_orig_count != 1 && new_new_count != 1) {
-				print_color (out, LINE_HUNK, "@@ -%lu,%lu +%lu,%lu @@\n",
-					     orig_offset, new_orig_count, new_offset, new_new_count);
-			} else if (new_orig_count != 1) {
-				print_color (out, LINE_HUNK, "@@ -%lu,%lu +%lu @@\n",
-					     orig_offset, new_orig_count, new_offset);
-			} else if (new_new_count != 1) {
-				print_color (out, LINE_HUNK, "@@ -%lu +%lu,%lu @@\n",
-					     orig_offset, new_offset, new_new_count);
-			} else {
-				print_color (out, LINE_HUNK, "@@ -%lu +%lu @@\n",
-					     orig_offset, new_offset);
-			}
+		if (new_orig_count != 1 && new_new_count != 1) {
+			print_color (out, LINE_HUNK, "@@ -%lu,%lu +%lu,%lu @@\n",
+				     orig_offset, new_orig_count, new_offset, new_new_count);
+		} else if (new_orig_count != 1) {
+			print_color (out, LINE_HUNK, "@@ -%lu,%lu +%lu @@\n",
+				     orig_offset, new_orig_count, new_offset);
+		} else if (new_new_count != 1) {
+			print_color (out, LINE_HUNK, "@@ -%lu +%lu,%lu @@\n",
+				     orig_offset, new_offset, new_new_count);
+		} else {
+			print_color (out, LINE_HUNK, "@@ -%lu +%lu @@\n",
+				     orig_offset, new_offset);
 		}
 
 		while (total_count--) {
