@@ -86,8 +86,6 @@ static void syntax(int err)
 {
     FILE *f = err ? stderr : stdout;
 
-    /* TODO: Update help text to include missing options when implemented */
-
     fprintf(f, "Usage: %s [OPTION]... [FILE]...\n", "lsdiff");
     fprintf(f, "List files modified by patches.\n\n");
     fprintf(f, "Options:\n");
@@ -99,6 +97,9 @@ static void syntax(int err)
     fprintf(f, "  -E, --empty-files-as-absent  treat empty files as absent\n");
     fprintf(f, "  -p N, --strip-match=N        strip N leading path components\n");
     fprintf(f, "  --strip=N                    strip N leading path components from output\n");
+    fprintf(f, "  --addprefix=PREFIX           add PREFIX to each filename\n");
+    fprintf(f, "  --addoldprefix=PREFIX        add PREFIX to old filenames\n");
+    fprintf(f, "  --addnewprefix=PREFIX        add PREFIX to new filenames\n");
     fprintf(f, "  --git-prefixes=strip|keep    handle a/ and b/ prefixes in Git diffs (default: keep)\n");
     fprintf(f, "  -i PAT, --include=PAT        include only files matching PAT\n");
     fprintf(f, "  -x PAT, --exclude=PAT        exclude files matching PAT\n");
