@@ -88,3 +88,4 @@ EOF
 ${LSDIFF} --hunks 4 diff 2>errors >hunks4 || exit 1
 [ -s errors ] && exit 1
 [ -s hunks4 ] && exit 1  # Should be empty
+exit 0
