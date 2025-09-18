@@ -355,13 +355,14 @@ TESTS = tests/newline1/run-test \
 XFAIL_TESTS = \
 	tests/delhunk5/run-test \
 	tests/delhunk6/run-test \
-	tests/rediff-empty-hunk/run-test \
-	tests/lsdiff-hunks-option/run-test \
-	tests/lsdiff-exclusion-combined/run-test
+	tests/rediff-empty-hunk/run-test
 
 # lsdiff-lines-option test: expected to fail unless scanner-lsdiff is enabled
 if !USE_SCANNER_LSDIFF
-XFAIL_TESTS += tests/lsdiff-lines-option/run-test
+XFAIL_TESTS += \
+  tests/lsdiff-lines-option/run-test \
+  tests/lsdiff-hunks-option/run-test \
+  tests/lsdiff-exclusion-combined/run-test
 endif
 
 if USE_SCANNER_LSDIFF
