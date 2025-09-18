@@ -69,8 +69,6 @@ src/lsdiff$(EXEEXT): src/filterdiff$(EXEEXT)
 src/grepdiff$(EXEEXT): src/filterdiff$(EXEEXT)
 	ln -sf $(notdir $<) $@
 
-src/patchview$(EXEEXT): src/filterdiff$(EXEEXT)
-	ln -sf $(notdir $<) $@
 
 install-exec-hook:
 	ln -sf "`echo interdiff|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo combinediff|sed '$(transform)'`"
@@ -106,7 +104,7 @@ uninstall-hook:
 		rm -f patchutils; \
 	fi
 
-CLEANFILES=src/combinediff src/flipdiff src/lsdiff src/grepdiff src/patchview
+CLEANFILES=src/combinediff src/flipdiff src/lsdiff src/grepdiff
 MAINTAINERCLEANFILES=$(man_MANS)
 
 # Regression tests.
@@ -315,7 +313,7 @@ XFAIL_TESTS = \
 	tests/lsdiff-lines-option/run-test
 
 test-perms: src/combinediff$(EXEEXT) src/flipdiff$(EXEEXT) \
-		src/lsdiff$(EXEEXT) src/grepdiff$(EXEEXT) src/patchview$(EXEEXT) \
+		src/lsdiff$(EXEEXT) src/grepdiff$(EXEEXT) \
 		scripts/splitdiff
 	for script in $(bin_SCRIPTS); do \
 		if [ -f $(top_builddir)/$$script ]; then \

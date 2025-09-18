@@ -29,6 +29,11 @@ Patchutils news
 	Added manual pages for gitdiff, gitdiffview, svndiff, and svndiffview
 	commands. Addresses GitHub issue #112.
 
+	Deprecated --filter, --list, and --grep options in favor of using
+	the appropriate command names (filterdiff, lsdiff, grepdiff). These
+	options now issue deprecation warnings and may be removed in a future
+	version.
+
 0.4.3 (stable)
 
 	Added --in-place option to more tools for editing files in place.

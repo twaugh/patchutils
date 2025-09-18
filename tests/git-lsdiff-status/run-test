@@ -145,10 +145,3 @@ cat << EOF | cmp - result7 || exit 1
 + a/empty-new.txt
 - a/empty-deleted.txt
 EOF
-
-# Test 8: Test with filterdiff in list mode (should use same code paths)
-${FILTERDIFF} --list -s mixed-git.patch 2>errors8 >result8 || exit 1
-[ -s errors8 ] && exit 1
-
-# Should be identical to lsdiff -s output
-cmp result7 result8 || exit 1
