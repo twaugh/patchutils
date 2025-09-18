@@ -188,6 +188,7 @@ TESTS = tests/newline1/run-test \
 	tests/lsdiff15/run-test \
 	tests/lsdiff-hunks-option/run-test \
 	tests/lsdiff-lines-option/run-test \
+	tests/lsdiff-exclusion-combined/run-test \
 	tests/lsdiff-verbose-levels/run-test \
 	tests/lsdiff-range-exclude/run-test \
 	tests/patchview1/run-test \
@@ -313,7 +314,8 @@ XFAIL_TESTS = \
 	tests/delhunk6/run-test \
 	tests/rediff-empty-hunk/run-test \
 	tests/lsdiff-hunks-option/run-test \
-	tests/lsdiff-lines-option/run-test
+	tests/lsdiff-lines-option/run-test \
+	tests/lsdiff-exclusion-combined/run-test
 
 test-perms: src/combinediff$(EXEEXT) src/flipdiff$(EXEEXT) \
 		src/lsdiff$(EXEEXT) src/grepdiff$(EXEEXT) src/patchview$(EXEEXT) \

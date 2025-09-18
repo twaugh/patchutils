@@ -1,0 +1,120 @@
+#!/bin/sh
+
+# This is a lsdiff(1) testcase for exclusion and combined filtering.
+# Test: --lines exclusion, --hunks exclusion, and combined filters
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > diff
+--- file1
++++ file1
+@@ -1 +1,2 @@
+-A
++a
++b
+--- file2
++++ file2
+@@ -5 +5,2 @@
+-E
++e
++f
+@@ -20 +21,2 @@
+-G
++g
++h
+--- file3
++++ file3
+@@ -10 +10,2 @@
+-I
++i
++j
+@@ -15 +16,2 @@
+-K
++k
++l
+@@ -25 +27,2 @@
+-M
++m
++n
+EOF
+
+# Test --lines exclusion: x1-5 (exclude files with hunks touching lines 1-5)
+# file1 has hunk at line 1, file2 has hunk at line 5 -> both excluded
+# file3 has hunks at lines 10, 15, 25 -> included
+${LSDIFF} --lines x1-5 diff 2>errors >lines-exclude-1-5 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - lines-exclude-1-5 || exit 1
+file3
+EOF
+
+# Test --lines exclusion: x15-25 (exclude files with hunks touching lines 15-25)
+# file1 has hunk at line 1 -> included
+# file2 has hunk at line 20 -> excluded
+# file3 has hunks at lines 15, 25 -> excluded
+${LSDIFF} --lines x15-25 diff 2>errors >lines-exclude-15-25 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - lines-exclude-15-25 || exit 1
+file1
+EOF
+
+# Test --hunks exclusion: x1 (exclude files with hunk 1)
+# All files have hunk 1, so none should be shown
+${LSDIFF} --hunks x1 diff 2>errors >hunks-exclude-1 || exit 1
+[ -s errors ] && exit 1
+[ -s hunks-exclude-1 ] && exit 1  # Should be empty
+
+# Test --hunks exclusion: x2 (exclude files with hunk 2)
+# file1 has only 1 hunk -> included
+# file2 and file3 have hunk 2 -> excluded
+${LSDIFF} --hunks x2 diff 2>errors >hunks-exclude-2 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - hunks-exclude-2 || exit 1
+file1
+EOF
+
+# Test --hunks exclusion: x3 (exclude files with hunk 3)
+# file1 and file2 don't have hunk 3 -> included
+# file3 has hunk 3 -> excluded
+${LSDIFF} --hunks x3 diff 2>errors >hunks-exclude-3 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - hunks-exclude-3 || exit 1
+file1
+file2
+EOF
+
+# Test combined filters: --lines 10-25 --hunks 2 (AND logic)
+# Must have lines 10-25 AND hunk 2
+# file1: no lines 10-25 -> excluded
+# file2: has line 20 AND hunk 2 -> included
+# file3: has lines 10,15,25 AND hunk 2 -> included
+${LSDIFF} --lines 10-25 --hunks 2 diff 2>errors >combined-lines-hunks || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - combined-lines-hunks || exit 1
+file2
+file3
+EOF
+
+# Test combined filters with exclusion: --lines x1-5 --hunks x3 (AND logic)
+# Must NOT have lines 1-5 AND NOT have hunk 3
+# file1: has line 1 -> excluded
+# file2: has line 5 -> excluded
+# file3: no lines 1-5 but has hunk 3 -> excluded
+${LSDIFF} --lines x1-5 --hunks x3 diff 2>errors >combined-exclude || exit 1
+[ -s errors ] && exit 1
+[ -s combined-exclude ] && exit 1  # Should be empty
+
+# Test mixed include/exclude: --lines 10-25 --hunks x1 (AND logic)
+# Must have lines 10-25 AND NOT have hunk 1
+# file1: no lines 10-25 -> excluded
+# file2: has lines 10-25 but has hunk 1 -> excluded
+# file3: has lines 10-25 but has hunk 1 -> excluded
+${LSDIFF} --lines 10-25 --hunks x1 diff 2>errors >mixed-include-exclude || exit 1
+[ -s errors ] && exit 1
+[ -s mixed-include-exclude ] && exit 1  # Should be empty
+
+exit 0
