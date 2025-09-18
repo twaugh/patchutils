@@ -357,8 +357,12 @@ XFAIL_TESTS = \
 	tests/delhunk6/run-test \
 	tests/rediff-empty-hunk/run-test \
 	tests/lsdiff-hunks-option/run-test \
-	tests/lsdiff-lines-option/run-test \
 	tests/lsdiff-exclusion-combined/run-test
+
+# lsdiff-lines-option test: expected to fail unless scanner-lsdiff is enabled
+if !USE_SCANNER_LSDIFF
+XFAIL_TESTS += tests/lsdiff-lines-option/run-test
+endif
 
 if USE_SCANNER_LSDIFF
 test-perms: src/combinediff$(EXEEXT) src/flipdiff$(EXEEXT) \
