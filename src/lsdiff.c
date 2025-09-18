@@ -69,6 +69,8 @@ static struct range *files = NULL;          /* -F, --files */
 static int files_exclude = 0;               /* -F with x prefix */
 static struct range *lines = NULL;          /* --lines */
 static int lines_exclude = 0;               /* --lines with x prefix */
+static struct range *hunks = NULL;          /* --hunks */
+static int hunks_exclude = 0;               /* --hunks with x prefix */
 
 /* File counter for -N option */
 static int file_number = 0;
@@ -83,7 +85,8 @@ static const char *get_best_filename(const struct patch_headers *headers);
 static char *strip_git_prefix_from_filename(const char *filename);
 static const char *strip_path_components(const char *filename, int components);
 static int should_display_file(const char *filename);
-static int hunk_matches_lines(unsigned long orig_offset, unsigned long orig_count);
+static int lines_in_range(unsigned long orig_offset, unsigned long orig_count);
+static int hunk_in_range(unsigned long hunknum);
 static void parse_range(struct range **r, const char *rstr);
 
 static void syntax(int err)
@@ -111,6 +114,7 @@ static void syntax(int err)
     fprintf(f, "  -X FILE, --exclude-from-file=FILE  exclude files matching patterns in FILE\n");
     fprintf(f, "  -F RANGE, --files=RANGE      include only files in range RANGE\n");
     fprintf(f, "  --lines=RANGE                include only files with hunks affecting lines in RANGE\n");
+    fprintf(f, "  --hunks=RANGE                include only files with hunks in RANGE\n");
     fprintf(f, "  -v, --verbose                verbose output\n");
     fprintf(f, "  -z, --decompress             decompress .gz and .bz2 files\n");
     fprintf(f, "      --help                   display this help and exit\n");
@@ -476,7 +480,10 @@ struct pending_file {
     int new_is_empty;
     int should_display;
     int is_context_diff;       /* Flag for context diff format */
-    int has_matching_lines;    /* Flag for --lines filtering */
+    int has_matching_lines;    /* Flag for --lines filtering (include mode) */
+    int has_excluded_lines;    /* Flag for --lines filtering (exclude mode) */
+    int has_matching_hunks;    /* Flag for --hunks filtering (include mode) */
+    int has_excluded_hunks;    /* Flag for --hunks filtering (exclude mode) */
 };
 
 /* Global cumulative line counter for tracking across multiple files */
@@ -503,7 +510,7 @@ static void process_patch_file(FILE *fp, const char *filename)
             filecount++;
 
             /* If we have a pending file, display it now */
-            if ((empty_files_as_absent || lines) && pending.best_filename) {
+            if ((empty_files_as_absent || lines || hunks) && pending.best_filename) {
                 char final_status = pending.initial_status;
 
                 /* Apply empty-as-absent logic if -E is specified */
@@ -515,11 +522,31 @@ static void process_patch_file(FILE *fp, const char *filename)
                     }
                 }
 
-                /* Check if we should display this file based on line matching and other filters */
+                /* Check if we should display this file based on filtering criteria */
                 int should_display = pending.should_display;
+
+                /* Apply line filtering first */
                 if (lines && should_display) {
-                    /* If --lines is specified, only display if file has matching hunks */
-                    should_display = pending.has_matching_lines;
+                    /* If --lines is specified, apply line filtering logic */
+                    if (!lines_exclude) {
+                        /* Include mode: only display if file has matching lines */
+                        should_display = pending.has_matching_lines;
+                    } else {
+                        /* Exclude mode: only display if file has NO excluded lines */
+                        should_display = !pending.has_excluded_lines;
+                    }
+                }
+
+                /* Apply hunk filtering (both filters must pass if both are specified) */
+                if (hunks && should_display) {
+                    /* If --hunks is specified, apply hunk filtering logic */
+                    if (!hunks_exclude) {
+                        /* Include mode: only display if file has matching hunks */
+                        should_display = pending.has_matching_hunks;
+                    } else {
+                        /* Exclude mode: only display if file has NO excluded hunks */
+                        should_display = !pending.has_excluded_hunks;
+                    }
                 }
 
                 if (should_display) {
@@ -539,8 +566,8 @@ static void process_patch_file(FILE *fp, const char *filename)
             file_number++;
             hunk_number = 0;  /* Reset hunk counter for new file */
 
-            if (empty_files_as_absent || lines) {
-                /* Store pending file info for -E processing or --lines filtering */
+            if (empty_files_as_absent || lines || hunks) {
+                /* Store pending file info for -E processing, --lines filtering, or --hunks filtering */
                 pending.best_filename = xstrdup(best_filename);
                 pending.patchname = filename;
                 pending.initial_status = status;
@@ -550,6 +577,9 @@ static void process_patch_file(FILE *fp, const char *filename)
                 pending.should_display = should_display_file(best_filename);
                 pending.is_context_diff = (content->data.headers->type == PATCH_TYPE_CONTEXT);
                 pending.has_matching_lines = 0;  /* Reset line matching flag */
+                pending.has_excluded_lines = 0;  /* Reset line exclusion flag */
+                pending.has_matching_hunks = 0;  /* Reset hunk matching flag */
+                pending.has_excluded_hunks = 0;  /* Reset hunk exclusion flag */
                 current_file = pending.should_display ? best_filename : NULL;
             } else {
                 /* Normal processing - display immediately */
@@ -563,10 +593,41 @@ static void process_patch_file(FILE *fp, const char *filename)
         } else if (content->type == PATCH_CONTENT_HUNK_HEADER) {
             const struct patch_hunk *hunk = content->data.hunk;
 
-            /* Check if this hunk matches the line ranges */
-            if (hunk_matches_lines(hunk->orig_offset, hunk->orig_count)) {
-                if ((empty_files_as_absent || lines) && pending.best_filename) {
-                    pending.has_matching_lines = 1;
+            hunk_number++;  /* Increment hunk counter */
+
+            /* Check if this hunk's lines are in the specified ranges */
+            if (lines && (empty_files_as_absent || lines || hunks) && pending.best_filename) {
+                if (lines_in_range(hunk->orig_offset, hunk->orig_count)) {
+                    if (!lines_exclude) {
+                        /* Include mode: this hunk causes file to be included */
+                        pending.has_matching_lines = 1;
+                    } else {
+                        /* Exclude mode: this hunk causes file to be excluded */
+                        pending.has_excluded_lines = 1;
+                    }
+                } else {
+                    if (lines_exclude) {
+                        /* Exclude mode: this hunk doesn't match exclusion, so it supports inclusion */
+                        pending.has_matching_lines = 1;
+                    }
+                }
+            }
+
+            /* Check if this hunk is in the specified ranges */
+            if (hunks && (empty_files_as_absent || lines || hunks) && pending.best_filename) {
+                if (hunk_in_range(hunk_number)) {
+                    if (!hunks_exclude) {
+                        /* Include mode: this hunk causes file to be included */
+                        pending.has_matching_hunks = 1;
+                    } else {
+                        /* Exclude mode: this hunk causes file to be excluded */
+                        pending.has_excluded_hunks = 1;
+                    }
+                } else {
+                    if (hunks_exclude) {
+                        /* Exclude mode: this hunk doesn't match exclusion, so it supports inclusion */
+                        pending.has_matching_hunks = 1;
+                    }
                 }
             }
 
@@ -594,7 +655,6 @@ static void process_patch_file(FILE *fp, const char *filename)
 
             if (verbose > 0 && show_line_numbers && current_file) {
                 /* In numbered verbose mode, show hunk information */
-                hunk_number++;
 
                 /* Show patch name prefix if enabled, with '-' suffix for hunk lines */
                 if (show_patch_names > 0)
@@ -640,7 +700,7 @@ static void process_patch_file(FILE *fp, const char *filename)
     }
 
     /* Handle final pending file */
-    if ((empty_files_as_absent || lines) && pending.best_filename) {
+    if ((empty_files_as_absent || lines || hunks) && pending.best_filename) {
         char final_status = pending.initial_status;
 
         /* Apply empty-as-absent logic if -E is specified */
@@ -652,11 +712,31 @@ static void process_patch_file(FILE *fp, const char *filename)
             }
         }
 
-        /* Check if we should display this file based on line matching and other filters */
+        /* Check if we should display this file based on filtering criteria */
         int should_display = pending.should_display;
+
+        /* Apply line filtering first */
         if (lines && should_display) {
-            /* If --lines is specified, only display if file has matching hunks */
-            should_display = pending.has_matching_lines;
+            /* If --lines is specified, apply line filtering logic */
+            if (!lines_exclude) {
+                /* Include mode: only display if file has matching lines */
+                should_display = pending.has_matching_lines;
+            } else {
+                /* Exclude mode: only display if file has NO excluded lines */
+                should_display = !pending.has_excluded_lines;
+            }
+        }
+
+        /* Apply hunk filtering (both filters must pass if both are specified) */
+        if (hunks && should_display) {
+            /* If --hunks is specified, apply hunk filtering logic */
+            if (!hunks_exclude) {
+                /* Include mode: only display if file has matching hunks */
+                should_display = pending.has_matching_hunks;
+            } else {
+                /* Exclude mode: only display if file has NO excluded hunks */
+                should_display = !pending.has_excluded_hunks;
+            }
         }
 
         if (should_display) {
@@ -711,11 +791,12 @@ int main(int argc, char *argv[])
             {"addoldprefix", 1, 0, 1000 + 'O'},
             {"addnewprefix", 1, 0, 1000 + 'N'},
             {"lines", 1, 0, 1000 + 'L'},
+            {"hunks", 1, 0, '#'},
             {0, 0, 0, 0}
         };
 
         char *end;
-        int c = getopt_long(argc, argv, "snNHhEp:i:x:I:X:F:vz", long_options, NULL);
+        int c = getopt_long(argc, argv, "snNHhEp:i:x:I:X:F:vz#:", long_options, NULL);
         if (c == -1)
             break;
 
@@ -814,6 +895,15 @@ int main(int argc, char *argv[])
             }
             parse_range(&lines, optarg);
             break;
+        case '#':
+            if (hunks)
+                syntax(1);
+            if (*optarg == 'x') {
+                hunks_exclude = 1;
+                optarg = optarg + 1;
+            }
+            parse_range(&hunks, optarg);
+            break;
         default:
             syntax(1);
         }
@@ -869,44 +959,65 @@ int main(int argc, char *argv[])
             free(r);
         }
     }
+    if (hunks) {
+        struct range *r, *next;
+        for (r = hunks; r; r = next) {
+            next = r->next;
+            free(r);
+        }
+    }
 
     return 0;
 }
 
 /*
- * Check if a hunk matches the line ranges specified with --lines option.
- * This is based on the hunk_matches function from filterdiff.c.
+ * Check if lines are in the specified line ranges.
+ * Returns 1 if the lines are in the range, 0 otherwise.
  */
-static int hunk_matches_lines(unsigned long orig_offset, unsigned long orig_count)
+static int lines_in_range(unsigned long orig_offset, unsigned long orig_count)
 {
     struct range *r;
 
     if (!lines)
-        return 1; /* No line filter specified, all hunks match */
+        return 0; /* No line filter specified */
 
     /* For the purposes of matching, zero lines at offset n counts as line n */
     if (!orig_count)
         orig_count = 1;
 
-    /* See if the lines range list includes this hunk.  -1UL is a wildcard. */
+    /* See if the line range list includes this hunk's lines.  -1UL is a wildcard. */
     for (r = lines; r; r = r->next) {
         if ((r->start == -1UL ||
              r->start < (orig_offset + orig_count)) &&
             (r->end == -1UL ||
              r->end >= orig_offset)) {
-            /* This hunk matches the range */
-            if (!lines_exclude)
-                return 1; /* Include mode: hunk matches, so include file */
-            else
-                return 0; /* Exclude mode: hunk matches, so exclude file */
+            return 1;
         }
     }
 
-    /* No range matched this hunk */
-    if (!lines_exclude)
-        return 0; /* Include mode: no match, so exclude file */
-    else
-        return 1; /* Exclude mode: no match, so include file */
+    return 0;
+}
+
+/*
+ * Check if a hunk number is in the specified hunk ranges.
+ * Returns 1 if the hunk number is in the range, 0 otherwise.
+ */
+static int hunk_in_range(unsigned long hunknum)
+{
+    struct range *r;
+
+    if (!hunks)
+        return 0; /* No hunk filter specified */
+
+    /* See if the hunk range list includes this hunk.  -1UL is a wildcard. */
+    for (r = hunks; r; r = r->next) {
+        if ((r->start == -1UL || r->start <= hunknum) &&
+            (r->end == -1UL || hunknum <= r->end)) {
+            return 1;
+        }
+    }
+
+    return 0;
 }
 
 /*
