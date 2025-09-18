@@ -63,3 +63,4 @@ EOF
 ${LSDIFF} --lines 100 diff 2>errors >lines100 || exit 1
 [ -s errors ] && exit 1
 [ -s lines100 ] && exit 1  # Should be empty
+exit 0
