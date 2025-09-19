@@ -1,0 +1,330 @@
+#!/bin/sh
+
+# Test runner for scanner_debug utility tests
+# This script must be run via 'make check' to ensure proper environment setup
+
+# Check that we're running in the proper test environment
+if [ -z "$top_srcdir" ] || [ -z "$top_builddir" ]; then
+    echo "Error: This test must be run via 'make check'"
+    echo "The top_srcdir and top_builddir variables must be set by the build system"
+    exit 1
+fi
+
+# Convert top_srcdir to absolute path before common.sh changes working directory
+top_srcdir="$(cd "$top_srcdir" && pwd)"
+
+# Source the common test environment
+. "$top_srcdir/tests/common.sh"
+
+# Set up scanner_debug binary path
+SCANNER_DEBUG="$top_builddir/src/scanner_debug"
+
+# Check if scanner_debug exists
+if [ ! -x "$SCANNER_DEBUG" ]; then
+    echo "Error: scanner_debug binary not found at $SCANNER_DEBUG"
+    echo "Make sure to build with --enable-scanner-lsdiff"
+    exit 77  # Skip test
+fi
+
+# Test counter
+test_count=0
+failed_tests=0
+
+# Helper function to run a test
+run_test() {
+    local test_name="$1"
+    local test_description="$2"
+    shift 2
+
+    test_count=$((test_count + 1))
+    echo "Test $test_count: $test_description"
+
+    if "$@"; then
+        echo "✓ $test_name passed"
+    else
+        echo "✗ $test_name failed"
+        failed_tests=$((failed_tests + 1))
+    fi
+    echo
+}
+
+# Test 1: Basic help functionality
+test_help() {
+    "$SCANNER_DEBUG" --help >/dev/null 2>&1
+}
+
+# Test 2: Basic functionality with simple patch
+test_simple_patch() {
+    cat > simple.patch << 'EOF'
+--- old.txt	2024-01-01 12:00:00.000000000 +0000
++++ new.txt	2024-01-01 12:00:01.000000000 +0000
+@@ -1,3 +1,3 @@
+ line1
+-old line
++new line
+ line3
+EOF
+    "$SCANNER_DEBUG" simple.patch >/dev/null 2>&1
+}
+
+# Test 3: Stdin input
+test_stdin_input() {
+    cat > stdin.patch << 'EOF'
+--- a.txt
++++ b.txt
+@@ -1 +1 @@
+-old
++new
+EOF
+    "$SCANNER_DEBUG" < stdin.patch >/dev/null 2>&1
+}
+
+# Test 4: Verbose output
+test_verbose_output() {
+    cat > verbose.patch << 'EOF'
+--- file.txt
++++ file.txt
+@@ -1,2 +1,2 @@
+ context
+-removed
++added
+EOF
+    "$SCANNER_DEBUG" --verbose verbose.patch | grep -q "HEADERS"
+}
+
+# Test 5: Content option
+test_content_option() {
+    cat > content.patch << 'EOF'
+--- test.txt
++++ test.txt
+@@ -1 +1 @@
+-old content
++new content
+EOF
+    "$SCANNER_DEBUG" -v -c content.patch | grep -q "Content:"
+}
+
+# Test 6: Positions option
+test_positions_option() {
+    cat > positions.patch << 'EOF'
+--- pos.txt
++++ pos.txt
+@@ -1 +1 @@
+-old
++new
+EOF
+    "$SCANNER_DEBUG" -v -p positions.patch | grep -q "pos"
+}
+
+# Test 7: Color output (check it doesn't crash)
+test_color_output() {
+    cat > color.patch << 'EOF'
+--- color.txt
++++ color.txt
+@@ -1 +1 @@
+-old
++new
+EOF
+    "$SCANNER_DEBUG" --color color.patch >/dev/null 2>&1
+}
+
+# Test 8: Git extended patch
+test_git_patch() {
+    cat > git.patch << 'EOF'
+diff --git a/file.txt b/file.txt
+index abc123..def456 100644
+--- a/file.txt
++++ b/file.txt
+@@ -1,3 +1,4 @@
+ line 1
+ line 2
++added line
+ line 3
+EOF
+    "$SCANNER_DEBUG" git.patch | grep -q "HEADERS"
+}
+
+# Test 9: Context diff
+test_context_diff() {
+    cat > context.patch << 'EOF'
+*** old.txt	2024-01-01 10:00:00
+--- new.txt	2024-01-01 11:00:00
+***************
+*** 1,2 ****
+  line1
+! old_line
+--- 1,2 ----
+  line1
+! new_line
+EOF
+    "$SCANNER_DEBUG" context.patch | grep -q "HEADERS"
+}
+
+# Test 10: Non-patch content
+test_non_patch() {
+    cat > non_patch.txt << 'EOF'
+This is not a patch
+Just some random text
+Nothing to see here
+EOF
+    "$SCANNER_DEBUG" non_patch.txt | grep -q "NON-PATCH"
+}
+
+# Test 11: Mixed content
+test_mixed_content() {
+    cat > mixed.patch << 'EOF'
+Some header comment
+--- old.txt
++++ new.txt
+@@ -1,1 +1,1 @@
+-old
++new
+Some footer comment
+EOF
+    output=$("$SCANNER_DEBUG" mixed.patch)
+    echo "$output" | grep -q "NON-PATCH" && echo "$output" | grep -q "HEADERS"
+}
+
+# Test 12: Binary patch detection
+test_binary_patch() {
+    cat > binary.patch << 'EOF'
+diff --git a/image.png b/image.png
+new file mode 100644
+index 0000000..abc123
+Binary files /dev/null and b/image.png differ
+EOF
+    "$SCANNER_DEBUG" binary.patch >/dev/null 2>&1
+}
+
+# Test 13: No newline handling
+test_no_newline() {
+    cat > no_newline.patch << 'EOF'
+--- file.txt
++++ file.txt
+@@ -1 +1 @@
+-old_line
+\ No newline at end of file
++new_line
+\ No newline at end of file
+EOF
+    "$SCANNER_DEBUG" no_newline.patch >/dev/null 2>&1
+}
+
+# Test 14: Error condition - nonexistent file
+test_nonexistent_file() {
+    ! "$SCANNER_DEBUG" nonexistent_file.patch >/dev/null 2>&1
+}
+
+# Test 15: Error condition - invalid options
+test_invalid_option() {
+    ! "$SCANNER_DEBUG" --invalid-option >/dev/null 2>&1
+}
+
+# Test 16: Empty file
+test_empty_file() {
+    touch empty.patch
+    "$SCANNER_DEBUG" empty.patch >/dev/null 2>&1
+}
+
+# Test 17: Large patch file (performance test)
+test_large_patch() {
+    # Create a patch with many hunks
+    {
+        echo "--- large.txt"
+        echo "+++ large.txt"
+        for i in $(seq 1 100); do
+            echo "@@ -$i,1 +$i,1 @@"
+            echo "-old line $i"
+            echo "+new line $i"
+        done
+    } > large.patch
+    "$SCANNER_DEBUG" large.patch >/dev/null 2>&1
+}
+
+# Test 18: Compact vs verbose output comparison
+test_output_formats() {
+    cat > format.patch << 'EOF'
+--- test.txt
++++ test.txt
+@@ -1,2 +1,2 @@
+ context
+-old
++new
+EOF
+    compact_lines=$("$SCANNER_DEBUG" format.patch | wc -l)
+    verbose_lines=$("$SCANNER_DEBUG" -v format.patch | wc -l)
+    [ "$verbose_lines" -gt "$compact_lines" ]
+}
+
+# Test 19: Multiple files in single patch
+test_multiple_files() {
+    cat > multi.patch << 'EOF'
+--- file1.txt
++++ file1.txt
+@@ -1 +1 @@
+-old1
++new1
+--- file2.txt
++++ file2.txt
+@@ -1 +1 @@
+-old2
++new2
+EOF
+    output=$("$SCANNER_DEBUG" multi.patch)
+    # Should have two HEADERS events
+    [ "$(echo "$output" | grep -c "HEADERS")" -eq 2 ]
+}
+
+# Test 20: All options combined
+test_all_options() {
+    cat > all_opts.patch << 'EOF'
+--- test.txt
++++ test.txt
+@@ -1,2 +1,2 @@
+ context line
+-removed line
++added line
+EOF
+    "$SCANNER_DEBUG" -v -c -p -x --color all_opts.patch >/dev/null 2>&1
+}
+
+# Run all tests
+echo "Running scanner_debug utility tests..."
+echo "Scanner debug binary: $SCANNER_DEBUG"
+echo
+
+run_test "help" "Basic help functionality" test_help
+run_test "simple_patch" "Simple unified patch processing" test_simple_patch
+run_test "stdin_input" "Standard input processing" test_stdin_input
+run_test "verbose_output" "Verbose output format" test_verbose_output
+run_test "content_option" "Content display option" test_content_option
+run_test "positions_option" "Position display option" test_positions_option
+run_test "color_output" "Colored output option" test_color_output
+run_test "git_patch" "Git extended patch processing" test_git_patch
+run_test "context_diff" "Context diff processing" test_context_diff
+run_test "non_patch" "Non-patch content detection" test_non_patch
+run_test "mixed_content" "Mixed patch and non-patch content" test_mixed_content
+run_test "binary_patch" "Binary patch detection" test_binary_patch
+run_test "no_newline" "No newline marker handling" test_no_newline
+run_test "nonexistent_file" "Error handling for nonexistent files" test_nonexistent_file
+run_test "invalid_option" "Error handling for invalid options" test_invalid_option
+run_test "empty_file" "Empty file handling" test_empty_file
+run_test "large_patch" "Large patch file processing" test_large_patch
+run_test "output_formats" "Compact vs verbose output formats" test_output_formats
+run_test "multiple_files" "Multiple files in single patch" test_multiple_files
+run_test "all_options" "All command line options combined" test_all_options
+
+# Summary
+echo "=========================================="
+echo "Test Summary:"
+echo "Total tests: $test_count"
+echo "Passed: $((test_count - failed_tests))"
+echo "Failed: $failed_tests"
+
+if [ "$failed_tests" -eq 0 ]; then
+    echo "✓ All scanner_debug tests passed!"
+    exit 0
+else
+    echo "✗ $failed_tests scanner_debug test(s) failed"
+    exit 1
+fi
