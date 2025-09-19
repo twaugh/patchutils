@@ -231,6 +231,8 @@ TESTS = tests/newline1/run-test \
 	tests/lsdiff-hunks-option/run-test \
 	tests/lsdiff-lines-option/run-test \
 	tests/lsdiff-exclusion-combined/run-test \
+	tests/lsdiff-combination-filters/run-test \
+	tests/lsdiff-exclusion-mode/run-test \
 	tests/lsdiff-verbose-levels/run-test \
 	tests/lsdiff-range-exclude/run-test \
 	tests/patchview1/run-test \
@@ -362,7 +364,9 @@ if !USE_SCANNER_LSDIFF
 XFAIL_TESTS += \
   tests/lsdiff-lines-option/run-test \
   tests/lsdiff-hunks-option/run-test \
-  tests/lsdiff-exclusion-combined/run-test
+  tests/lsdiff-exclusion-combined/run-test \
+  tests/lsdiff-combination-filters/run-test \
+  tests/lsdiff-exclusion-mode/run-test
 endif
 
 if USE_SCANNER_LSDIFF
