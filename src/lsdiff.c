@@ -105,6 +105,8 @@ static int lines_in_range(unsigned long orig_offset, unsigned long orig_count);
 static int hunk_in_range(unsigned long hunknum);
 static void parse_range(struct range **r, const char *rstr);
 static void process_pending_file(struct pending_file *pending);
+static void add_filename_candidate(char **stripped_candidates, const char **candidates,
+                                  int *count, const char *filename);
 
 static void syntax(int err)
 {
@@ -253,6 +255,26 @@ static char *strip_git_prefix_from_filename(const char *filename)
     return filename ? xstrdup(filename) : NULL;
 }
 
+/*
+ * Helper function to add a filename candidate to the candidate arrays.
+ *
+ * @param stripped_candidates Array to store stripped filename copies
+ * @param candidates Array of candidate pointers
+ * @param count Pointer to current candidate count (will be incremented)
+ * @param filename Filename to add (may be NULL, in which case nothing is added)
+ */
+static void add_filename_candidate(char **stripped_candidates, const char **candidates,
+                                  int *count, const char *filename)
+{
+    if (!filename) {
+        return;
+    }
+
+    stripped_candidates[*count] = strip_git_prefix_from_filename(filename);
+    candidates[*count] = stripped_candidates[*count];
+    (*count)++;
+}
+
 static const char *get_best_filename(const struct patch_headers *headers)
 {
     const char *filename = NULL;
@@ -273,85 +295,29 @@ static const char *get_best_filename(const struct patch_headers *headers)
                 /* Git diff with hunks - choose based on whether it's new, deleted, or modified */
                 if (headers->git_type == GIT_DIFF_NEW_FILE) {
                     /* New file: prefer new names (new_name, git_new_name) */
-                    if (headers->new_name) {
-                        stripped_candidates[count] = strip_git_prefix_from_filename(headers->new_name);
-                        candidates[count] = stripped_candidates[count];
-                        count++;
-                    }
-                    if (headers->git_new_name) {
-                        stripped_candidates[count] = strip_git_prefix_from_filename(headers->git_new_name);
-                        candidates[count] = stripped_candidates[count];
-                        count++;
-                    }
-                    if (headers->old_name) {
-                        stripped_candidates[count] = strip_git_prefix_from_filename(headers->old_name);
-                        candidates[count] = stripped_candidates[count];
-                        count++;
-                    }
-                    if (headers->git_old_name) {
-                        stripped_candidates[count] = strip_git_prefix_from_filename(headers->git_old_name);
-                        candidates[count] = stripped_candidates[count];
-                        count++;
-                    }
+                    add_filename_candidate(stripped_candidates, candidates, &count, headers->new_name);
+                    add_filename_candidate(stripped_candidates, candidates, &count, headers->git_new_name);
+                    add_filename_candidate(stripped_candidates, candidates, &count, headers->old_name);
+                    add_filename_candidate(stripped_candidates, candidates, &count, headers->git_old_name);
                 } else {
                     /* Deleted or modified file: prefer old names (git_old_name, old_name) */
-                    if (headers->git_old_name) {
-                        stripped_candidates[count] = strip_git_prefix_from_filename(headers->git_old_name);
-                        candidates[count] = stripped_candidates[count];
-                        count++;
-                    }
-                    if (headers->old_name) {
-                        stripped_candidates[count] = strip_git_prefix_from_filename(headers->old_name);
-                        candidates[count] = stripped_candidates[count];
-                        count++;
-                    }
-                    if (headers->git_new_name) {
-                        stripped_candidates[count] = strip_git_prefix_from_filename(headers->git_new_name);
-                        candidates[count] = stripped_candidates[count];
-                        count++;
-                    }
-                    if (headers->new_name) {
-                        stripped_candidates[count] = strip_git_prefix_from_filename(headers->new_name);
-                        candidates[count] = stripped_candidates[count];
-                        count++;
-                    }
+                    add_filename_candidate(stripped_candidates, candidates, &count, headers->git_old_name);
+                    add_filename_candidate(stripped_candidates, candidates, &count, headers->old_name);
+                    add_filename_candidate(stripped_candidates, candidates, &count, headers->git_new_name);
+                    add_filename_candidate(stripped_candidates, candidates, &count, headers->new_name);
                 }
             } else if (headers->rename_from || headers->rename_to) {
                 /* Pure rename (no hunks): use git diff line filenames (source first for tie-breaking) */
-                if (headers->git_old_name) {
-                    stripped_candidates[count] = strip_git_prefix_from_filename(headers->git_old_name);
-                    candidates[count] = stripped_candidates[count];
-                    count++;
-                }
-                if (headers->git_new_name) {
-                    stripped_candidates[count] = strip_git_prefix_from_filename(headers->git_new_name);
-                    candidates[count] = stripped_candidates[count];
-                    count++;
-                }
+                add_filename_candidate(stripped_candidates, candidates, &count, headers->git_old_name);
+                add_filename_candidate(stripped_candidates, candidates, &count, headers->git_new_name);
             } else if (headers->copy_from || headers->copy_to) {
                 /* Pure copy (no hunks): use git diff line filenames (source first for tie-breaking) */
-                if (headers->git_old_name) {
-                    stripped_candidates[count] = strip_git_prefix_from_filename(headers->git_old_name);
-                    candidates[count] = stripped_candidates[count];
-                    count++;
-                }
-                if (headers->git_new_name) {
-                    stripped_candidates[count] = strip_git_prefix_from_filename(headers->git_new_name);
-                    candidates[count] = stripped_candidates[count];
-                    count++;
-                }
+                add_filename_candidate(stripped_candidates, candidates, &count, headers->git_old_name);
+                add_filename_candidate(stripped_candidates, candidates, &count, headers->git_new_name);
             } else {
                 /* Git diff without hunks - prefer git_old_name (traditional behavior) */
-                if (headers->git_old_name) {
-                    stripped_candidates[count] = strip_git_prefix_from_filename(headers->git_old_name);
-                    candidates[count] = stripped_candidates[count];
-                    count++;
-                }
-                if (headers->git_new_name) {
-                    stripped_candidates[count] = strip_git_prefix_from_filename(headers->git_new_name);
-                    candidates[count] = stripped_candidates[count];
-                    count++;
-                }
+                add_filename_candidate(stripped_candidates, candidates, &count, headers->git_old_name);
+                add_filename_candidate(stripped_candidates, candidates, &count, headers->git_new_name);
             }
 
             filename = choose_best_name(candidates, count);
@@ -378,16 +344,8 @@ static const char *get_best_filename(const struct patch_headers *headers)
             int i;
 
             /* Apply Git prefix stripping if requested - add source (old) first for tie-breaking */
-            if (headers->old_name) {
-                stripped_candidates[count] = strip_git_prefix_from_filename(headers->old_name);
-                candidates[count] = stripped_candidates[count];
-                count++;
-            }
-            if (headers->new_name) {
-                stripped_candidates[count] = strip_git_prefix_from_filename(headers->new_name);
-                candidates[count] = stripped_candidates[count];
-                count++;
-            }
+            add_filename_candidate(stripped_candidates, candidates, &count, headers->old_name);
+            add_filename_candidate(stripped_candidates, candidates, &count, headers->new_name);
 
             filename = choose_best_name(candidates, count);
 
