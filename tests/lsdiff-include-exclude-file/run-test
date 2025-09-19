@@ -1,0 +1,123 @@
+#!/bin/sh
+
+# Test include-from-file and exclude-from-file functionality (-I and -X options)
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Create a test patch with multiple files
+cat << EOF > multi-file.patch
+--- file1.txt
++++ file1.txt
+@@ -1 +1 @@
+-old1
++new1
+--- file2.txt
++++ file2.txt
+@@ -1 +1 @@
+-old2
++new2
+--- file3.txt
++++ file3.txt
+@@ -1 +1 @@
+-old3
++new3
+--- special_file.c
++++ special_file.c
+@@ -1 +1 @@
+-old_c
++new_c
+--- another.h
++++ another.h
+@@ -1 +1 @@
+-old_h
++new_h
+EOF
+
+# Test 1: Include from file (-I)
+echo "=== Test 1: Include from file (-I) ==="
+cat << EOF > include_patterns.txt
+*.txt
+special*
+EOF
+
+${LSDIFF} -I include_patterns.txt multi-file.patch 2>include_errors >include_result || exit 1
+[ -s include_errors ] && { echo "Unexpected errors in include test:"; cat include_errors; exit 1; }
+
+cat << EOF | cmp - include_result || { echo "Include from file test failed"; exit 1; }
+file1.txt
+file2.txt
+file3.txt
+special_file.c
+EOF
+
+# Test 2: Exclude from file (-X)
+echo "=== Test 2: Exclude from file (-X) ==="
+cat << EOF > exclude_patterns.txt
+*.txt
+special*
+EOF
+
+${LSDIFF} -X exclude_patterns.txt multi-file.patch 2>exclude_errors >exclude_result || exit 1
+[ -s exclude_errors ] && { echo "Unexpected errors in exclude test:"; cat exclude_errors; exit 1; }
+
+cat << EOF | cmp - exclude_result || { echo "Exclude from file test failed"; exit 1; }
+another.h
+EOF
+
+# Test 3: Combine include and exclude from file
+echo "=== Test 3: Combine include and exclude from file ==="
+cat << EOF > include_all.txt
+*
+EOF
+
+cat << EOF > exclude_some.txt
+*.h
+file1.txt
+EOF
+
+${LSDIFF} -I include_all.txt -X exclude_some.txt multi-file.patch 2>combined_errors >combined_result || exit 1
+[ -s combined_errors ] && { echo "Unexpected errors in combined test:"; cat combined_errors; exit 1; }
+
+cat << EOF | cmp - combined_result || { echo "Combined include/exclude from file test failed"; exit 1; }
+file2.txt
+file3.txt
+special_file.c
+EOF
+
+# Test 4: Include from nonexistent file (should silently continue with no patterns)
+echo "=== Test 4: Include from nonexistent file ==="
+${LSDIFF} -I nonexistent_file.txt multi-file.patch >nonexistent_output 2>nonexistent_errors || exit 1
+[ -s nonexistent_errors ] && { echo "Should not produce errors for nonexistent file"; exit 1; }
+# Should show all files since no include patterns were loaded
+grep -q "file1.txt" nonexistent_output || { echo "Should show all files when no patterns loaded"; exit 1; }
+
+# Test 5: Empty include file (should show all files - no patterns loaded)
+echo "=== Test 5: Empty include file ==="
+touch empty_include.txt
+${LSDIFF} -I empty_include.txt multi-file.patch 2>empty_errors >empty_result || exit 1
+[ -s empty_errors ] && { echo "Unexpected errors with empty include file:"; cat empty_errors; exit 1; }
+grep -q "file1.txt" empty_result || { echo "Empty include file should show all files"; exit 1; }
+
+# Test 6: Include file with comments and blank lines
+echo "=== Test 6: Include file with comments and blank lines ==="
+cat << EOF > complex_include.txt
+# This is a comment
+*.txt
+
+# Another comment
+special*
+# End of file
+EOF
+
+${LSDIFF} -I complex_include.txt multi-file.patch 2>complex_errors >complex_result || exit 1
+[ -s complex_errors ] && { echo "Unexpected errors with complex include file:"; cat complex_errors; exit 1; }
+
+cat << EOF | cmp - complex_result || { echo "Complex include file test failed"; exit 1; }
+file1.txt
+file2.txt
+file3.txt
+special_file.c
+EOF
+
+echo "All include/exclude from file tests passed!"
+exit 0
