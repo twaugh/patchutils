@@ -9,6 +9,9 @@ CORPUS_DIR="$SCRIPT_DIR/corpus"
 RESULTS_DIR="$SCRIPT_DIR/results"
 DICT_FILE="$SCRIPT_DIR/patch.dict"
 
+# Allow overriding binary directory (for instrumented builds)
+FUZZ_BINDIR="${FUZZ_BINDIR:-$PROJECT_DIR/src}"
+
 # Default tool to fuzz
 TOOL="${1:-filterdiff}"
 
@@ -23,22 +26,22 @@ fi
 # Ensure results directory exists
 mkdir -p "$RESULTS_DIR/$TOOL"
 
-# Check if we have the normal binaries built
-if [ ! -f "$PROJECT_DIR/src/$TOOL" ]; then
-    echo "Building patchutils tools..."
-    cd "$PROJECT_DIR"
-    make clean >/dev/null 2>&1 || true
+# Determine which binary to use (instrumented if available)
+BINARY_PATH=""
+INSTRUMENTED=false
 
-    # Try to configure if not already done
-    if [ ! -f Makefile ]; then
-        if [ ! -f configure ]; then
-            ./bootstrap
-        fi
-        ./configure
-    fi
-
-    make -j$(nproc)
-    cd - >/dev/null
+if [ -f "$FUZZ_BINDIR/fuzz-$TOOL" ]; then
+    BINARY_PATH="$FUZZ_BINDIR/fuzz-$TOOL"
+    INSTRUMENTED=true
+    echo "Using instrumented binary: $BINARY_PATH"
+elif [ -f "$FUZZ_BINDIR/$TOOL" ]; then
+    BINARY_PATH="$FUZZ_BINDIR/$TOOL"
+    echo "Warning: Using non-instrumented binary: $BINARY_PATH"
+    echo "For better fuzzing results, configure with --enable-fuzzing and rebuild"
+else
+    echo "Binary not found: $TOOL"
+    echo "Please build patchutils first with 'make' or 'make --enable-fuzzing'"
+    exit 1
 fi
 
 # AFL++ system configuration check
@@ -72,8 +75,8 @@ case "$TOOL" in
             -x "$DICT_FILE" \
             -t 5000 \
             -m none \
-            -n \
-            -- "$PROJECT_DIR/src/filterdiff" --list
+            $( [ "$INSTRUMENTED" = "true" ] || echo "-n" ) \
+            -- "$BINARY_PATH" --list
         ;;
     interdiff)
         # For interdiff, we need two patch files - use a simple approach
@@ -86,8 +89,8 @@ case "$TOOL" in
             -x "$DICT_FILE" \
             -t 5000 \
             -m none \
-            -n \
-            -- "$PROJECT_DIR/src/interdiff" "$CORPUS_DIR/$PATCH1" @@
+            $( [ "$INSTRUMENTED" = "true" ] || echo "-n" ) \
+            -- "$BINARY_PATH" "$CORPUS_DIR/$PATCH1" @@
         ;;
     rediff)
         # Test rediff (patch correction)
@@ -97,8 +100,8 @@ case "$TOOL" in
             -x "$DICT_FILE" \
             -t 5000 \
             -m none \
-            -n \
-            -- "$PROJECT_DIR/src/rediff"
+            $( [ "$INSTRUMENTED" = "true" ] || echo "-n" ) \
+            -- "$BINARY_PATH"
         ;;
     grepdiff)
         # Test grepdiff with a simple pattern
@@ -108,8 +111,8 @@ case "$TOOL" in
             -x "$DICT_FILE" \
             -t 5000 \
             -m none \
-            -n \
-            -- "$PROJECT_DIR/src/grepdiff" ".*"
+            $( [ "$INSTRUMENTED" = "true" ] || echo "-n" ) \
+            -- "$BINARY_PATH" ".*"
         ;;
     lsdiff)
         # Test lsdiff (list files in patch)
@@ -119,8 +122,8 @@ case "$TOOL" in
             -x "$DICT_FILE" \
             -t 5000 \
             -m none \
-            -n \
-            -- "$PROJECT_DIR/src/lsdiff"
+            $( [ "$INSTRUMENTED" = "true" ] || echo "-n" ) \
+            -- "$BINARY_PATH"
         ;;
     *)
         echo "Unknown tool: $TOOL"
