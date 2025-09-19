@@ -1,0 +1,141 @@
+#!/bin/sh
+
+# Test decompression functionality (-z option)
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Create a test patch
+cat << EOF > test.patch
+--- file1.txt
++++ file1.txt
+@@ -1 +1 @@
+-old1
++new1
+--- file2.txt
++++ file2.txt
+@@ -1 +1 @@
+-old2
++new2
+EOF
+
+# Test 1: Normal operation without compression (baseline)
+echo "=== Test 1: Normal operation without compression ==="
+${LSDIFF} test.patch 2>normal_errors >normal_result || exit 1
+[ -s normal_errors ] && { echo "Unexpected errors in normal test:"; cat normal_errors; exit 1; }
+
+cat << EOF | cmp - normal_result || { echo "Normal test failed"; exit 1; }
+file1.txt
+file2.txt
+EOF
+
+# Test 2: -z option with uncompressed file (should still work)
+echo "=== Test 2: -z option with uncompressed file ==="
+${LSDIFF} -z test.patch 2>uncompressed_z_errors >uncompressed_z_result || exit 1
+[ -s uncompressed_z_errors ] && { echo "Unexpected errors with -z on uncompressed file:"; cat uncompressed_z_errors; exit 1; }
+
+cat << EOF | cmp - uncompressed_z_result || { echo "Uncompressed -z test failed"; exit 1; }
+file1.txt
+file2.txt
+EOF
+
+# Test 3: Create and test gzip compressed file (if gzip is available)
+echo "=== Test 3: Gzip compressed file ==="
+if command -v gzip >/dev/null 2>&1; then
+    gzip -c test.patch > test.patch.gz
+
+    ${LSDIFF} -z test.patch.gz 2>gzip_errors >gzip_result || exit 1
+    [ -s gzip_errors ] && { echo "Unexpected errors with gzip file:"; cat gzip_errors; exit 1; }
+
+    cat << EOF | cmp - gzip_result || { echo "Gzip test failed"; exit 1; }
+file1.txt
+file2.txt
+EOF
+
+    echo "Gzip test passed"
+else
+    echo "Gzip not available, skipping gzip test"
+fi
+
+# Test 4: Create and test bzip2 compressed file (if bzip2 is available)
+echo "=== Test 4: Bzip2 compressed file ==="
+if command -v bzip2 >/dev/null 2>&1; then
+    bzip2 -c test.patch > test.patch.bz2
+
+    ${LSDIFF} -z test.patch.bz2 2>bzip2_errors >bzip2_result || exit 1
+    [ -s bzip2_errors ] && { echo "Unexpected errors with bzip2 file:"; cat bzip2_errors; exit 1; }
+
+    cat << EOF | cmp - bzip2_result || { echo "Bzip2 test failed"; exit 1; }
+file1.txt
+file2.txt
+EOF
+
+    echo "Bzip2 test passed"
+else
+    echo "Bzip2 not available, skipping bzip2 test"
+fi
+
+# Test 5: -z with multiple files (some compressed, some not)
+echo "=== Test 5: Multiple files with mixed compression ==="
+if command -v gzip >/dev/null 2>&1; then
+    # Create another patch file
+    cat << EOF > test2.patch
+--- file3.txt
++++ file3.txt
+@@ -1 +1 @@
+-old3
++new3
+EOF
+
+    # Compress it
+    gzip -c test2.patch > test2.patch.gz
+
+    # Test with both compressed and uncompressed
+    ${LSDIFF} -z test.patch test2.patch.gz 2>mixed_errors >mixed_result || exit 1
+    [ -s mixed_errors ] && { echo "Unexpected errors with mixed compression:"; cat mixed_errors; exit 1; }
+
+    cat << EOF | cmp - mixed_result || { echo "Mixed compression test failed"; exit 1; }
+test.patch:file1.txt
+test.patch:file2.txt
+test2.patch.gz:file3.txt
+EOF
+
+    echo "Mixed compression test passed"
+else
+    echo "Gzip not available, skipping mixed compression test"
+fi
+
+# Test 6: -z with stdin (not supported - should work with uncompressed data)
+echo "=== Test 6: -z with stdin (uncompressed) ==="
+cat test.patch | ${LSDIFF} -z 2>stdin_errors >stdin_result || exit 1
+[ -s stdin_errors ] && { echo "Unexpected errors with stdin:"; cat stdin_errors; exit 1; }
+
+cat << EOF | cmp - stdin_result || { echo "Stdin test failed"; exit 1; }
+file1.txt
+file2.txt
+EOF
+
+echo "Stdin test passed"
+
+# Test 7: -z with nonexistent file (should fail gracefully)
+echo "=== Test 7: Nonexistent file with -z ==="
+${LSDIFF} -z nonexistent.patch.gz >nonexistent_output 2>nonexistent_errors
+exit_code=$?
+[ $exit_code -ne 0 ] || { echo "Should fail when file doesn't exist"; exit 1; }
+
+# Test 8: -z with other options combined
+echo "=== Test 8: -z with other options ==="
+if command -v gzip >/dev/null 2>&1; then
+    ${LSDIFF} -z -s -n test.patch.gz 2>combined_z_errors >combined_z_result || exit 1
+    [ -s combined_z_errors ] && { echo "Unexpected errors with -z combined options:"; cat combined_z_errors; exit 1; }
+
+    # Should contain line numbers and status
+    grep -q "^[0-9].*! file1.txt$" combined_z_result || { echo "Combined -z options test failed"; exit 1; }
+    grep -q "^[0-9].*! file2.txt$" combined_z_result || { echo "Combined -z options test failed"; exit 1; }
+
+    echo "Combined -z options test passed"
+else
+    echo "Gzip not available, skipping combined -z options test"
+fi
+
+echo "All decompression tests passed!"
+exit 0
