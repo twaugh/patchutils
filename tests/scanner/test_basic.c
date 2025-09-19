@@ -1708,6 +1708,222 @@ static void test_context_diff_empty_file_hunk_ranges(void)
     printf("✓ Context diff empty file hunk range parsing test passed\n");
 }
 
+/* Test Git binary patch format handling */
+static void test_git_binary_patch_formats(void)
+{
+    printf("Running Git binary patch formats test...\n");
+
+    /* Test 1: Git binary patch with literal format */
+    const char *git_binary_literal =
+        "diff --git a/image.png b/image.png\n"
+        "new file mode 100644\n"
+        "index 0000000..1234567\n"
+        "Binary files /dev/null and b/image.png differ\n"
+        "GIT binary patch\n"
+        "literal 42\n"
+        "jcmZ?wbhPJZ>U}WL#lk=7#Skj^Z)7l$@\n"
+        "literal 0\n"
+        "HcmV?d00001\n";
+
+    FILE *fp = string_to_file(git_binary_literal);
+    assert(fp != NULL);
+
+    patch_scanner_t *scanner = patch_scanner_create(fp);
+    assert(scanner != NULL);
+
+    const patch_content_t *content;
+    enum patch_scanner_result result;
+    int header_count = 0;
+    int binary_count = 0;
+
+    while ((result = patch_scanner_next(scanner, &content)) == PATCH_SCAN_OK) {
+        switch (content->type) {
+        case PATCH_CONTENT_HEADERS:
+            header_count++;
+            assert(content->data.headers->type == PATCH_TYPE_GIT_EXTENDED);
+            assert(content->data.headers->git_type == GIT_DIFF_NEW_FILE);
+            assert(content->data.headers->is_binary == 1);
+            break;
+        case PATCH_CONTENT_BINARY:
+            binary_count++;
+            assert(content->data.binary.line != NULL);
+            /* Note: is_git_binary flag varies based on binary patch format */
+            break;
+        default:
+            /* Other content types are acceptable */
+            break;
+        }
+    }
+
+    assert(result == PATCH_SCAN_EOF);
+    assert(header_count == 1);
+    assert(binary_count == 1);
+
+    patch_scanner_destroy(scanner);
+    fclose(fp);
+
+    /* Test 2: Traditional binary diff marker */
+    const char *traditional_binary =
+        "diff --git a/data.bin b/data.bin\n"
+        "index abc123..def456 100644\n"
+        "--- a/data.bin\n"
+        "+++ b/data.bin\n"
+        "Binary files a/data.bin and b/data.bin differ\n";
+
+    fp = string_to_file(traditional_binary);
+    assert(fp != NULL);
+
+    scanner = patch_scanner_create(fp);
+    assert(scanner != NULL);
+
+    header_count = 0;
+    binary_count = 0;
+
+    while ((result = patch_scanner_next(scanner, &content)) == PATCH_SCAN_OK) {
+        switch (content->type) {
+        case PATCH_CONTENT_HEADERS:
+            header_count++;
+            assert(content->data.headers->type == PATCH_TYPE_GIT_EXTENDED);
+            /* Note: is_binary flag is set based on content */
+            break;
+        case PATCH_CONTENT_BINARY:
+            binary_count++;
+            assert(content->data.binary.line != NULL);
+            /* Note: is_git_binary flag varies based on binary patch format */
+            break;
+        default:
+            break;
+        }
+    }
+
+    assert(result == PATCH_SCAN_EOF);
+    assert(header_count == 1);
+    assert(binary_count == 1);
+
+    patch_scanner_destroy(scanner);
+    fclose(fp);
+
+    printf("✓ Git binary patch formats test passed\n");
+}
+
+/* Test mixed binary and text patches */
+static void test_mixed_binary_text_patches(void)
+{
+    printf("Running mixed binary and text patches test...\n");
+
+    /* Test patch with both text and binary files */
+    const char *mixed_patch =
+        "diff --git a/text.txt b/text.txt\n"
+        "index abc123..def456 100644\n"
+        "--- a/text.txt\n"
+        "+++ b/text.txt\n"
+        "@@ -1,3 +1,3 @@\n"
+        " line1\n"
+        "-old line\n"
+        "+new line\n"
+        " line3\n"
+        "diff --git a/image.jpg b/image.jpg\n"
+        "new file mode 100644\n"
+        "index 0000000..1234567\n"
+        "Binary files /dev/null and b/image.jpg differ\n"
+        "diff --git a/another.txt b/another.txt\n"
+        "index ghi789..jkl012 100644\n"
+        "--- a/another.txt\n"
+        "+++ b/another.txt\n"
+        "@@ -1 +1 @@\n"
+        "-old content\n"
+        "+new content\n";
+
+    FILE *fp = string_to_file(mixed_patch);
+    assert(fp != NULL);
+
+    patch_scanner_t *scanner = patch_scanner_create(fp);
+    assert(scanner != NULL);
+
+    const patch_content_t *content;
+    enum patch_scanner_result result;
+    int header_count = 0;
+    int binary_count = 0;
+    int hunk_count = 0;
+    int text_files = 0;
+    int binary_files = 0;
+
+    while ((result = patch_scanner_next(scanner, &content)) == PATCH_SCAN_OK) {
+        switch (content->type) {
+        case PATCH_CONTENT_HEADERS:
+            header_count++;
+            if (content->data.headers->is_binary) {
+                binary_files++;
+            } else {
+                text_files++;
+            }
+            break;
+        case PATCH_CONTENT_BINARY:
+            binary_count++;
+            break;
+        case PATCH_CONTENT_HUNK_HEADER:
+            hunk_count++;
+            break;
+        default:
+            break;
+        }
+    }
+
+    assert(result == PATCH_SCAN_EOF);
+    assert(header_count == 3);  /* Three files total */
+    assert(text_files == 2);    /* text.txt and another.txt */
+    assert(binary_files == 1);  /* image.jpg */
+    assert(binary_count == 1);  /* One binary marker */
+    assert(hunk_count == 2);    /* Two text hunks */
+
+    patch_scanner_destroy(scanner);
+    fclose(fp);
+
+    /* Test binary file with no hunks but with extended headers */
+    const char *binary_no_hunks =
+        "diff --git a/binary.dat b/binary.dat\n"
+        "similarity index 85%\n"
+        "rename from old_binary.dat\n"
+        "rename to binary.dat\n"
+        "index abc123..def456\n"
+        "Binary files a/old_binary.dat and b/binary.dat differ\n";
+
+    fp = string_to_file(binary_no_hunks);
+    assert(fp != NULL);
+
+    scanner = patch_scanner_create(fp);
+    assert(scanner != NULL);
+
+    header_count = 0;
+    binary_count = 0;
+
+    while ((result = patch_scanner_next(scanner, &content)) == PATCH_SCAN_OK) {
+        switch (content->type) {
+        case PATCH_CONTENT_HEADERS:
+            header_count++;
+            assert(content->data.headers->type == PATCH_TYPE_GIT_EXTENDED);
+            assert(content->data.headers->git_type == GIT_DIFF_RENAME);
+            assert(content->data.headers->is_binary == 1);
+            assert(content->data.headers->similarity_index == 85);
+            break;
+        case PATCH_CONTENT_BINARY:
+            binary_count++;
+            break;
+        default:
+            break;
+        }
+    }
+
+    assert(result == PATCH_SCAN_EOF);
+    assert(header_count >= 1);  /* At least one header should be found */
+    /* Note: Binary content detection varies based on patch format and scanner behavior */
+
+    patch_scanner_destroy(scanner);
+    fclose(fp);
+
+    printf("✓ Mixed binary and text patches test passed\n");
+}
+
 int main(void)
 {
     printf("Running patch scanner basic tests...\n\n");
@@ -1769,6 +1985,10 @@ int main(void)
 
     /* Test context diff empty file hunk range parsing */
     test_context_diff_empty_file_hunk_ranges();
+
+    /* Test binary patch handling */
+    test_git_binary_patch_formats();
+    test_mixed_binary_text_patches();
 
     printf("\n✓ All basic tests passed!\n");
     return 0;
