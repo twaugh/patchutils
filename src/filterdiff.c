@@ -1536,20 +1536,20 @@ const char * syntax_str =
 "  --lines=L include only hunks with (original) lines in range L, if range begins with x show all excluding range L\n"
 "  -F F, --files=F\n"
 "            include only files in range F, if range begins with x show all excluding range F\n"
-"  --annotate (filterdiff, patchview, grepdiff)\n"
-"            annotate each hunk with the filename and hunk number (filterdiff, patchview, grepdiff)\n"
-"  --as-numbered-lines=before|after|original-before|original-after (filterdiff, patchview, grepdiff)\n"
+"  --annotate (filterdiff, grepdiff)\n"
+"            annotate each hunk with the filename and hunk number (filterdiff, grepdiff)\n"
+"  --as-numbered-lines=before|after|original-before|original-after (filterdiff, grepdiff)\n"
 "            display lines as they would look before, or after, the patch is applied;\n"
 "            or with original line numbers from the diff (original-before/original-after)\n"
-"  --format=context|unified (filterdiff, patchview, grepdiff)\n"
-"            set output format (filterdiff, patchview, grepdiff)\n"
+"  --format=context|unified (filterdiff, grepdiff)\n"
+"            set output format (filterdiff, grepdiff)\n"
 "  --output-matching=hunk|file (grepdiff)\n"
 "            show matching hunks or file-level diffs (grepdiff)\n"
 "  --only-match=rem|removals|add|additions|mod|modifications|all (grepdiff)\n"
 "            regex will only match removals, additions, modifications or (grepdiff)\n"
 "            the whole hunk (grepdiff)\n"
-"  --remove-timestamps (filterdiff, patchview, grepdiff)\n"
-"            don't show timestamps from output (filterdiff, patchview, grepdiff)\n"
+"  --remove-timestamps (filterdiff, grepdiff)\n"
+"            don't show timestamps from output (filterdiff, grepdiff)\n"
 "  --clean (filterdiff)\n"
 "            remove all comments (non-diff lines) from output (filterdiff)\n"
 "  --in-place (filterdiff)\n"
@@ -1590,9 +1590,9 @@ const char * syntax_str =
 "            treat empty files as absent (lsdiff)\n"
 "  -f FILE, --file=FILE (grepdiff)\n"
 "            read regular expressions from FILE (grepdiff)\n"
-"  --filter  run as 'filterdiff' (grepdiff, patchview, lsdiff)\n"
-"  --list    run as 'lsdiff' (filterdiff, patchview, grepdiff)\n"
-"  --grep    run as 'grepdiff' (filterdiff, patchview, lsdiff)\n"
+"  --filter  run as 'filterdiff' (deprecated, use program name instead) (grepdiff, lsdiff)\n"
+"  --list    run as 'lsdiff' (deprecated, use program name instead) (filterdiff, grepdiff)\n"
+"  --grep    run as 'grepdiff' (deprecated, use program name instead) (filterdiff, lsdiff)\n"
 ;
 
 NORETURN
@@ -1698,12 +1698,6 @@ static void set_filter (void)
 	mode = mode_filter;
 }
 
-static void set_view (void)
-{
-	/* This is patchview. */
-	set_progname ("patchview");
-	mode = mode_filter;
-}
 
 static void set_grep (void)
 {
@@ -1714,7 +1708,7 @@ static void set_grep (void)
 
 static void determine_mode_from_name (const char *argv0)
 {
-	/* This is filterdiff, unless it is named 'lsdiff', 'grepdiff' or 'patchview'. */
+	/* This is filterdiff, unless it is named 'lsdiff' or 'grepdiff'. */
 	const char *p = strrchr (argv0, '/');
 	if (!p++)
 		p = argv0;
@@ -1722,9 +1716,6 @@ static void determine_mode_from_name (const char *argv0)
 		set_list ();
 	else if (strstr (p, "grepdiff"))
 		set_grep ();
-	else if (strstr (p, "patchview")) {
-		set_view ();
-	}
 	else
 		set_filter ();
 }
@@ -1783,7 +1774,6 @@ int main (int argc, char *argv[])
 	FILE *f = stdin;
 	char format = '\0';
 	int regex_file_specified = 0;
-	int have_switches = 0;
 	int inplace_mode = 0;
 
 	setlocale (LC_TIME, "C");
@@ -1836,15 +1826,17 @@ int main (int argc, char *argv[])
 		if (c == -1)
 			break;
 
-		have_switches = 1;
 		switch (c) {
 		case 'g':
+			fprintf (stderr, "Warning: --grep is deprecated, use 'grepdiff' command instead\n");
 			set_grep ();
 			break;
 		case 1000 + 'f':
+			fprintf (stderr, "Warning: --filter is deprecated, use 'filterdiff' command instead\n");
 			set_filter ();
 			break;
 		case 'l':
+			fprintf (stderr, "Warning: --list is deprecated, use 'lsdiff' command instead\n");
 			set_list ();
 			break;
 		case 'E':
@@ -2018,10 +2010,6 @@ int main (int argc, char *argv[])
 			syntax(1);
 		}
 	}
-    if (have_switches == 0 && strcmp (progname, "patchview") == 0) {
-	mode = mode_list;
-	number_files = 1;
-    }
 
 	/* Preserve the old semantics of -p. */
 	if (mode != mode_filter && ignore_components && !strip_components &&

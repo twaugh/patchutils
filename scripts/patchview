@@ -1,0 +1,74 @@
+#!/bin/sh
+
+# patchview - wrapper script for patchutils
+# This script replaces the patchview symlink to filterdiff and provides
+# cleaner mode switching by calling the appropriate tool directly.
+
+# Check for switches (arguments starting with -)
+# Handle -- separator properly: everything after -- is treated as non-options
+has_switches=0
+past_separator=0
+for arg in "$@"; do
+    if [ "$past_separator" -eq 1 ]; then
+        # Everything after -- is treated as filenames, not switches
+        continue
+    fi
+    case "$arg" in
+        --)
+            # -- separator found, stop looking for switches after this
+            past_separator=1
+            ;;
+        -*)
+            has_switches=1
+            break
+            ;;
+    esac
+done
+
+# Default behavior: if no switches, behave like "lsdiff --number"
+# This matches the original patchview behavior in filterdiff.c
+if [ $has_switches -eq 0 ]; then
+    exec lsdiff --number "$@"
+fi
+
+# Check for mode-switching options
+case "$1" in
+    --filter)
+        # Remove --filter and pass remaining args to filterdiff
+        shift
+        exec filterdiff "$@"
+        ;;
+    --grep)
+        # Remove --grep and pass remaining args to grepdiff
+        shift
+        exec grepdiff "$@"
+        ;;
+    --help)
+        cat << 'EOF'
+usage: patchview [OPTION]... [files ...]
+
+patchview is a wrapper for filterdiff that provides numbered file listing.
+
+Without switches:
+    patchview [files...]        equivalent to: lsdiff --number [files...]
+
+With mode options:
+    patchview --filter ...      equivalent to: filterdiff ...
+    patchview --grep ...        equivalent to: grepdiff ...
+
+With other options:
+    patchview -F2-              equivalent to: filterdiff -F2-
+
+For complete option details, see:
+    man filterdiff, man lsdiff, man grepdiff
+EOF
+        ;;
+    --version)
+        # Get version from filterdiff
+        exec filterdiff --version
+        ;;
+    *)
+        # Any other arguments: behave like filterdiff
+        exec filterdiff "$@"
+        ;;
+esac

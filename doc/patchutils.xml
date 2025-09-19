@@ -905,7 +905,8 @@
               <option>--list</option>
             </term>
             <listitem>
-              <para>Behave like <citerefentry><refentrytitle>lsdiff</refentrytitle><manvolnum>1</manvolnum></citerefentry> instead.</para>
+              <para>Behave like <citerefentry><refentrytitle>lsdiff</refentrytitle><manvolnum>1</manvolnum></citerefentry> instead.
+                <emphasis>Deprecated:</emphasis> Use the <command>lsdiff</command> command directly instead.</para>
             </listitem>
           </varlistentry>
           <varlistentry>
@@ -913,7 +914,8 @@
               <option>--grep</option>
             </term>
             <listitem>
-              <para>Behave like <citerefentry><refentrytitle>grepdiff</refentrytitle><manvolnum>1</manvolnum></citerefentry> instead.</para>
+              <para>Behave like <citerefentry><refentrytitle>grepdiff</refentrytitle><manvolnum>1</manvolnum></citerefentry> instead.
+                <emphasis>Deprecated:</emphasis> Use the <command>grepdiff</command> command directly instead.</para>
             </listitem>
           </varlistentry>
         </variablelist>
@@ -1353,7 +1355,8 @@ filterdiff -i 'b/*/newname' git-patch-with-renames.patch]]></screen></para>
               <option>--filter</option>
             </term>
             <listitem>
-              <para>Behave like <citerefentry><refentrytitle>filterdiff</refentrytitle><manvolnum>1</manvolnum></citerefentry> instead.</para>
+              <para>Behave like <citerefentry><refentrytitle>filterdiff</refentrytitle><manvolnum>1</manvolnum></citerefentry> instead.
+                <emphasis>Deprecated:</emphasis> Use the <command>filterdiff</command> command directly instead.</para>
             </listitem>
           </varlistentry>
           <varlistentry>
@@ -1361,7 +1364,8 @@ filterdiff -i 'b/*/newname' git-patch-with-renames.patch]]></screen></para>
               <option>--grep</option>
             </term>
             <listitem>
-              <para>Behave like <citerefentry><refentrytitle>grepdiff</refentrytitle><manvolnum>1</manvolnum></citerefentry> instead.</para>
+              <para>Behave like <citerefentry><refentrytitle>grepdiff</refentrytitle><manvolnum>1</manvolnum></citerefentry> instead.
+                <emphasis>Deprecated:</emphasis> Use the <command>grepdiff</command> command directly instead.</para>
             </listitem>
           </varlistentry>
         </variablelist>
@@ -1710,7 +1714,8 @@ will pipe patch of file #2 to vim - -R
               <option>--filter</option>
             </term>
             <listitem>
-              <para>Behave like <citerefentry><refentrytitle>filterdiff</refentrytitle><manvolnum>1</manvolnum></citerefentry> instead.</para>
+              <para>Behave like <citerefentry><refentrytitle>filterdiff</refentrytitle><manvolnum>1</manvolnum></citerefentry> instead.
+                <emphasis>Deprecated:</emphasis> Use the <command>filterdiff</command> command directly instead.</para>
             </listitem>
           </varlistentry>
           <varlistentry>
@@ -1718,7 +1723,8 @@ will pipe patch of file #2 to vim - -R
               <option>--grep</option>
             </term>
             <listitem>
-              <para>Behave like <citerefentry><refentrytitle>grepdiff</refentrytitle><manvolnum>1</manvolnum></citerefentry> instead.</para>
+              <para>Behave like <citerefentry><refentrytitle>grepdiff</refentrytitle><manvolnum>1</manvolnum></citerefentry> instead.
+                <emphasis>Deprecated:</emphasis> Use the <command>grepdiff</command> command directly instead.</para>
             </listitem>
           </varlistentry>
         </variablelist>
@@ -2384,7 +2390,8 @@ will pipe patch of file #2 to vim - -R
               <option>--filter</option>
             </term>
             <listitem>
-              <para>Behave like <citerefentry><refentrytitle>filterdiff</refentrytitle><manvolnum>1</manvolnum></citerefentry> instead.</para>
+              <para>Behave like <citerefentry><refentrytitle>filterdiff</refentrytitle><manvolnum>1</manvolnum></citerefentry> instead.
+                <emphasis>Deprecated:</emphasis> Use the <command>filterdiff</command> command directly instead.</para>
             </listitem>
           </varlistentry>
           <varlistentry>
@@ -2392,7 +2399,8 @@ will pipe patch of file #2 to vim - -R
               <option>--list</option>
             </term>
             <listitem>
-              <para>Behave like <citerefentry><refentrytitle>lsdiff</refentrytitle><manvolnum>1</manvolnum></citerefentry> instead.</para>
+              <para>Behave like <citerefentry><refentrytitle>lsdiff</refentrytitle><manvolnum>1</manvolnum></citerefentry> instead.
+                <emphasis>Deprecated:</emphasis> Use the <command>lsdiff</command> command directly instead.</para>
             </listitem>
           </varlistentry>
         </variablelist>
