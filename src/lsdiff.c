@@ -97,7 +97,7 @@ static void syntax(int err) __attribute__((noreturn));
 static void process_patch_file(FILE *fp, const char *filename);
 static void display_filename(const char *filename, const char *patchname, char status, unsigned long linenum);
 static char determine_file_status(const struct patch_headers *headers);
-static const char *get_best_filename(const struct patch_headers *headers);
+static char *get_best_filename(const struct patch_headers *headers);
 static char *strip_git_prefix_from_filename(const char *filename);
 static const char *strip_path_components(const char *filename, int components);
 static int should_display_file(const char *filename);
@@ -275,9 +275,10 @@ static void add_filename_candidate(char **stripped_candidates, const char **cand
     (*count)++;
 }
 
-static const char *get_best_filename(const struct patch_headers *headers)
+static char *get_best_filename(const struct patch_headers *headers)
 {
     const char *filename = NULL;
+    char *result = NULL;
 
     /* Use best_name algorithm to choose filename with Git prefix handling */
     switch (headers->type) {
@@ -322,11 +323,10 @@ static const char *get_best_filename(const struct patch_headers *headers)
 
             filename = choose_best_name(candidates, count);
 
-            /* Create a persistent copy since we'll free the stripped candidates */
-            static char *cached_filename = NULL;
-            if (cached_filename) free(cached_filename);
-            cached_filename = xstrdup(filename);
-            filename = cached_filename;
+            /* Create a copy since we'll free the stripped candidates */
+            if (filename) {
+                result = xstrdup(filename);
+            }
 
             /* Free the stripped candidates */
             for (i = 0; i < count; i++) {
@@ -349,11 +349,10 @@ static const char *get_best_filename(const struct patch_headers *headers)
 
             filename = choose_best_name(candidates, count);
 
-            /* Create a persistent copy since we'll free the stripped candidates */
-            static char *cached_filename2 = NULL;
-            if (cached_filename2) free(cached_filename2);
-            cached_filename2 = xstrdup(filename);
-            filename = cached_filename2;
+            /* Create a copy since we'll free the stripped candidates */
+            if (filename) {
+                result = xstrdup(filename);
+            }
 
             /* Free the stripped candidates */
             for (i = 0; i < count; i++) {
@@ -363,29 +362,35 @@ static const char *get_best_filename(const struct patch_headers *headers)
         break;
     }
 
-    if (!filename)
-        filename = "(unknown)";
+    if (!result) {
+        result = xstrdup("(unknown)");
+    }
 
     /* Apply path prefixes */
-    const char *stripped_filename = strip_path_components(filename, strip_output_components);
+    const char *stripped_filename = strip_path_components(result, strip_output_components);
 
     if (add_prefix) {
-        static char *prefixed_filename = NULL;
-        if (prefixed_filename) free(prefixed_filename);
-
         /* Concatenate prefix with filename */
         size_t prefix_len = strlen(add_prefix);
         size_t filename_len = strlen(stripped_filename);
-        prefixed_filename = xmalloc(prefix_len + filename_len + 1);
+        char *prefixed_filename = xmalloc(prefix_len + filename_len + 1);
         strcpy(prefixed_filename, add_prefix);
         strcat(prefixed_filename, stripped_filename);
 
+        free(result);  /* Free the original result */
         return prefixed_filename;
     }
 
     /* TODO: Apply --addoldprefix, --addnewprefix options here */
 
-    return stripped_filename;
+    /* If we used strip_path_components, we need to create a new string */
+    if (stripped_filename != result) {
+        char *final_result = xstrdup(stripped_filename);
+        free(result);
+        return final_result;
+    }
+
+    return result;
 }
 
 static char determine_file_status(const struct patch_headers *headers)
@@ -474,7 +479,7 @@ static void process_patch_file(FILE *fp, const char *filename)
                 process_pending_file(&pending);
             }
 
-            const char *best_filename = get_best_filename(content->data.headers);
+            char *best_filename = get_best_filename(content->data.headers);
             char status = determine_file_status(content->data.headers);
 
             /* Use the line number where the headers started, adjusted for global offset */
@@ -485,7 +490,7 @@ static void process_patch_file(FILE *fp, const char *filename)
 
             if (empty_files_as_absent || lines || hunks) {
                 /* Store pending file info for -E processing, --lines filtering, or --hunks filtering */
-                pending.best_filename = xstrdup(best_filename);
+                pending.best_filename = best_filename;  /* Transfer ownership to pending */
                 pending.patchname = filename;
                 pending.initial_status = status;
                 pending.header_line = header_line;
@@ -498,6 +503,7 @@ static void process_patch_file(FILE *fp, const char *filename)
                 pending.has_matching_hunks = 0;  /* Reset hunk matching flag */
                 pending.has_excluded_hunks = 0;  /* Reset hunk exclusion flag */
                 current_file = pending.should_display ? best_filename : NULL;
+                best_filename = NULL;  /* Transfer ownership, don't free */
             } else {
                 /* Normal processing - display immediately */
                 if (should_display_file(best_filename)) {
@@ -506,6 +512,7 @@ static void process_patch_file(FILE *fp, const char *filename)
                 } else {
                     current_file = NULL;  /* Don't show hunks for filtered files */
                 }
+                free(best_filename);  /* Free immediately after use */
             }
         } else if (content->type == PATCH_CONTENT_HUNK_HEADER) {
             const struct patch_hunk *hunk = content->data.hunk;
