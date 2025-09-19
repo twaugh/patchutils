@@ -1,0 +1,199 @@
+#!/bin/sh
+
+# Test patch scanner error handling and malformed patch scenarios
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Detect if we're using the scanner-based lsdiff or the original filterdiff.c implementation
+# The original implementation uses lsdiff as a symlink to filterdiff
+# The scanner implementation uses lsdiff as a standalone binary
+if [ -L "${LSDIFF}" ] && [ "$(readlink "${LSDIFF}" 2>/dev/null)" = "filterdiff" ]; then
+    SCANNER_LSDIFF=false
+else
+    SCANNER_LSDIFF=true
+fi
+
+# Test 1: Completely malformed patch (should handle gracefully)
+echo "=== Test 1: Completely malformed patch ==="
+cat << EOF > malformed.patch
+This is not a patch file at all.
+It contains random text.
+No proper diff headers.
+EOF
+
+${LSDIFF} -v malformed.patch 2>malformed_errors >malformed_result || exit 1
+[ -s malformed_result ] && { echo "Malformed patch should produce no file output"; exit 1; }
+# Malformed input is treated as non-patch content, no error messages expected
+[ -s malformed_errors ] && { echo "Malformed patch should not produce error messages"; exit 1; }
+
+# Test 2: Same malformed patch without verbose (should be silent)
+echo "=== Test 2: Malformed patch without verbose ==="
+${LSDIFF} malformed.patch 2>malformed_quiet_errors >malformed_quiet_result || exit 1
+[ -s malformed_quiet_result ] && { echo "Malformed patch should produce no file output"; exit 1; }
+[ -s malformed_quiet_errors ] && { echo "Should be silent without -v"; exit 1; }
+
+# Test 3: Partially corrupted patch (some valid, some invalid)
+echo "=== Test 3: Partially corrupted patch ==="
+cat << EOF > partial.patch
+--- file1.txt
++++ file1.txt
+@@ -1 +1 @@
+-old1
++new1
+This line is corrupted and not part of the diff format
+--- file2.txt
++++ file2.txt
+@@ -1 +1 @@
+-old2
++new2
+EOF
+
+${LSDIFF} -v partial.patch 2>partial_errors >partial_result || exit 1
+# Should still extract what it can
+grep -q "file1.txt" partial_result || { echo "Should extract valid parts"; exit 1; }
+grep -q "file2.txt" partial_result || { echo "Should extract valid parts"; exit 1; }
+
+# Test 4: Truncated patch file
+echo "=== Test 4: Truncated patch file ==="
+cat << EOF > truncated.patch
+--- file1.txt
++++ file1.txt
+@@ -1 +1 @@
+-old1
+EOF
+# Missing the +new1 line
+
+${LSDIFF} -v truncated.patch 2>truncated_errors >truncated_result || exit 1
+# Should handle gracefully and extract what it can
+grep -q "file1.txt" truncated_result || { echo "Should extract filename from truncated patch"; exit 1; }
+
+# Test 5: Patch with invalid hunk headers
+# This test demonstrates different error handling philosophies:
+# - Scanner implementation: Graceful degradation, continue processing
+# - Original implementation: Fail-fast on parse errors
+echo "=== Test 5: Patch with invalid hunk headers ==="
+cat << EOF > invalid-hunk.patch
+--- file1.txt
++++ file1.txt
+@@ invalid hunk header @@
+-old1
++new1
+--- file2.txt
++++ file2.txt
+@@ -1 +1 @@
+-old2
++new2
+EOF
+
+if [ "$SCANNER_LSDIFF" = "true" ]; then
+    # Scanner implementation handles errors gracefully and continues processing
+    ${LSDIFF} -v invalid-hunk.patch 2>invalid_hunk_errors >invalid_hunk_result || exit 1
+    # Should extract both files (continues after error)
+    grep -q "file1.txt" invalid_hunk_result || { echo "Should extract file1.txt"; exit 1; }
+    grep -q "file2.txt" invalid_hunk_result || { echo "Should extract file2.txt"; exit 1; }
+else
+    # Original implementation fails hard on invalid hunk headers
+    ${LSDIFF} -v invalid-hunk.patch 2>invalid_hunk_errors >invalid_hunk_result
+    exit_code=$?
+    if [ $exit_code -eq 0 ]; then
+        echo "UNEXPECTED: Original implementation should fail on invalid hunk header"
+        exit 1
+    fi
+    # Should extract only the first file before hitting the error
+    grep -q "file1.txt" invalid_hunk_result || { echo "Should extract file1.txt before error"; exit 1; }
+    # Should show error message
+    grep -q "line not understood" invalid_hunk_errors || { echo "Should show parse error"; exit 1; }
+fi
+
+# Test 6: Empty patch file
+echo "=== Test 6: Empty patch file ==="
+touch empty.patch
+${LSDIFF} empty.patch 2>empty_errors >empty_result || exit 1
+[ -s empty_result ] && { echo "Empty patch should produce no output"; exit 1; }
+[ -s empty_errors ] && { echo "Empty patch should not produce errors"; exit 1; }
+
+# Test 7: Patch with binary data mixed in
+echo "=== Test 7: Patch with binary data ==="
+cat << EOF > binary-mixed.patch
+--- file1.txt
++++ file1.txt
+@@ -1 +1 @@
+-old1
++new1
+EOF
+# Add some binary data
+printf "\x00\x01\x02\x03\x04\x05" >> binary-mixed.patch
+cat << EOF >> binary-mixed.patch
+
+--- file2.txt
++++ file2.txt
+@@ -1 +1 @@
+-old2
++new2
+EOF
+
+${LSDIFF} -v binary-mixed.patch 2>binary_errors >binary_result || exit 1
+# Should extract what it can
+grep -q "file1.txt" binary_result || { echo "Should extract valid parts before binary data"; exit 1; }
+grep -q "file2.txt" binary_result || { echo "Should extract valid parts after binary data"; exit 1; }
+
+# Test 8: Very long lines in patch
+echo "=== Test 8: Very long lines in patch ==="
+cat << EOF > long-lines.patch
+--- file1.txt
++++ file1.txt
+@@ -1 +1 @@
+EOF
+# Create a very long line (over 1000 characters)
+printf -- "-" >> long-lines.patch
+python3 -c "print('x' * 2000)" >> long-lines.patch
+printf "+new content\n" >> long-lines.patch
+
+${LSDIFF} long-lines.patch 2>long_lines_errors >long_lines_result || exit 1
+grep -q "file1.txt" long_lines_result || { echo "Should handle very long lines"; exit 1; }
+
+# Test 9: Patch with unusual but valid diff headers
+echo "=== Test 9: Unusual but valid diff headers ==="
+cat << EOF > unusual.patch
+--- file1.txt	2023-01-01 12:00:00.000000000 +0000
++++ file1.txt	2023-01-01 12:00:01.000000000 +0000
+@@ -1 +1 @@
+-old1
++new1
+--- /tmp/very/deep/path/to/file2.txt
++++ /tmp/very/deep/path/to/file2.txt
+@@ -1 +1 @@
+-old2
++new2
+EOF
+
+${LSDIFF} unusual.patch 2>unusual_errors >unusual_result || exit 1
+[ -s unusual_errors ] && { echo "Unusual but valid patch should not produce errors:"; cat unusual_errors; exit 1; }
+grep -q "file1.txt" unusual_result || { echo "Should extract files from unusual patch"; exit 1; }
+grep -q "file2.txt" unusual_result || { echo "Should extract files from unusual patch"; exit 1; }
+
+# Test 10: Test with /dev/null (edge case)
+echo "=== Test 10: Test with /dev/null (edge case) ==="
+${LSDIFF} /dev/null 2>devnull_errors >devnull_result || exit 1
+[ -s devnull_errors ] && { echo "/dev/null should not produce errors:"; cat devnull_errors; exit 1; }
+[ -s devnull_result ] && { echo "/dev/null should produce no output"; exit 1; }
+
+# Test 11: Test actual scanner error with verbose (create a scenario that triggers PATCH_SCAN_ERROR)
+echo "=== Test 11: Test scanner with very long lines (stress test) ==="
+# Create a patch with extremely long lines to potentially trigger memory issues
+cat << EOF > long-lines.patch
+--- file.txt
++++ file.txt
+@@ -1 +1 @@
+EOF
+# Add a line that's 10,000 characters long to test memory handling
+printf -- "-" >> long-lines.patch
+python3 -c "print('x' * 10000)" >> long-lines.patch
+printf "+new content\n" >> long-lines.patch
+
+${LSDIFF} -v long-lines.patch 2>long_lines_errors >long_lines_result || exit 1
+# Should handle long lines gracefully
+grep -q "file.txt" long_lines_result || { echo "Should extract filename from patch with long lines"; exit 1; }
+
+echo "All patch scanner error handling tests passed!"
+exit 0

@@ -1,0 +1,115 @@
+#!/bin/sh
+
+# Test the -p warning message when used without -i/-x (should suggest --strip)
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Create a test patch
+cat << EOF > test.patch
+--- a/subdir/file1.txt
++++ b/subdir/file1.txt
+@@ -1 +1 @@
+-old1
++new1
+--- a/subdir/file2.txt
++++ b/subdir/file2.txt
+@@ -1 +1 @@
+-old2
++new2
+EOF
+
+# Test 1: -p without -i/-x should show warning and use as --strip
+echo "=== Test 1: -p without -i/-x shows warning ==="
+${LSDIFF} -p 1 test.patch 2>warning_stderr >warning_result || exit 1
+grep -q "guessing that you meant --strip instead" warning_stderr || { echo "Should show -p warning"; exit 1; }
+
+# Should strip one path component (remove 'a/' and 'b/')
+cat << EOF | cmp - warning_result || { echo "-p warning test failed"; exit 1; }
+subdir/file1.txt
+subdir/file2.txt
+EOF
+
+# Test 2: -p with -i should NOT show warning
+echo "=== Test 2: -p with -i should not show warning ==="
+${LSDIFF} -p 1 -i "*.txt" test.patch 2>no_warning_stderr >no_warning_result || exit 1
+[ -s no_warning_stderr ] && { echo "Should not show warning with -i:"; cat no_warning_stderr; exit 1; }
+
+# Should include files matching pattern, -p is used for pattern matching (not stripping)
+cat << EOF | cmp - no_warning_result || { echo "-p with -i test failed"; exit 1; }
+a/subdir/file1.txt
+a/subdir/file2.txt
+EOF
+
+# Test 3: -p with -x should NOT show warning
+echo "=== Test 3: -p with -x should not show warning ==="
+${LSDIFF} -p 1 -x "nonexistent*" test.patch 2>no_warning_x_stderr >no_warning_x_result || exit 1
+[ -s no_warning_x_stderr ] && { echo "Should not show warning with -x:"; cat no_warning_x_stderr; exit 1; }
+
+# Should exclude files matching pattern (none match), so show all
+cat << EOF | cmp - no_warning_x_result || { echo "-p with -x test failed"; exit 1; }
+a/subdir/file1.txt
+a/subdir/file2.txt
+EOF
+
+# Test 4: -p with both -i and -x should NOT show warning
+echo "=== Test 4: -p with both -i and -x should not show warning ==="
+${LSDIFF} -p 1 -i "*.txt" -x "nonexistent*" test.patch 2>no_warning_both_stderr >no_warning_both_result || exit 1
+[ -s no_warning_both_stderr ] && { echo "Should not show warning with -i and -x:"; cat no_warning_both_stderr; exit 1; }
+
+cat << EOF | cmp - no_warning_both_result || { echo "-p with -i and -x test failed"; exit 1; }
+a/subdir/file1.txt
+a/subdir/file2.txt
+EOF
+
+# Test 5: -p with --strip should NOT show warning (--strip is explicitly set)
+echo "=== Test 5: -p with --strip should not show warning ==="
+${LSDIFF} -p 1 --strip=1 test.patch 2>both_strip_stderr >both_strip_result || exit 1
+[ -s both_strip_stderr ] && { echo "Should not show warning when --strip is explicitly set"; exit 1; }
+
+# Should use --strip=1 (since it's explicitly set) and ignore the -p -> --strip conversion
+cat << EOF | cmp - both_strip_result || { echo "-p with --strip test failed"; exit 1; }
+subdir/file1.txt
+subdir/file2.txt
+EOF
+
+# Test 6: Multiple -p values (only last one should be used)
+echo "=== Test 6: Multiple -p values ==="
+${LSDIFF} -p 0 -p 1 test.patch 2>multiple_p_stderr >multiple_p_result || exit 1
+grep -q "guessing that you meant --strip instead" multiple_p_stderr || { echo "Should show warning with multiple -p"; exit 1; }
+
+# Should use the last -p value (1)
+cat << EOF | cmp - multiple_p_result || { echo "Multiple -p test failed"; exit 1; }
+subdir/file1.txt
+subdir/file2.txt
+EOF
+
+# Test 7: -p 0 should NOT show warning (only warns when strip_components > 0)
+echo "=== Test 7: -p 0 should not show warning ==="
+${LSDIFF} -p 0 test.patch 2>p_zero_stderr >p_zero_result || exit 1
+[ -s p_zero_stderr ] && { echo "Should not show warning with -p 0"; exit 1; }
+
+# Should not strip anything (strip_output_components = 0)
+cat << EOF | cmp - p_zero_result || { echo "-p 0 test failed"; exit 1; }
+a/subdir/file1.txt
+a/subdir/file2.txt
+EOF
+
+# Test 8: -p with higher values
+echo "=== Test 8: -p with higher strip value ==="
+${LSDIFF} -p 2 test.patch 2>p_two_stderr >p_two_result || exit 1
+grep -q "guessing that you meant --strip instead" p_two_stderr || { echo "Should show warning with -p 2"; exit 1; }
+
+# Should strip 2 path components (remove 'a/subdir/' and 'b/subdir/')
+cat << EOF | cmp - p_two_result || { echo "-p 2 test failed"; exit 1; }
+file1.txt
+file2.txt
+EOF
+
+# Test 9: Test that warning goes to stderr, not stdout
+echo "=== Test 9: Warning goes to stderr ==="
+${LSDIFF} -p 1 test.patch >p_stdout 2>p_stderr || exit 1
+grep -q "guessing that you meant --strip instead" p_stderr || { echo "Warning should go to stderr"; exit 1; }
+! grep -q "guessing that you meant --strip instead" p_stdout || { echo "Warning should not go to stdout"; exit 1; }
+
+echo "All -p vs --strip warning tests passed!"
+exit 0

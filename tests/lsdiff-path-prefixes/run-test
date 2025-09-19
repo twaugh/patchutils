@@ -1,0 +1,133 @@
+#!/bin/sh
+
+# Test path prefix options: --addprefix, --addoldprefix, --addnewprefix
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Detect if we're using the scanner-based lsdiff or the original filterdiff.c implementation
+# The original implementation uses lsdiff as a symlink to filterdiff
+# The scanner implementation uses lsdiff as a standalone binary
+if [ -L "${LSDIFF}" ] && [ "$(readlink "${LSDIFF}" 2>/dev/null)" = "filterdiff" ]; then
+    SCANNER_LSDIFF=false
+else
+    SCANNER_LSDIFF=true
+fi
+
+# Create a test patch with various file types
+cat << EOF > test.patch
+--- file1.txt
++++ file1.txt
+@@ -1 +1 @@
+-old1
++new1
+--- a/subdir/file2.c
++++ b/subdir/file2.c
+@@ -1 +1 @@
+-old2
++new2
+diff --git a/git-file.h b/git-file.h
+index abc123..def456 100644
+--- a/git-file.h
++++ b/git-file.h
+@@ -1 +1 @@
+-old_git
++new_git
+EOF
+
+# Test 1: --addprefix option
+echo "=== Test 1: --addprefix option ==="
+${LSDIFF} --addprefix=prefix/ test.patch 2>addprefix_errors >addprefix_result || exit 1
+[ -s addprefix_errors ] && { echo "Unexpected errors with --addprefix:"; cat addprefix_errors; exit 1; }
+
+cat << EOF | cmp - addprefix_result || { echo "addprefix test failed"; exit 1; }
+prefix/file1.txt
+prefix/a/subdir/file2.c
+prefix/a/git-file.h
+EOF
+
+# Test 2: --addprefix with --strip
+echo "=== Test 2: --addprefix with --strip ==="
+${LSDIFF} --addprefix=new/ --strip=1 test.patch 2>addprefix_strip_errors >addprefix_strip_result || exit 1
+[ -s addprefix_strip_errors ] && { echo "Unexpected errors with --addprefix --strip:"; cat addprefix_strip_errors; exit 1; }
+
+cat << EOF | cmp - addprefix_strip_result || { echo "addprefix with strip test failed"; exit 1; }
+new/file1.txt
+new/subdir/file2.c
+new/git-file.h
+EOF
+
+# Test 3: --addprefix with --git-prefixes=strip
+echo "=== Test 3: --addprefix with --git-prefixes=strip ==="
+${LSDIFF} --addprefix=stripped/ --git-prefixes=strip test.patch 2>addprefix_gitstrip_errors >addprefix_gitstrip_result || exit 1
+[ -s addprefix_gitstrip_errors ] && { echo "Unexpected errors with --addprefix --git-prefixes=strip:"; cat addprefix_gitstrip_errors; exit 1; }
+
+cat << EOF | cmp - addprefix_gitstrip_result || { echo "addprefix with git-prefixes=strip test failed"; exit 1; }
+stripped/file1.txt
+stripped/subdir/file2.c
+stripped/git-file.h
+EOF
+
+# Test 4: Empty prefix (should work)
+echo "=== Test 4: Empty prefix ==="
+${LSDIFF} --addprefix= test.patch 2>empty_prefix_errors >empty_prefix_result || exit 1
+[ -s empty_prefix_errors ] && { echo "Unexpected errors with empty prefix:"; cat empty_prefix_errors; exit 1; }
+
+cat << EOF | cmp - empty_prefix_result || { echo "empty prefix test failed"; exit 1; }
+file1.txt
+a/subdir/file2.c
+a/git-file.h
+EOF
+
+# Test 5: Multiple prefix characters
+echo "=== Test 5: Multiple prefix characters ==="
+${LSDIFF} --addprefix=../../some/deep/path/ test.patch 2>deep_prefix_errors >deep_prefix_result || exit 1
+[ -s deep_prefix_errors ] && { echo "Unexpected errors with deep prefix:"; cat deep_prefix_errors; exit 1; }
+
+cat << EOF | cmp - deep_prefix_result || { echo "deep prefix test failed"; exit 1; }
+../../some/deep/path/file1.txt
+../../some/deep/path/a/subdir/file2.c
+../../some/deep/path/a/git-file.h
+EOF
+
+# Test 6: Prefix with special characters
+echo "=== Test 6: Prefix with special characters ==="
+${LSDIFF} --addprefix='prefix with spaces/' test.patch 2>special_prefix_errors >special_prefix_result || exit 1
+[ -s special_prefix_errors ] && { echo "Unexpected errors with special prefix:"; cat special_prefix_errors; exit 1; }
+
+cat << EOF | cmp - special_prefix_result || { echo "special prefix test failed"; exit 1; }
+prefix with spaces/file1.txt
+prefix with spaces/a/subdir/file2.c
+prefix with spaces/a/git-file.h
+EOF
+
+# Test 7: Combine with other options (-s, -n)
+echo "=== Test 7: Combine with other options ==="
+${LSDIFF} --addprefix=test/ -s -n test.patch 2>combined_options_errors >combined_options_result || exit 1
+[ -s combined_options_errors ] && { echo "Unexpected errors with combined options:"; cat combined_options_errors; exit 1; }
+
+# Should contain line numbers, status, and prefixed filenames
+grep -q "^[0-9].*! test/file1.txt$" combined_options_result || { echo "Combined options test failed - missing expected format"; exit 1; }
+grep -q "^[0-9].*! test/a/subdir/file2.c$" combined_options_result || { echo "Combined options test failed - missing expected format"; exit 1; }
+grep -q "^[0-9].*! test/a/git-file.h$" combined_options_result || { echo "Combined options test failed - missing expected format"; exit 1; }
+
+# Test 8: Test with context diff format
+echo "=== Test 8: Context diff format ==="
+cat << EOF > context.patch
+*** file1.txt
+--- file1.txt
+***************
+*** 1 ****
+! old1
+--- 1 ----
+! new1
+EOF
+
+${LSDIFF} --addprefix=ctx/ context.patch 2>context_errors >context_result || exit 1
+[ -s context_errors ] && { echo "Unexpected errors with context diff:"; cat context_errors; exit 1; }
+
+cat << EOF | cmp - context_result || { echo "context diff prefix test failed"; exit 1; }
+ctx/file1.txt
+EOF
+
+echo "All path prefix tests passed!"
+exit 0
