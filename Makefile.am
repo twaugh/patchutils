@@ -235,6 +235,13 @@ TESTS = tests/newline1/run-test \
 	tests/lsdiff-exclusion-mode/run-test \
 	tests/lsdiff-verbose-levels/run-test \
 	tests/lsdiff-range-exclude/run-test \
+	tests/lsdiff-error-handling/run-test \
+	tests/lsdiff-include-exclude-file/run-test \
+	tests/lsdiff-path-prefixes/run-test \
+	tests/lsdiff-decompression/run-test \
+	tests/lsdiff-context-diff-empty-files/run-test \
+	tests/lsdiff-patch-scanner-errors/run-test \
+	tests/lsdiff-strip-vs-match-warning/run-test \
 	tests/patchview1/run-test \
 	tests/patchview2/run-test \
 	tests/fuzz1/run-test \

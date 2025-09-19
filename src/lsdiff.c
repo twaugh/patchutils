@@ -797,11 +797,9 @@ int main(int argc, char *argv[])
     }
 
     /* Handle -p without -i/-x: print warning and use as --strip */
-    if (strip_components > 0 && !pat_include && !pat_exclude) {
-        fprintf(stderr, "guessing that you meant --strip instead of -p\n");
-        if (strip_output_components == 0) {
-            strip_output_components = strip_components;
-        }
+    if (strip_components > 0 && strip_output_components == 0 && !pat_include && !pat_exclude) {
+        fprintf(stderr, "-p given without -i or -x; guessing that you meant --strip instead.\n");
+        strip_output_components = strip_components;
     }
 
     /* Process input files */

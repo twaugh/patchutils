@@ -1,0 +1,205 @@
+#!/bin/sh
+
+# Test context diff handling with -E (empty-files-as-absent) option
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Detect if we're using the scanner-based lsdiff or the original filterdiff.c implementation
+# The original implementation uses lsdiff as a symlink to filterdiff
+# The scanner implementation uses lsdiff as a standalone binary
+if [ -L "${LSDIFF}" ] && [ "$(readlink "${LSDIFF}" 2>/dev/null)" = "filterdiff" ]; then
+    SCANNER_LSDIFF=false
+else
+    SCANNER_LSDIFF=true
+fi
+
+# Test 1: Context diff with empty old file (should show as '+' with -E)
+echo "=== Test 1: Context diff with empty old file ==="
+cat << EOF > empty-old-context.patch
+*** /dev/null
+--- new-file.txt
+***************
+--- 0 ----
+*** empty file
+--- 1,3 ----
++ line 1
++ line 2
++ line 3
+EOF
+
+${LSDIFF} -E -s empty-old-context.patch 2>empty_old_errors >empty_old_result || exit 1
+[ -s empty_old_errors ] && { echo "Unexpected errors with empty old context diff:"; cat empty_old_errors; exit 1; }
+
+if [ "$SCANNER_LSDIFF" = "true" ]; then
+    # Scanner implementation produces clean output
+    cat << EOF | cmp - empty_old_result || { echo "Empty old context diff test failed"; exit 1; }
++ new-file.txt
+EOF
+else
+    # Original implementation includes additional line range information
+    cat << EOF | cmp - empty_old_result || { echo "Empty old context diff test failed (original implementation)"; exit 1; }
++ new-file.txt
+! 1,3
+EOF
+fi
+
+# Test 2: Context diff with empty new file (should show as '-' with -E)
+echo "=== Test 2: Context diff with empty new file ==="
+cat << EOF > empty-new-context.patch
+*** old-file.txt
+--- /dev/null
+***************
+*** 1,3 ****
+- line 1
+- line 2
+- line 3
+--- 0 ----
+*** empty file
+EOF
+
+${LSDIFF} -E -s empty-new-context.patch 2>empty_new_errors >empty_new_result || exit 1
+[ -s empty_new_errors ] && { echo "Unexpected errors with empty new context diff:"; cat empty_new_errors; exit 1; }
+
+cat << EOF | cmp - empty_new_result || { echo "Empty new context diff test failed"; exit 1; }
+- old-file.txt
+EOF
+
+# Test 3: Context diff with both files having content (should show as '!')
+echo "=== Test 3: Context diff with both files having content ==="
+cat << EOF > both-content-context.patch
+*** old-file.txt
+--- new-file.txt
+***************
+*** 1,2 ****
+! old line 1
+! old line 2
+--- 1,2 ----
+! new line 1
+! new line 2
+EOF
+
+${LSDIFF} -E -s both-content-context.patch 2>both_content_errors >both_content_result || exit 1
+[ -s both_content_errors ] && { echo "Unexpected errors with both content context diff:"; cat both_content_errors; exit 1; }
+
+cat << EOF | cmp - both_content_result || { echo "Both content context diff test failed"; exit 1; }
+! old-file.txt
+EOF
+
+# Test 4: Context diff with only context lines (both files have content)
+echo "=== Test 4: Context diff with only context lines ==="
+cat << EOF > context-only.patch
+*** file.txt
+--- file.txt
+***************
+*** 1,3 ****
+  line 1
+  line 2
+  line 3
+--- 1,3 ----
+  line 1
+  line 2
+  line 3
+EOF
+
+${LSDIFF} -E -s context-only.patch 2>context_only_errors >context_only_result || exit 1
+[ -s context_only_errors ] && { echo "Unexpected errors with context-only diff:"; cat context_only_errors; exit 1; }
+
+cat << EOF | cmp - context_only_result || { echo "Context-only diff test failed"; exit 1; }
+! file.txt
+EOF
+
+# Test 5: Context diff with mixed line types
+echo "=== Test 5: Context diff with mixed line types ==="
+cat << EOF > mixed-context.patch
+*** mixed-file.txt
+--- mixed-file.txt
+***************
+*** 1,4 ****
+  common line 1
+- removed line
+! changed old line
+  common line 2
+--- 1,4 ----
+  common line 1
++ added line
+! changed new line
+  common line 2
+EOF
+
+${LSDIFF} -E -s mixed-context.patch 2>mixed_errors >mixed_result || exit 1
+[ -s mixed_errors ] && { echo "Unexpected errors with mixed context diff:"; cat mixed_errors; exit 1; }
+
+cat << EOF | cmp - mixed_result || { echo "Mixed context diff test failed"; exit 1; }
+! mixed-file.txt
+EOF
+
+# Test 6: Context diff with only removed lines (old has content, new is empty)
+echo "=== Test 6: Context diff with only removed lines ==="
+cat << EOF > only-removed-context.patch
+*** file-to-delete.txt
+--- file-to-delete.txt
+***************
+*** 1,2 ****
+- line 1
+- line 2
+--- 0 ----
+EOF
+
+${LSDIFF} -E -s only-removed-context.patch 2>only_removed_errors >only_removed_result || exit 1
+[ -s only_removed_errors ] && { echo "Unexpected errors with only removed context diff:"; cat only_removed_errors; exit 1; }
+
+cat << EOF | cmp - only_removed_result || { echo "Only removed context diff test failed"; exit 1; }
+- file-to-delete.txt
+EOF
+
+# Test 7: Context diff with only added lines (old is empty, new has content)
+echo "=== Test 7: Context diff with only added lines ==="
+cat << EOF > only-added-context.patch
+*** new-file-ctx.txt
+--- new-file-ctx.txt
+***************
+*** 0 ****
+--- 1,2 ----
++ line 1
++ line 2
+EOF
+
+${LSDIFF} -E -s only-added-context.patch 2>only_added_errors >only_added_result || exit 1
+[ -s only_added_errors ] && { echo "Unexpected errors with only added context diff:"; cat only_added_errors; exit 1; }
+
+cat << EOF | cmp - only_added_result || { echo "Only added context diff test failed"; exit 1; }
++ new-file-ctx.txt
+EOF
+
+# Test 8: Context diff without -E option (should show as '!' regardless of emptiness)
+echo "=== Test 8: Context diff without -E option ==="
+${LSDIFF} -s only-removed-context.patch 2>no_e_errors >no_e_result || exit 1
+[ -s no_e_errors ] && { echo "Unexpected errors without -E:"; cat no_e_errors; exit 1; }
+
+cat << EOF | cmp - no_e_result || { echo "Context diff without -E test failed"; exit 1; }
+! file-to-delete.txt
+EOF
+
+# Test 9: Context diff with "No newline at end of file" marker
+echo "=== Test 9: Context diff with no newline marker ==="
+cat << EOF > no-newline-context.patch
+*** file.txt
+--- file.txt
+***************
+*** 1 ****
+! old line
+\ No newline at end of file
+--- 1 ----
+! new line
+\ No newline at end of file
+EOF
+
+${LSDIFF} -E -s no-newline-context.patch 2>no_newline_errors >no_newline_result || exit 1
+[ -s no_newline_errors ] && { echo "Unexpected errors with no newline context diff:"; cat no_newline_errors; exit 1; }
+
+cat << EOF | cmp - no_newline_result || { echo "No newline context diff test failed"; exit 1; }
+! file.txt
+EOF
+
+echo "All context diff empty file tests passed!"
+exit 0
