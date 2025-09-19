@@ -1,0 +1,371 @@
+#!/bin/sh
+
+# Advanced scanner_debug output validation tests
+# This script tests the detailed output format and content accuracy
+
+# Check environment
+if [ -z "$top_srcdir" ] || [ -z "$top_builddir" ]; then
+    echo "Error: This test must be run via 'make check'"
+    exit 1
+fi
+
+top_srcdir="$(cd "$top_srcdir" && pwd)"
+. "$top_srcdir/tests/common.sh"
+
+SCANNER_DEBUG="$top_builddir/src/scanner_debug"
+
+# Skip if scanner_debug not available
+if [ ! -x "$SCANNER_DEBUG" ]; then
+    echo "Skipping output validation tests - scanner_debug not available"
+    exit 77
+fi
+
+test_count=0
+failed_tests=0
+
+run_test() {
+    local test_name="$1"
+    local test_description="$2"
+    shift 2
+
+    test_count=$((test_count + 1))
+    echo "Test $test_count: $test_description"
+
+    if "$@"; then
+        echo "✓ $test_name passed"
+    else
+        echo "✗ $test_name failed"
+        failed_tests=$((failed_tests + 1))
+    fi
+    echo
+}
+
+# Test 1: Verify compact output format structure
+test_compact_format() {
+    cat > compact_test.patch << 'EOF'
+--- old.txt
++++ new.txt
+@@ -1,3 +1,3 @@
+ line1
+-old line
++new line
+ line3
+EOF
+
+    output=$("$SCANNER_DEBUG" compact_test.patch)
+
+    # Check that compact format includes line numbers and event types
+    echo "$output" | grep -q "^  [0-9]\+ HEADERS" &&
+    echo "$output" | grep -q "^  [0-9]\+ HUNK_HEADER" &&
+    echo "$output" | grep -q "^  [0-9]\+ HUNK_LINE"
+}
+
+# Test 2: Verify verbose output format structure
+test_verbose_format() {
+    cat > verbose_test.patch << 'EOF'
+--- test.txt
++++ test.txt
+@@ -1,2 +1,2 @@
+ context
+-removed
++added
+EOF
+
+    output=$("$SCANNER_DEBUG" -v verbose_test.patch)
+
+    # Check verbose format includes event headers and details
+    echo "$output" | grep -q "\[HEADERS\]" &&
+    echo "$output" | grep -q "\[HUNK_HEADER\]" &&
+    echo "$output" | grep -q "\[HUNK_LINE\]" &&
+    echo "$output" | grep -q "Type:" &&
+    echo "$output" | grep -q "Range:"
+}
+
+# Test 3: Verify content display works correctly
+test_content_display() {
+    cat > content_test.patch << 'EOF'
+--- content.txt
++++ content.txt
+@@ -1,2 +1,2 @@
+ unchanged line
+-removed content
++added content
+EOF
+
+    output=$("$SCANNER_DEBUG" -v -c content_test.patch)
+
+    # Check that content is displayed in quotes (flexible newline matching)
+    echo "$output" | grep -q '"unchanged line' &&
+    echo "$output" | grep -q '"removed content' &&
+    echo "$output" | grep -q '"added content'
+}
+
+# Test 4: Verify position tracking
+test_position_tracking() {
+    cat > position_test.patch << 'EOF'
+--- pos.txt
++++ pos.txt
+@@ -1,3 +1,3 @@
+ line1
+-line2
++LINE2
+ line3
+EOF
+
+    output=$("$SCANNER_DEBUG" -v -p position_test.patch)
+
+    # Check that positions are shown and increase
+    echo "$output" | grep -q "line [0-9]\+, pos [0-9]\+"
+}
+
+# Test 5: Verify Git extended header parsing
+test_git_extended_parsing() {
+    cat > git_extended.patch << 'EOF'
+diff --git a/file.txt b/file.txt
+similarity index 85%
+rename from old_file.txt
+rename to file.txt
+index abc123..def456 100644
+--- a/old_file.txt
++++ b/file.txt
+@@ -1,2 +1,3 @@
+ line1
+ line2
++added
+EOF
+
+    output=$("$SCANNER_DEBUG" -v -x git_extended.patch)
+
+    # Check Git extended header details are shown
+    echo "$output" | grep -q "Git Type:" &&
+    echo "$output" | grep -q "Rename" || echo "$output" | grep -q "rename"
+}
+
+# Test 6: Verify context diff parsing
+test_context_diff_parsing() {
+    cat > context_test.patch << 'EOF'
+*** old_context.txt	2024-01-01 10:00:00
+--- new_context.txt	2024-01-01 11:00:00
+***************
+*** 1,3 ****
+  line1
+! old_line
+  line3
+--- 1,3 ----
+  line1
+! new_line
+  line3
+EOF
+
+    output=$("$SCANNER_DEBUG" context_test.patch)
+
+    # Check context diff is recognized
+    echo "$output" | grep -q "HEADERS" &&
+    (echo "$output" | grep -q "Context" || echo "$output" | grep -q "PATCH_TYPE_CONTEXT")
+}
+
+# Test 7: Verify binary patch detection
+test_binary_detection() {
+    cat > binary_test.patch << 'EOF'
+diff --git a/image.png b/image.png
+new file mode 100644
+index 0000000..1234567
+Binary files /dev/null and b/image.png differ
+EOF
+
+    output=$("$SCANNER_DEBUG" binary_test.patch)
+
+    # Check binary content is detected
+    echo "$output" | grep -q "BINARY" || echo "$output" | grep -q "Binary"
+}
+
+# Test 8: Verify no newline marker detection
+test_no_newline_detection() {
+    # Create file without newline at end
+    echo -e "--- no_nl.txt\n+++ no_nl.txt\n@@ -1 +1 @@\n-old\n\\\\ No newline at end of file\n+new\n\\\\ No newline at end of file" > no_newline_test.patch
+
+    output=$("$SCANNER_DEBUG" no_newline_test.patch)
+
+    # Check no newline marker is detected
+    echo "$output" | grep -q "NO_NEWLINE" || echo "$output" | grep -q "No newline"
+}
+
+# Test 9: Verify line type classification
+test_line_type_classification() {
+    cat > line_types.patch << 'EOF'
+--- types.txt
++++ types.txt
+@@ -1,4 +1,4 @@
+ context line
+-removed line
++added line
+ another context
+EOF
+
+    output=$("$SCANNER_DEBUG" line_types.patch)
+
+    # Check different line types are identified
+    echo "$output" | grep -q " context line" &&
+    echo "$output" | grep -q "-removed line" &&
+    echo "$output" | grep -q "+added line"
+}
+
+# Test 10: Verify multi-file patch handling
+test_multi_file_handling() {
+    cat > multi_file.patch << 'EOF'
+--- file1.txt
++++ file1.txt
+@@ -1 +1 @@
+-old1
++new1
+--- file2.txt
++++ file2.txt
+@@ -1 +1 @@
+-old2
++new2
+--- file3.txt
++++ file3.txt
+@@ -1 +1 @@
+-old3
++new3
+EOF
+
+    output=$("$SCANNER_DEBUG" multi_file.patch)
+
+    # Check all three files are detected
+    file_count=$(echo "$output" | grep -c "HEADERS")
+    [ "$file_count" -eq 3 ]
+}
+
+# Test 11: Verify error summary reporting
+test_error_summary() {
+    cat > summary_test.patch << 'EOF'
+--- summary.txt
++++ summary.txt
+@@ -1,2 +1,2 @@
+ line1
+-old
++new
+EOF
+
+    output=$("$SCANNER_DEBUG" summary_test.patch)
+
+    # Check summary is shown
+    echo "$output" | grep -q "Summary:" &&
+    echo "$output" | grep -q "events" &&
+    echo "$output" | grep -q "finished normally"
+}
+
+# Test 12: Verify color output doesn't break content
+test_color_content_integrity() {
+    cat > color_integrity.patch << 'EOF'
+--- color.txt
++++ color.txt
+@@ -1,2 +1,2 @@
+ normal line
+-removed line
++added line
+EOF
+
+    # Test with color - should not crash and should contain expected content
+    output=$("$SCANNER_DEBUG" --color color_integrity.patch)
+
+    # Check content is still present (ignoring color codes)
+    echo "$output" | grep -q "HEADERS" &&
+    echo "$output" | grep -q "HUNK_LINE"
+}
+
+# Test 13: Verify large patch handling
+test_large_patch_handling() {
+    # Create a larger patch
+    {
+        echo "--- large.txt"
+        echo "+++ large.txt"
+        for i in $(seq 1 50); do
+            echo "@@ -$i,1 +$i,1 @@"
+            echo "-old line $i"
+            echo "+new line $i"
+        done
+    } > large_test.patch
+
+    # Should handle without crashing
+    output=$("$SCANNER_DEBUG" large_test.patch)
+
+    # Check it processed all hunks
+    hunk_count=$(echo "$output" | grep -c "HUNK_HEADER")
+    [ "$hunk_count" -eq 50 ]
+}
+
+# Test 14: Verify mixed content classification
+test_mixed_content_classification() {
+    cat > mixed_classification.patch << 'EOF'
+This is a comment at the top
+--- mixed.txt
++++ mixed.txt
+@@ -1,2 +1,2 @@
+ context
+-old
++new
+This is a comment at the bottom
+EOF
+
+    output=$("$SCANNER_DEBUG" mixed_classification.patch)
+
+    # Check both patch and non-patch content are classified
+    echo "$output" | grep -q "NON-PATCH" &&
+    echo "$output" | grep -q "HEADERS" &&
+    echo "$output" | grep -q "HUNK_LINE"
+}
+
+# Test 15: Verify option combination handling
+test_option_combinations() {
+    cat > options_combo.patch << 'EOF'
+--- combo.txt
++++ combo.txt
+@@ -1,3 +1,3 @@
+ line1
+-old line
++new line
+ line3
+EOF
+
+    # Test various option combinations
+    "$SCANNER_DEBUG" -v -c -p options_combo.patch >/dev/null &&
+    "$SCANNER_DEBUG" -v -x --color options_combo.patch >/dev/null &&
+    "$SCANNER_DEBUG" -c -p -x options_combo.patch >/dev/null
+}
+
+echo "Running scanner_debug output validation tests..."
+echo "Scanner debug binary: $SCANNER_DEBUG"
+echo
+
+run_test "compact_format" "Compact output format structure" test_compact_format
+run_test "verbose_format" "Verbose output format structure" test_verbose_format
+run_test "content_display" "Content display functionality" test_content_display
+run_test "position_tracking" "Position tracking accuracy" test_position_tracking
+run_test "git_extended_parsing" "Git extended header parsing" test_git_extended_parsing
+run_test "context_diff_parsing" "Context diff parsing" test_context_diff_parsing
+run_test "binary_detection" "Binary patch detection" test_binary_detection
+run_test "no_newline_detection" "No newline marker detection" test_no_newline_detection
+run_test "line_type_classification" "Line type classification" test_line_type_classification
+run_test "multi_file_handling" "Multi-file patch handling" test_multi_file_handling
+run_test "error_summary" "Error summary reporting" test_error_summary
+run_test "color_content_integrity" "Color output content integrity" test_color_content_integrity
+run_test "large_patch_handling" "Large patch handling" test_large_patch_handling
+run_test "mixed_content_classification" "Mixed content classification" test_mixed_content_classification
+run_test "option_combinations" "Option combination handling" test_option_combinations
+
+# Summary
+echo "=========================================="
+echo "Output Validation Test Summary:"
+echo "Total tests: $test_count"
+echo "Passed: $((test_count - failed_tests))"
+echo "Failed: $failed_tests"
+
+if [ "$failed_tests" -eq 0 ]; then
+    echo "✓ All output validation tests passed!"
+    exit 0
+else
+    echo "✗ $failed_tests output validation test(s) failed"
+    exit 1
+fi

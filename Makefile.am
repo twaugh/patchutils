@@ -352,6 +352,13 @@ TESTS = tests/newline1/run-test \
 	tests/malformed-diff-headers/run-test \
 	tests/scanner/run-test
 
+# Scanner debug tests (only when scanner-lsdiff is enabled)
+if USE_SCANNER_LSDIFF
+TESTS += \
+	tests/scanner-debug/run-test \
+	tests/scanner-debug/test-output-validation
+endif
+
 # These ones don't work yet.
 # Feel free to send me patches. :-)
 XFAIL_TESTS = \
@@ -359,7 +366,7 @@ XFAIL_TESTS = \
 	tests/delhunk6/run-test \
 	tests/rediff-empty-hunk/run-test
 
-# lsdiff-lines-option test: expected to fail unless scanner-lsdiff is enabled
+# lsdiff-lines-option tests: expected to fail unless scanner-lsdiff is enabled
 if !USE_SCANNER_LSDIFF
 XFAIL_TESTS += \
   tests/lsdiff-lines-option/run-test \
