@@ -1,0 +1,151 @@
+#!/bin/sh
+
+# Test lsdiff combination filtering with --lines and --hunks together
+# This tests the interaction between multiple filtering options
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Create a complex test patch with multiple files and hunks at different lines
+cat << EOF > complex.diff
+--- file1
++++ file1
+@@ -1,2 +1,3 @@
+ line1
++added at line 2
+ line2
+@@ -10,2 +11,3 @@
+ line10
++added at line 11
+ line11
+@@ -20,2 +22,3 @@
+ line20
++added at line 21
+ line21
+--- file2
++++ file2
+@@ -5,2 +5,3 @@
+ line5
++added at line 6
+ line6
+@@ -15,2 +16,3 @@
+ line15
++added at line 16
+ line16
+--- file3
++++ file3
+@@ -8,2 +8,3 @@
+ line8
++added at line 9
+ line9
+@@ -25,2 +26,3 @@
+ line25
++added at line 26
+ line26
+@@ -30,2 +32,3 @@
+ line30
++added at line 31
+ line31
+EOF
+
+# Test 1: Combination of --lines and --hunks (both must match)
+# Files with hunks touching lines 1-15 AND having hunk #2
+# file1: hunks at lines 1,10,20 (hunks 1,2,3) -> lines 1,10 in range, has hunk 2 ✓
+# file2: hunks at lines 5,15 (hunks 1,2) -> both lines in range, has hunk 2 ✓
+# file3: hunks at lines 8,25,30 (hunks 1,2,3) -> line 8 in range, has hunk 2 ✓
+${LSDIFF} --lines 1-15 --hunks 2 complex.diff 2>errors1 >result1 || exit 1
+[ -s errors1 ] && exit 1
+
+cat << EOF | cmp - result1 || exit 1
+file1
+file2
+file3
+EOF
+
+# Test 2: More restrictive combination
+# Files with hunks touching lines 1-10 AND having hunk #1
+# file1: lines 1,10 in range, has hunk 1 ✓
+# file2: line 5 in range, has hunk 1 ✓
+# file3: line 8 in range, has hunk 1 ✓
+${LSDIFF} --lines 1-10 --hunks 1 complex.diff 2>errors2 >result2 || exit 1
+[ -s errors2 ] && exit 1
+
+cat << EOF | cmp - result2 || exit 1
+file1
+file2
+file3
+EOF
+
+# Test 3: Very restrictive combination (no matches expected)
+# Files with hunks touching lines 100-200 AND having hunk #1
+# No files have hunks in lines 100-200
+${LSDIFF} --lines 100-200 --hunks 1 complex.diff 2>errors3 >result3 || exit 1
+[ -s errors3 ] && exit 1
+[ -s result3 ] && exit 1  # Should be empty
+
+# Test 4: Combination with --files range
+# Files #1-2 with hunks touching lines 10-20 AND having hunk #2
+# file1 (file #1): lines 10,20 in range, has hunk 2 ✓
+# file2 (file #2): line 15 in range, has hunk 2 ✓
+# file3 (file #3): not in file range ✗
+${LSDIFF} --files 1-2 --lines 10-20 --hunks 2 complex.diff 2>errors4 >result4 || exit 1
+[ -s errors4 ] && exit 1
+
+cat << EOF | cmp - result4 || exit 1
+file1
+file2
+EOF
+
+# Test 5: Test with -E (empty-files-as-absent) and combinations
+# Create a patch with empty files
+cat << EOF > empty-files.diff
+--- empty1
++++ empty1
+@@ -0,0 +1,2 @@
++line1
++line2
+--- empty2
++++ empty2
+@@ -1,2 +0,0 @@
+-line1
+-line2
+--- normal
++++ normal
+@@ -5,2 +5,3 @@
+ line5
++added
+ line6
+EOF
+
+# Test empty files with combination filters
+# empty1: orig_offset=0 (not in range 1-10), hunk 1 ✓ -> NOT included (lines filter fails)
+# empty2: orig_offset=1, orig_count=2 (range 1-2, overlaps 1-10), hunk 1 ✓ -> included
+# normal: orig_offset=5, orig_count=2 (range 5-6, overlaps 1-10), hunk 1 ✓ -> included
+${LSDIFF} -E --lines 1-10 --hunks 1 empty-files.diff 2>errors5 >result5 || exit 1
+[ -s errors5 ] && exit 1
+
+cat << EOF | cmp - result5 || exit 1
+empty2
+normal
+EOF
+
+# Test 6: Combination with status display
+${LSDIFF} -s --lines 1-15 --hunks 2 complex.diff 2>errors6 >result6 || exit 1
+[ -s errors6 ] && exit 1
+
+cat << EOF | cmp - result6 || exit 1
+! file1
+! file2
+! file3
+EOF
+
+# Test 7: Combination with verbose mode and line numbers
+${LSDIFF} -n --lines 10-15 --hunks 2 complex.diff 2>errors7 >result7 || exit 1
+[ -s errors7 ] && exit 1
+
+# Should show files with line numbers (exact format may vary)
+[ -s result7 ] || exit 1
+grep -q "file1" result7 || exit 1
+grep -q "file2" result7 || exit 1
+
+echo "✓ All combination filtering tests passed"
+exit 0
