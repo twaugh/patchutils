@@ -679,6 +679,12 @@ void patch_scanner_destroy(patch_scanner_t *scanner)
     if (scanner->current_headers.new_name) {
         free(scanner->current_headers.new_name);
     }
+    if (scanner->current_headers.git_old_name) {
+        free(scanner->current_headers.git_old_name);
+    }
+    if (scanner->current_headers.git_new_name) {
+        free(scanner->current_headers.git_new_name);
+    }
     if (scanner->current_headers.old_hash) {
         free(scanner->current_headers.old_hash);
     }
@@ -1959,6 +1965,14 @@ static void scanner_reset_for_next_patch(patch_scanner_t *scanner)
     if (scanner->current_headers.new_name) {
         free(scanner->current_headers.new_name);
         scanner->current_headers.new_name = NULL;
+    }
+    if (scanner->current_headers.git_old_name) {
+        free(scanner->current_headers.git_old_name);
+        scanner->current_headers.git_old_name = NULL;
+    }
+    if (scanner->current_headers.git_new_name) {
+        free(scanner->current_headers.git_new_name);
+        scanner->current_headers.git_new_name = NULL;
     }
     if (scanner->current_headers.old_hash) {
         free(scanner->current_headers.old_hash);
