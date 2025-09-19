@@ -7,6 +7,9 @@ SCRIPT_DIR="$(dirname "$0")"
 RESULTS_DIR="$SCRIPT_DIR/results"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
+# Allow overriding binary directory (for instrumented builds)
+FUZZ_BINDIR="${FUZZ_BINDIR:-$PROJECT_DIR/src}"
+
 echo "Analyzing AFL++ fuzzing results..."
 
 if [ ! -d "$RESULTS_DIR" ]; then
@@ -39,7 +42,12 @@ analyze_tool_crashes() {
 
                 # Try to reproduce the crash
                 echo "    Reproducing crash..."
-                if timeout 10s "$PROJECT_DIR/src/$tool" < "$crash_file" >/dev/null 2>&1; then
+                # Use instrumented binary if available
+                local binary_path="$FUZZ_BINDIR/$tool"
+                if [ -f "$FUZZ_BINDIR/fuzz-$tool" ]; then
+                    binary_path="$FUZZ_BINDIR/fuzz-$tool"
+                fi
+                if timeout 10s "$binary_path" < "$crash_file" >/dev/null 2>&1; then
                     echo "    ⚠ Crash not reproduced (may be timing-dependent)"
                 else
                     local exit_code=$?
@@ -49,7 +57,7 @@ analyze_tool_crashes() {
                     if command -v gdb >/dev/null 2>&1; then
                         echo "    Getting stack trace..."
                         timeout 30s gdb -batch -ex run -ex bt -ex quit \
-                            --args "$PROJECT_DIR/src/$tool" < "$crash_file" 2>/dev/null | \
+                            --args "$binary_path" < "$crash_file" 2>/dev/null | \
                             grep -A 20 "Program received signal" | head -20 || true
                     fi
                 fi
@@ -78,7 +86,12 @@ analyze_tool_crashes() {
                     echo "    ⚠ Large input file - may cause memory exhaustion"
                 else
                     echo "    Testing with timeout..."
-                    if timeout 5s "$PROJECT_DIR/src/$tool" < "$hang_file" >/dev/null 2>&1; then
+                    # Use instrumented binary if available
+                    local binary_path="$FUZZ_BINDIR/$tool"
+                    if [ -f "$FUZZ_BINDIR/fuzz-$tool" ]; then
+                        binary_path="$FUZZ_BINDIR/fuzz-$tool"
+                    fi
+                    if timeout 5s "$binary_path" < "$hang_file" >/dev/null 2>&1; then
                         echo "    ✓ Completed within timeout"
                     else
                         echo "    ⚠ Still hangs or crashes"

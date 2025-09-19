@@ -348,9 +348,73 @@ distclean-local:
 	-rm -rf $(top_builddir)/test-arena
 	-rm -f lib-built
 
-# Fuzzing targets - delegate to separate makefile
+if ENABLE_FUZZING
+# Fuzzing-specific instrumented binaries
+noinst_PROGRAMS = src/fuzz-filterdiff src/fuzz-interdiff src/fuzz-rediff
+
+src_fuzz_filterdiff_SOURCES = $(src_filterdiff_SOURCES)
+src_fuzz_filterdiff_LDADD = $(src_filterdiff_LDADD)
+src_fuzz_filterdiff_CFLAGS = $(AM_CFLAGS) $(FUZZ_CFLAGS)
+src_fuzz_filterdiff_CPPFLAGS = $(AM_CPPFLAGS) $(FUZZ_CPPFLAGS)
+
+src_fuzz_interdiff_SOURCES = $(src_interdiff_SOURCES)
+src_fuzz_interdiff_LDADD = $(src_interdiff_LDADD)
+src_fuzz_interdiff_CFLAGS = $(AM_CFLAGS) $(FUZZ_CFLAGS)
+src_fuzz_interdiff_CPPFLAGS = $(AM_CPPFLAGS) $(FUZZ_CPPFLAGS)
+
+src_fuzz_rediff_SOURCES = $(src_rediff_SOURCES)
+src_fuzz_rediff_LDADD = $(src_rediff_LDADD)
+src_fuzz_rediff_CFLAGS = $(AM_CFLAGS) $(FUZZ_CFLAGS)
+src_fuzz_rediff_CPPFLAGS = $(AM_CPPFLAGS) $(FUZZ_CPPFLAGS)
+
+# Override CC and LINK for fuzzing targets to use AFL++ for both compilation and linking
+$(src_fuzz_filterdiff_OBJECTS): CC = $(AFL_CC)
+$(src_fuzz_interdiff_OBJECTS): CC = $(AFL_CC)
+$(src_fuzz_rediff_OBJECTS): CC = $(AFL_CC)
+
+# Use AFL++ compiler for linking to include AFL++ runtime
+src_fuzz_filterdiff_LINK = $(AFL_CC) $(AM_CFLAGS) $(CFLAGS) $(FUZZ_CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
+src_fuzz_interdiff_LINK = $(AFL_CC) $(AM_CFLAGS) $(CFLAGS) $(FUZZ_CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
+src_fuzz_rediff_LINK = $(AFL_CC) $(AM_CFLAGS) $(CFLAGS) $(FUZZ_CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
+
+# Create fuzzing symlinks (like regular tools)
+src/fuzz-combinediff$(EXEEXT): src/fuzz-interdiff$(EXEEXT)
+	ln -sf $(notdir $<) $@
+
+src/fuzz-flipdiff$(EXEEXT): src/fuzz-interdiff$(EXEEXT)
+	ln -sf $(notdir $<) $@
+
+src/fuzz-lsdiff$(EXEEXT): src/fuzz-filterdiff$(EXEEXT)
+	ln -sf $(notdir $<) $@
+
+src/fuzz-grepdiff$(EXEEXT): src/fuzz-filterdiff$(EXEEXT)
+	ln -sf $(notdir $<) $@
+
+src/fuzz-patchview$(EXEEXT): src/fuzz-filterdiff$(EXEEXT)
+	ln -sf $(notdir $<) $@
+
+CLEANFILES += src/fuzz-combinediff src/fuzz-flipdiff src/fuzz-lsdiff src/fuzz-grepdiff src/fuzz-patchview
+
+# Fuzzing targets - use instrumented binaries when available
 fuzz-help fuzz-corpus fuzz-test fuzz-analyze fuzz-clean fuzz-check fuzz-ci fuzz-stats:
 	@if [ -f Makefile.fuzz ]; then \
+		$(MAKE) -f Makefile.fuzz FUZZ_BINDIR="$(top_builddir)/src" $@; \
+	else \
+		echo "Fuzzing not available - Makefile.fuzz not found"; \
+	fi
+
+fuzz-filterdiff fuzz-interdiff fuzz-rediff fuzz-grepdiff fuzz-lsdiff: src/fuzz-filterdiff src/fuzz-interdiff src/fuzz-rediff src/fuzz-lsdiff$(EXEEXT) src/fuzz-grepdiff$(EXEEXT)
+	@if [ -f Makefile.fuzz ]; then \
+		$(MAKE) -f Makefile.fuzz FUZZ_BINDIR="$(top_builddir)/src" $@; \
+	else \
+		echo "Fuzzing not available - Makefile.fuzz not found"; \
+	fi
+
+else
+# Fuzzing targets - delegate to separate makefile (non-instrumented fallback)
+fuzz-help fuzz-corpus fuzz-test fuzz-analyze fuzz-clean fuzz-check fuzz-ci fuzz-stats:
+	@if [ -f Makefile.fuzz ]; then \
+		echo "Warning: Using non-instrumented binaries - configure with --enable-fuzzing for better results"; \
 		$(MAKE) -f Makefile.fuzz $@; \
 	else \
 		echo "Fuzzing not available - Makefile.fuzz not found"; \
@@ -358,10 +422,12 @@ fuzz-help fuzz-corpus fuzz-test fuzz-analyze fuzz-clean fuzz-check fuzz-ci fuzz-
 
 fuzz-filterdiff fuzz-interdiff fuzz-rediff fuzz-grepdiff fuzz-lsdiff:
 	@if [ -f Makefile.fuzz ]; then \
+		echo "Warning: Using non-instrumented binaries - configure with --enable-fuzzing for better results"; \
 		$(MAKE) -f Makefile.fuzz $@; \
 	else \
 		echo "Fuzzing not available - Makefile.fuzz not found"; \
 	fi
+endif
 
 EXTRA_DIST = $(man_MANS) \
 	tests/common.sh tests/soak-test \

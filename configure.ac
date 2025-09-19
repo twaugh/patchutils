@@ -103,6 +103,54 @@ AS_IF([test "x$with_pcre2" != xno],
       AC_MSG_RESULT(no)
 )
 
+dnl Check for fuzzing support
+AC_MSG_CHECKING([whether to enable fuzzing support])
+AC_ARG_ENABLE([fuzzing],
+    [AS_HELP_STRING([--enable-fuzzing],
+                    [enable AFL++ fuzzing instrumentation @<:@default=no@:>@])],
+    [], [enable_fuzzing=no])
+AC_MSG_RESULT($enable_fuzzing)
+
+AM_CONDITIONAL([ENABLE_FUZZING], [test "x$enable_fuzzing" = "xyes"])
+
+if test "x$enable_fuzzing" = "xyes"; then
+    # Check for AFL++ compilers (prefer modern versions)
+    AC_CHECK_PROGS([AFL_CC], [afl-clang-fast afl-gcc-fast afl-clang afl-gcc], [])
+    AC_CHECK_PROGS([AFL_CXX], [afl-clang-fast++ afl-g++-fast afl-clang++ afl-g++], [])
+
+    if test "x$AFL_CC" = "x"; then
+        AC_MSG_ERROR([AFL++ compiler not found. Install AFL++ or disable fuzzing with --disable-fuzzing])
+    fi
+
+    # Test if AFL++ compiler works (version compatibility check)
+    AC_MSG_CHECKING([if $AFL_CC works])
+    echo 'int main(){return 0;}' > conftest.c
+    if $AFL_CC conftest.c -o conftest >/dev/null 2>&1; then
+        AC_MSG_RESULT([yes])
+        rm -f conftest.c conftest
+    else
+        AC_MSG_RESULT([no - version incompatibility detected])
+        AC_MSG_WARN([AFL++ compiler has version issues, falling back to regular compiler with fuzzing flags])
+        AFL_CC="$CC"
+        if test "x$AFL_CXX" != "x"; then
+            AFL_CXX="$CXX"
+        fi
+        rm -f conftest.c conftest
+    fi
+
+    # Store AFL++ compilers for use in Makefile, but don't override CC during configure
+    AC_SUBST([AFL_CC])
+    AC_SUBST([AFL_CXX])
+
+    # Add fuzzing-specific flags for the Makefile
+    FUZZ_CFLAGS="-g -O1 -fno-omit-frame-pointer"
+    FUZZ_CPPFLAGS="-DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION"
+    AC_SUBST([FUZZ_CFLAGS])
+    AC_SUBST([FUZZ_CPPFLAGS])
+
+    AC_MSG_NOTICE([Fuzzing enabled - instrumented binaries will be built with $AFL_CC])
+fi
+
 dnl Check diff/patch programs
 AC_MSG_CHECKING(for diff program)
 DIFF=diff

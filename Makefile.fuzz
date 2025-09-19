@@ -5,6 +5,9 @@ CORPUS_DIR = $(FUZZ_DIR)/corpus
 RESULTS_DIR = $(FUZZ_DIR)/results
 TOOLS = filterdiff interdiff rediff grepdiff lsdiff
 
+# Allow overriding binary directory (for instrumented builds)
+FUZZ_BINDIR ?= src
+
 .PHONY: fuzz-help fuzz-corpus fuzz-clean fuzz-test fuzz-all fuzz-analyze
 .PHONY: $(addprefix fuzz-, $(TOOLS))
 
@@ -29,6 +32,9 @@ fuzz-help:
 	@echo "  - AFL++ installed (american-fuzzy-lop package)"
 	@echo "  - Tools built (run 'make' first)"
 	@echo ""
+	@echo "For best results (instrumented binaries):"
+	@echo "  ./configure --enable-fuzzing && make"
+	@echo ""
 	@echo "Quick start: make fuzz-corpus && make fuzz-test"
 
 # Generate or update the fuzzing corpus
@@ -45,10 +51,15 @@ fuzz-corpus: $(FUZZ_DIR)/generate_corpus.sh
 	@echo "Corpus ready: $$(ls -1 $(CORPUS_DIR) | wc -l) files"
 
 # Quick fuzzing test (60 seconds)
-fuzz-test: fuzz-corpus src/filterdiff
+fuzz-test: fuzz-corpus $(FUZZ_BINDIR)/filterdiff
 	@echo "Running quick fuzz test (60 seconds)..."
 	@echo "This will test basic fuzzing functionality"
-	timeout 60s $(FUZZ_DIR)/run_fuzz.sh filterdiff || true
+	@if [ -f "$(FUZZ_BINDIR)/fuzz-filterdiff" ]; then \
+		echo "Using instrumented binary: $(FUZZ_BINDIR)/fuzz-filterdiff"; \
+	else \
+		echo "Warning: Using non-instrumented binary: $(FUZZ_BINDIR)/filterdiff"; \
+	fi
+	FUZZ_BINDIR="$(FUZZ_BINDIR)" timeout 60s $(FUZZ_DIR)/run_fuzz.sh filterdiff || true
 	@echo ""
 	@echo "Quick test completed. Check fuzz/results/filterdiff/ for results"
 	@if [ -d "$(RESULTS_DIR)/filterdiff/crashes" ] && [ -n "$$(ls -A $(RESULTS_DIR)/filterdiff/crashes 2>/dev/null)" ]; then \
@@ -58,16 +69,16 @@ fuzz-test: fuzz-corpus src/filterdiff
 	fi
 
 # Extended fuzzing on all tools (runs in background)
-fuzz-all: fuzz-corpus $(addprefix src/, $(TOOLS))
+fuzz-all: fuzz-corpus
 	@echo "Starting extended fuzzing on all tools..."
 	@echo "This will run fuzzing sessions in the background"
 	@echo "Monitor with: ps aux | grep afl-fuzz"
 	@echo "Stop with: pkill afl-fuzz"
 	@echo ""
 	@for tool in $(TOOLS); do \
-		if [ -f "src/$$tool" ]; then \
+		if [ -f "$(FUZZ_BINDIR)/$$tool" ] || [ -f "$(FUZZ_BINDIR)/fuzz-$$tool" ]; then \
 			echo "Starting $$tool fuzzing in background..."; \
-			nohup $(FUZZ_DIR)/run_fuzz.sh $$tool > $(RESULTS_DIR)/$$tool.log 2>&1 & \
+			FUZZ_BINDIR="$(FUZZ_BINDIR)" nohup $(FUZZ_DIR)/run_fuzz.sh $$tool > $(RESULTS_DIR)/$$tool.log 2>&1 & \
 			sleep 2; \
 		fi; \
 	done
@@ -75,26 +86,26 @@ fuzz-all: fuzz-corpus $(addprefix src/, $(TOOLS))
 	@echo "All fuzzing sessions started. Logs in $(RESULTS_DIR)/*.log"
 	@echo "Run 'make fuzz-analyze' periodically to check for crashes"
 
-# Individual tool fuzzing targets
-fuzz-filterdiff: fuzz-corpus src/filterdiff
+# Individual tool fuzzing targets - depend on instrumented binaries when available
+fuzz-filterdiff: fuzz-corpus
 	@echo "Starting filterdiff fuzzing (interactive)..."
-	$(FUZZ_DIR)/run_fuzz.sh filterdiff
+	FUZZ_BINDIR="$(FUZZ_BINDIR)" $(FUZZ_DIR)/run_fuzz.sh filterdiff
 
-fuzz-interdiff: fuzz-corpus src/interdiff
+fuzz-interdiff: fuzz-corpus
 	@echo "Starting interdiff fuzzing (interactive)..."
-	$(FUZZ_DIR)/run_fuzz.sh interdiff
+	FUZZ_BINDIR="$(FUZZ_BINDIR)" $(FUZZ_DIR)/run_fuzz.sh interdiff
 
-fuzz-rediff: fuzz-corpus src/rediff
+fuzz-rediff: fuzz-corpus
 	@echo "Starting rediff fuzzing (interactive)..."
-	$(FUZZ_DIR)/run_fuzz.sh rediff
+	FUZZ_BINDIR="$(FUZZ_BINDIR)" $(FUZZ_DIR)/run_fuzz.sh rediff
 
-fuzz-grepdiff: fuzz-corpus src/grepdiff
+fuzz-grepdiff: fuzz-corpus
 	@echo "Starting grepdiff fuzzing (interactive)..."
-	$(FUZZ_DIR)/run_fuzz.sh grepdiff
+	FUZZ_BINDIR="$(FUZZ_BINDIR)" $(FUZZ_DIR)/run_fuzz.sh grepdiff
 
-fuzz-lsdiff: fuzz-corpus src/lsdiff
+fuzz-lsdiff: fuzz-corpus
 	@echo "Starting lsdiff fuzzing (interactive)..."
-	$(FUZZ_DIR)/run_fuzz.sh lsdiff
+	FUZZ_BINDIR="$(FUZZ_BINDIR)" $(FUZZ_DIR)/run_fuzz.sh lsdiff
 
 # Analyze fuzzing results
 fuzz-analyze: $(FUZZ_DIR)/analyze_crashes.sh

@@ -40,6 +40,21 @@ The fuzz testing setup targets the main patch processing tools:
 
 ## Usage
 
+### Building with Instrumentation (Recommended)
+
+For effective fuzzing, build patchutils with AFL++ instrumentation:
+
+```bash
+# Configure with fuzzing support
+./configure --enable-fuzzing
+
+# Build instrumented binaries
+make
+
+# Now fuzzing will use instrumented binaries automatically
+make fuzz-test
+```
+
 ### Via Makefile (Recommended)
 
 ```bash
@@ -49,7 +64,7 @@ make fuzz-help
 # Generate/update corpus (includes latest git diffs)
 make fuzz-corpus
 
-# Quick 60-second test
+# Quick 60-second test (uses instrumented binaries if available)
 make fuzz-test
 
 # Fuzz specific tools
@@ -91,7 +106,21 @@ make fuzz-ci
 
 ## Integration
 
-The fuzzer integrates with the existing testing infrastructure:
+The fuzzer integrates with the autotools build system and existing testing infrastructure:
+
+### Autotools Integration
+- `--enable-fuzzing` configure option enables AFL++ instrumentation
+- Creates separate `fuzz-*` instrumented binaries alongside regular tools
+- Automatic detection of instrumented vs. non-instrumented binaries
+- Graceful fallback to regular binaries when instrumentation not available
+
+### Testing Integration
 - Uses existing test cases as seed corpus
 - Validates discovered issues against invariant tests
 - Generates regression tests for fixed bugs
+
+### Build System Features
+- Conditional compilation based on `--enable-fuzzing`
+- Proper compiler detection for AFL++ (afl-clang-fast, afl-gcc)
+- Fuzzing-specific CFLAGS and preprocessor definitions
+- Integration with existing Makefile targets
