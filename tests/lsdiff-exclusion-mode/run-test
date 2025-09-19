@@ -1,0 +1,167 @@
+#!/bin/sh
+
+# Test lsdiff exclusion mode for --lines and --hunks options
+# Tests the 'x' prefix syntax for excluding ranges
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Create test patch with files having hunks at known line ranges
+cat << EOF > test.diff
+--- file1
++++ file1
+@@ -1,2 +1,3 @@
+ line1
++added
+ line2
+@@ -10,2 +11,3 @@
+ line10
++added
+ line11
+--- file2
++++ file2
+@@ -5,2 +5,3 @@
+ line5
++added
+ line6
+@@ -15,2 +16,3 @@
+ line15
++added
+ line16
+@@ -25,2 +27,3 @@
+ line25
++added
+ line26
+--- file3
++++ file3
+@@ -8,2 +8,3 @@
+ line8
++added
+ line9
+--- file4
++++ file4
+@@ -20,2 +20,3 @@
+ line20
++added
+ line21
+@@ -30,2 +31,3 @@
+ line30
++added
+ line31
+EOF
+
+# Test 1: Exclude files with hunks touching lines 1-10 (--lines x1-10)
+# file1: has hunks at lines 1,10 -> EXCLUDED
+# file2: has hunks at lines 5,15,25 -> line 5 in excluded range -> EXCLUDED
+# file3: has hunk at line 8 -> EXCLUDED
+# file4: has hunks at lines 20,30 -> NOT EXCLUDED
+${LSDIFF} --lines x1-10 test.diff 2>errors1 >result1 || exit 1
+[ -s errors1 ] && exit 1
+
+cat << EOF | cmp - result1 || exit 1
+file4
+EOF
+
+# Test 2: Exclude files with hunks touching specific line 15 (--lines x15)
+# file1: no hunks at line 15 -> NOT EXCLUDED
+# file2: has hunk at line 15 -> EXCLUDED
+# file3: no hunks at line 15 -> NOT EXCLUDED
+# file4: no hunks at line 15 -> NOT EXCLUDED
+${LSDIFF} --lines x15 test.diff 2>errors2 >result2 || exit 1
+[ -s errors2 ] && exit 1
+
+cat << EOF | cmp - result2 || exit 1
+file1
+file3
+file4
+EOF
+
+# Test 3: Exclude files with hunk #2 (--hunks x2)
+# file1: has 2 hunks -> has hunk #2 -> EXCLUDED
+# file2: has 3 hunks -> has hunk #2 -> EXCLUDED
+# file3: has 1 hunk -> no hunk #2 -> NOT EXCLUDED
+# file4: has 2 hunks -> has hunk #2 -> EXCLUDED
+${LSDIFF} --hunks x2 test.diff 2>errors3 >result3 || exit 1
+[ -s errors3 ] && exit 1
+
+cat << EOF | cmp - result3 || exit 1
+file3
+EOF
+
+# Test 4: Exclude files with hunk #1 (--hunks x1) - should exclude all files
+# All files have at least hunk #1
+${LSDIFF} --hunks x1 test.diff 2>errors4 >result4 || exit 1
+[ -s errors4 ] && exit 1
+[ -s result4 ] && exit 1  # Should be empty
+
+# Test 5: Exclude files with hunks in range 2-3 (--hunks x2-3)
+# file1: has hunks 1,2 -> has hunk 2 -> EXCLUDED
+# file2: has hunks 1,2,3 -> has hunks 2,3 -> EXCLUDED
+# file3: has hunk 1 -> no hunks 2-3 -> NOT EXCLUDED
+# file4: has hunks 1,2 -> has hunk 2 -> EXCLUDED
+${LSDIFF} --hunks x2-3 test.diff 2>errors5 >result5 || exit 1
+[ -s errors5 ] && exit 1
+
+cat << EOF | cmp - result5 || exit 1
+file3
+EOF
+
+# Test 6: Combination exclusion - exclude lines 1-5 AND hunk 3
+# Only files that have BOTH excluded criteria should be excluded
+# file1: lines 1,10 (line 1 in excluded range) AND no hunk 3 -> EXCLUDED (lines)
+# file2: lines 5,15,25 (line 5 in excluded range) AND has hunk 3 -> EXCLUDED (both)
+# file3: line 8 (not in excluded range) AND no hunk 3 -> NOT EXCLUDED
+# file4: lines 20,30 (not in excluded range) AND no hunk 3 -> NOT EXCLUDED
+${LSDIFF} --lines x1-5 --hunks x3 test.diff 2>errors6 >result6 || exit 1
+[ -s errors6 ] && exit 1
+
+cat << EOF | cmp - result6 || exit 1
+file3
+file4
+EOF
+
+# Test 7: Test exclusion with --files range
+# Exclude files #1-2, then apply line exclusion
+${LSDIFF} --files x1-2 --lines x20-30 test.diff 2>errors7 >result7 || exit 1
+[ -s errors7 ] && exit 1
+
+# file1,file2 excluded by --files x1-2
+# file3: not excluded by files, line 8 not in x20-30 -> NOT EXCLUDED
+# file4: not excluded by files, lines 20,30 in x20-30 -> EXCLUDED
+cat << EOF | cmp - result7 || exit 1
+file3
+EOF
+
+# Test 8: Test exclusion with status display
+${LSDIFF} -s --lines x1-10 test.diff 2>errors8 >result8 || exit 1
+[ -s errors8 ] && exit 1
+
+cat << EOF | cmp - result8 || exit 1
+! file4
+EOF
+
+# Test 9: Complex exclusion test with empty ranges
+# Create a patch where exclusion results in no matches
+${LSDIFF} --lines x1-100 test.diff 2>errors9 >result9 || exit 1
+[ -s errors9 ] && exit 1
+[ -s result9 ] && exit 1  # Should be empty - all files excluded
+
+# Test 10: Test exclusion range parsing edge cases
+# Exclude single hunk number
+${LSDIFF} --hunks x1 test.diff 2>errors10 >result10 || exit 1
+[ -s errors10 ] && exit 1
+[ -s result10 ] && exit 1  # Should be empty
+
+# Test 11: Exclude open-ended range (x10-)
+# file1: lines 1,10 -> line 10 in x10- -> EXCLUDED
+# file2: lines 5,15,25 -> lines 15,25 in x10- -> EXCLUDED
+# file3: line 8 -> not in x10- -> NOT EXCLUDED
+# file4: lines 20,30 -> both in x10- -> EXCLUDED
+${LSDIFF} --lines x10- test.diff 2>errors11 >result11 || exit 1
+[ -s errors11 ] && exit 1
+
+cat << EOF | cmp - result11 || exit 1
+file3
+EOF
+
+echo "✓ All exclusion mode tests passed"
+exit 0
