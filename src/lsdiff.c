@@ -98,7 +98,6 @@ static void process_patch_file(FILE *fp, const char *filename);
 static void display_filename(const char *filename, const char *patchname, char status, unsigned long linenum);
 static char determine_file_status(const struct patch_headers *headers);
 static char *get_best_filename(const struct patch_headers *headers);
-static char *strip_git_prefix_from_filename(const char *filename);
 static const char *strip_path_components(const char *filename, int components);
 static int should_display_file(const char *filename);
 static int lines_in_range(unsigned long orig_offset, unsigned long orig_count);
@@ -244,16 +243,6 @@ static const char *choose_best_name(const char **names, int count)
     return names[best_idx];
 }
 
-/* Helper function to strip Git a/ or b/ prefixes from a filename */
-static char *strip_git_prefix_from_filename(const char *filename)
-{
-    if (git_prefix_mode == GIT_PREFIX_STRIP && filename &&
-        ((filename[0] == 'a' && filename[1] == '/') ||
-         (filename[0] == 'b' && filename[1] == '/'))) {
-        return xstrdup(filename + 2);
-    }
-    return filename ? xstrdup(filename) : NULL;
-}
 
 /*
  * Helper function to add a filename candidate to the candidate arrays.
@@ -270,7 +259,7 @@ static void add_filename_candidate(char **stripped_candidates, const char **cand
         return;
     }
 
-    stripped_candidates[*count] = strip_git_prefix_from_filename(filename);
+    stripped_candidates[*count] = strip_git_prefix_from_filename(filename, git_prefix_mode);
     candidates[*count] = stripped_candidates[*count];
     (*count)++;
 }
