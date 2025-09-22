@@ -273,6 +273,9 @@ file_matches (void)
 static void display_filename (unsigned long linenum, char status,
 			      const char *filename, const char *patchname)
 {
+	const char *processed_filename;
+	char *git_stripped_filename = NULL;
+
 	if (mode == mode_list && !file_matches ())
 		/* This is lsdiff --files=... and this file is not to be
 		 * listed. */
@@ -288,7 +291,15 @@ static void display_filename (unsigned long linenum, char status,
 		printf ("%c ", status);
 	if (prefix_to_add)
 		fputs (prefix_to_add, stdout);
-	puts (stripped (filename, strip_components));
+
+	/* Handle git prefix stripping if needed */
+	git_stripped_filename = strip_git_prefix_from_filename(filename, git_prefix_mode);
+	processed_filename = stripped(git_stripped_filename, strip_components);
+
+	puts (processed_filename);
+
+	/* Clean up allocated memory */
+	free (git_stripped_filename);
 }
 
 static int
