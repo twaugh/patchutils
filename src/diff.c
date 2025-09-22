@@ -1090,7 +1090,7 @@ read_timestamp (const char *timestamp, struct tm *result, long *zone)
 }
 
 /* Helper function to strip Git a/ or b/ prefixes from a filename */
-static char *
+char *
 strip_git_prefix_from_filename (const char *filename, enum git_prefix_mode prefix_mode)
 {
 	if (prefix_mode == GIT_PREFIX_STRIP &&

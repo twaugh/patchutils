@@ -72,6 +72,7 @@ enum git_prefix_mode {
 
 char *filename_from_header (const char *header);
 char *filename_from_header_with_git_prefix_mode (const char *header, enum git_prefix_mode prefix_mode);
+char *strip_git_prefix_from_filename (const char *filename, enum git_prefix_mode prefix_mode);
 
 enum git_diff_type detect_git_diff_type (char **headers, unsigned int num_headers);
 int extract_git_filenames (char **headers, unsigned int num_headers,
