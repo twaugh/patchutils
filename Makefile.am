@@ -5,8 +5,11 @@ DISTCLEANFILES = src/stamp-h[0-9]* src/config.h
 
 bin_PROGRAMS = src/interdiff src/filterdiff src/rediff
 
-if USE_SCANNER_LSDIFF
-bin_PROGRAMS += src/lsdiff
+# lsdiff is provided by symlink to filterdiff (unless scanner-patchfilter is enabled)
+
+# Scanner-based unified patchfilter tool (experimental)
+if USE_SCANNER_PATCHFILTER
+bin_PROGRAMS += src/patchfilter
 endif
 
 # Development/debug utilities (not installed by default)
@@ -39,17 +42,23 @@ src_filterdiff_SOURCES = src/filterdiff.c src/util.c src/util.h src/diff.c \
 		src/diff.h
 src_rediff_SOURCES = src/rediff.c src/util.c src/util.h src/diff.c src/diff.h
 
-if USE_SCANNER_LSDIFF
-src_lsdiff_SOURCES = src/lsdiff.c src/util.c src/util.h \
-		src/patch_scanner.c src/patch_scanner.h src/diff.c src/diff.h
+# Note: lsdiff functionality is now provided by:
+# - symlink to filterdiff (traditional)
+# - patchfilter in list mode (scanner-based)
+
+if USE_SCANNER_PATCHFILTER
+src_patchfilter_SOURCES = src/patchfilter.c src/patchfilter.h \
+		src/ls.c src/grep.c src/filter.c \
+		src/patch_scanner.c src/patch_scanner.h \
+		src/util.c src/util.h src/diff.c src/diff.h
 endif
 
 src_interdiff_LDADD = lib/libgnu.a @LIBOBJS@
 src_filterdiff_LDADD = lib/libgnu.a @LIBOBJS@
 src_rediff_LDADD = lib/libgnu.a @LIBOBJS@
 
-if USE_SCANNER_LSDIFF
-src_lsdiff_LDADD = lib/libgnu.a @LIBOBJS@
+if USE_SCANNER_PATCHFILTER
+src_patchfilter_LDADD = lib/libgnu.a @LIBOBJS@
 endif
 
 # Scanner debug utility
@@ -83,8 +92,12 @@ src/combinediff$(EXEEXT): src/interdiff$(EXEEXT)
 src/flipdiff$(EXEEXT): src/interdiff$(EXEEXT)
 	ln -sf $(notdir $<) $@
 
-if !USE_SCANNER_LSDIFF
+if !USE_SCANNER_PATCHFILTER
 src/lsdiff$(EXEEXT): src/filterdiff$(EXEEXT)
+	ln -sf $(notdir $<) $@
+else
+# When patchfilter is enabled, create lsdiff symlink to patchfilter
+src/lsdiff$(EXEEXT): src/patchfilter$(EXEEXT)
 	ln -sf $(notdir $<) $@
 endif
 
@@ -97,8 +110,10 @@ src/patchview$(EXEEXT): src/filterdiff$(EXEEXT)
 install-exec-hook:
 	ln -sf "`echo interdiff|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo combinediff|sed '$(transform)'`"
 	ln -sf "`echo interdiff|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo flipdiff|sed '$(transform)'`"
-if !USE_SCANNER_LSDIFF
+if !USE_SCANNER_PATCHFILTER
 	ln -sf "`echo filterdiff|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo lsdiff|sed '$(transform)'`"
+else
+	ln -sf "`echo patchfilter|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo lsdiff|sed '$(transform)'`"
 endif
 	ln -sf "`echo filterdiff|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo grepdiff|sed '$(transform)'`"
 	ln -sf "`echo filterdiff|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo patchview|sed '$(transform)'`"
@@ -117,9 +132,7 @@ install-data-hook:
 uninstall-hook:
 	rm -f $(DESTDIR)$(bindir)/"`echo combinediff|sed '$(transform)'`"
 	rm -f $(DESTDIR)$(bindir)/"`echo flipdiff|sed '$(transform)'`"
-if !USE_SCANNER_LSDIFF
 	rm -f $(DESTDIR)$(bindir)/"`echo lsdiff|sed '$(transform)'`"
-endif
 	rm -f $(DESTDIR)$(bindir)/"`echo grepdiff|sed '$(transform)'`"
 	rm -f $(DESTDIR)$(bindir)/"`echo patchview|sed '$(transform)'`"
 	if [ -d "$(DESTDIR)$(bashcompletiondir)" ]; then \
@@ -343,8 +356,8 @@ TESTS = tests/newline1/run-test \
 	tests/malformed-diff-headers/run-test \
 	tests/scanner/run-test
 
-# Scanner debug tests (only when scanner-lsdiff is enabled)
-if USE_SCANNER_LSDIFF
+# Scanner debug tests (only when scanner-patchfilter is enabled)
+if USE_SCANNER_PATCHFILTER
 TESTS += \
 	tests/scanner-debug/run-test \
 	tests/scanner-debug/test-output-validation
@@ -357,8 +370,8 @@ XFAIL_TESTS = \
 	tests/delhunk6/run-test \
 	tests/rediff-empty-hunk/run-test
 
-# lsdiff-lines-option tests: expected to fail unless scanner-lsdiff is enabled
-if !USE_SCANNER_LSDIFF
+# lsdiff advanced tests: expected to fail unless scanner-patchfilter is enabled
+if !USE_SCANNER_PATCHFILTER
 XFAIL_TESTS += \
   tests/lsdiff-lines-option/run-test \
   tests/lsdiff-hunks-option/run-test \
@@ -367,15 +380,9 @@ XFAIL_TESTS += \
   tests/lsdiff-exclusion-mode/run-test
 endif
 
-if USE_SCANNER_LSDIFF
 test-perms: src/combinediff$(EXEEXT) src/flipdiff$(EXEEXT) \
 		src/lsdiff$(EXEEXT) src/grepdiff$(EXEEXT) src/patchview$(EXEEXT) \
 		scripts/splitdiff
-else
-test-perms: src/combinediff$(EXEEXT) src/flipdiff$(EXEEXT) \
-		src/lsdiff$(EXEEXT) src/grepdiff$(EXEEXT) src/patchview$(EXEEXT) \
-		scripts/splitdiff
-endif
 	for script in $(bin_SCRIPTS); do \
 		if [ -f $(top_builddir)/$$script ]; then \
 			chmod a+x $(top_builddir)/$$script; \

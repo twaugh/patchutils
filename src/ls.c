@@ -35,8 +35,7 @@
 # include <error.h>
 #endif
 
-#include "patch_scanner.h"
-#include "util.h"
+#include "patchfilter.h"
 
 /* Range structure (for option parsing) */
 struct range {
@@ -96,8 +95,7 @@ struct pending_file {
 static void syntax(int err) __attribute__((noreturn));
 static void process_patch_file(FILE *fp, const char *filename);
 static void display_filename(const char *filename, const char *patchname, char status, unsigned long linenum);
-static char determine_file_status(const struct patch_headers *headers);
-static char *get_best_filename(const struct patch_headers *headers);
+/* determine_file_status and get_best_filename are declared in patchfilter.h */
 static const char *strip_path_components(const char *filename, int components);
 static int should_display_file(const char *filename);
 static int lines_in_range(unsigned long orig_offset, unsigned long orig_count);
@@ -264,7 +262,7 @@ static void add_filename_candidate(char **stripped_candidates, const char **cand
     (*count)++;
 }
 
-static char *get_best_filename(const struct patch_headers *headers)
+char *get_best_filename(const struct patch_headers *headers)
 {
     const char *filename = NULL;
     char *result = NULL;
@@ -382,7 +380,7 @@ static char *get_best_filename(const struct patch_headers *headers)
     return result;
 }
 
-static char determine_file_status(const struct patch_headers *headers)
+char determine_file_status(const struct patch_headers *headers)
 {
     /* Use the shared utility function for file status determination */
     return patch_determine_file_status(headers, empty_files_as_absent);
@@ -628,7 +626,7 @@ static void process_patch_file(FILE *fp, const char *filename)
     patch_scanner_destroy(scanner);
 }
 
-int main(int argc, char *argv[])
+int run_ls_mode(int argc, char *argv[])
 {
     int i;
     FILE *fp;
@@ -663,6 +661,10 @@ int main(int argc, char *argv[])
             {"addnewprefix", 1, 0, 1000 + 'N'},
             {"lines", 1, 0, 1000 + 'L'},
             {"hunks", 1, 0, '#'},
+            /* Mode options (handled by patchfilter, but need to be recognized) */
+            {"list", 0, 0, 1000 + 'l'},
+            {"filter", 0, 0, 1000 + 'f'},
+            {"grep", 0, 0, 1000 + 'g'},
             {0, 0, 0, 0}
         };
 
@@ -774,6 +776,11 @@ int main(int argc, char *argv[])
                 optarg = optarg + 1;
             }
             parse_range(&hunks, optarg);
+            break;
+        case 1000 + 'l':
+        case 1000 + 'f':
+        case 1000 + 'g':
+            /* Mode options - handled by patchfilter, ignore here */
             break;
         default:
             syntax(1);

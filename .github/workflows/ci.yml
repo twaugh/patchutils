@@ -28,12 +28,12 @@ jobs:
             coverage: false
             configure_flags: "--without-pcre2"
 
-          - name: "Ubuntu Scanner-based lsdiff + Coverage"
+          - name: "Ubuntu Scanner-based patchfilter + Coverage"
             os: ubuntu
             pcre2: true
             coverage: true
-            scanner_lsdiff: true
-            configure_flags: "--with-pcre2 --enable-scanner-lsdiff"
+            scanner_patchfilter: true
+            configure_flags: "--with-pcre2 --enable-scanner-patchfilter"
 
           # Alpine (musl) tests
           - name: "Musl with PCRE2"

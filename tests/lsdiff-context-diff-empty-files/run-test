@@ -6,7 +6,7 @@
 
 # Detect if we're using the scanner-based lsdiff or the original filterdiff.c implementation
 # The original implementation uses lsdiff as a symlink to filterdiff
-# The scanner implementation uses lsdiff as a standalone binary
+# The scanner implementation (patchfilter) uses lsdiff as a symlink to patchfilter
 if [ -L "${LSDIFF}" ] && [ "$(readlink "${LSDIFF}" 2>/dev/null)" = "filterdiff" ]; then
     SCANNER_LSDIFF=false
 else
