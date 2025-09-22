@@ -6,7 +6,7 @@ The `scanner_debug` utility is a development tool that shows exactly what events
 
 The utility is built automatically with:
 ```bash
-./configure --enable-scanner-lsdiff
+./configure --enable-scanner-patchfilter
 make
 ```
 
