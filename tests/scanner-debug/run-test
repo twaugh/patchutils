@@ -22,7 +22,7 @@ SCANNER_DEBUG="$top_builddir/src/scanner_debug"
 # Check if scanner_debug exists
 if [ ! -x "$SCANNER_DEBUG" ]; then
     echo "Error: scanner_debug binary not found at $SCANNER_DEBUG"
-    echo "Make sure to build with --enable-scanner-lsdiff"
+    echo "Make sure to build with --enable-scanner-patchfilter"
     exit 77  # Skip test
 fi
 
