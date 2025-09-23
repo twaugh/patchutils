@@ -1399,6 +1399,12 @@ done)]]></screen></para>
       </refmeta>
       <refnamediv>
         <refname>patchview</refname>
+        <refname>gitdiff</refname>
+        <refname>gitdiffview</refname>
+        <refname>gitshow</refname>
+        <refname>gitshowview</refname>
+        <refname>svndiff</refname>
+        <refname>svndiffview</refname>
         <refpurpose>Without options, show numbered files modified by the patch. With options, behave as filterdiff.</refpurpose>
       </refnamediv>
       <refsynopsisdiv>
@@ -1485,7 +1491,7 @@ is equivalent to: lsdiff --number
 is equivalent to: filterdiff -F2- (or whatever arguments are supplied)
 	</para>
         <para>
-There are two scripts for working with git (gitdiff and gitdiffview) and two for svn (svndiff and svndiffview).
+There are 4 scripts for working with git repos (gitdiff, gitdiffview, gitshow and gitshowview) and 2 for svn (svndiff and svndiffview).
 
     <screen>svndiff</screen>
     <screen>gitdiff</screen>
@@ -1505,6 +1511,10 @@ pipe all patches through filterdiff to vim - -R (in read-only mode, easy to quit
     (or any other args)
 
 will pipe patch of file #2 to vim - -R
+	</para>
+        <para><screen>gitshow</screen><screen>gitshowview</screen>
+
+This is the same as gitdiff but uses git show instead of git diff.
 	</para>
       </refsect1>
       <refsect1>
@@ -1686,7 +1696,7 @@ will pipe patch of file #2 to vim - -R
           <varlistentry>
             <term><option>-v</option>, <option>--verbose</option></term>
             <listitem>
-              <para>Verbose output.</para>
+              <para>Verbose output. For the git and svn wrapper scripts (gitdiff, gitdiffview, gitshow, gitshowview, svndiff, svndiffview), this option shows the full command that is being executed.</para>
             </listitem>
           </varlistentry>
           <varlistentry>
