@@ -41,6 +41,23 @@ jobs:
             coverage: false
             configure_flags: "--without-pcre2"
 
+          # Windows cross-compilation tests
+          - name: "Windows x86_64 (MinGW cross-compile)"
+            os: ubuntu
+            pcre2: false
+            coverage: false
+            configure_flags: "--host=x86_64-w64-mingw32 --without-pcre2"
+            cross_compile: true
+            mingw_target: "x86_64-w64-mingw32"
+
+          - name: "Windows i686 (MinGW cross-compile)"
+            os: ubuntu
+            pcre2: false
+            coverage: false
+            configure_flags: "--host=i686-w64-mingw32 --without-pcre2"
+            cross_compile: true
+            mingw_target: "i686-w64-mingw32"
+
     name: ${{ matrix.name }}
 
     steps:
@@ -48,7 +65,7 @@ jobs:
 
     # Install dependencies - Ubuntu
     - name: Install dependencies (Ubuntu)
-      if: matrix.os == 'ubuntu'
+      if: ${{ matrix.os == 'ubuntu' && !matrix.cross_compile }}
       run: |
         sudo apt-get update
         sudo apt-get install -y \
@@ -62,6 +79,23 @@ jobs:
           libpcre2-dev \
           gnulib \
           lcov
+
+    # Install dependencies - Ubuntu with MinGW for cross-compilation
+    - name: Install dependencies (Ubuntu + MinGW)
+      if: ${{ matrix.os == 'ubuntu' && matrix.cross_compile }}
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          autoconf \
+          automake \
+          build-essential \
+          perl \
+          patch \
+          diffutils \
+          xmlto \
+          gnulib \
+          mingw-w64 \
+          mingw-w64-tools
 
     # Install dependencies - Alpine with PCRE2
     - name: Install dependencies (Alpine with PCRE2)
@@ -130,9 +164,21 @@ jobs:
     - name: Build
       run: make -j$(nproc)
 
-    # Test
+    # Test (skip for cross-compilation since we can't run Windows binaries on Linux)
     - name: Run tests
+      if: ${{ !matrix.cross_compile }}
       run: make check
+
+    # For cross-compilation, just verify the binaries were created
+    - name: Verify Windows binaries (cross-compile)
+      if: ${{ matrix.cross_compile }}
+      run: |
+        echo "Verifying Windows binaries were created..."
+        ls -la src/
+        file src/interdiff.exe || file src/interdiff
+        file src/filterdiff.exe || file src/filterdiff
+        file src/rediff.exe || file src/rediff
+        echo "Cross-compilation successful!"
 
     # Coverage reporting (only for coverage builds)
     - name: Generate coverage report
@@ -215,6 +261,69 @@ jobs:
 
     - name: Build and test distribution
       run: make distcheck
+
+    - name: Show test results on failure
+      if: failure()
+      run: |
+        echo "=== Test logs ==="
+        find . -name "*.log" -type f -exec echo "=== {} ===" \; -exec cat {} \;
+        echo "=== Test arena contents ==="
+        find test-arena -type f 2>/dev/null | head -20 | while read f; do
+          echo "=== $f ==="
+          cat "$f" 2>/dev/null || echo "Cannot read file"
+        done
+
+  # Native Windows build using MSYS2
+  windows-native:
+    runs-on: windows-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "Windows MSYS2 MINGW64"
+            msystem: MINGW64
+            arch: x86_64
+          - name: "Windows MSYS2 MINGW32"
+            msystem: MINGW32
+            arch: i686
+
+    name: ${{ matrix.name }}
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup MSYS2
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: ${{ matrix.msystem }}
+        update: true
+        install: >-
+          base-devel
+          mingw-w64-${{ matrix.arch }}-toolchain
+          mingw-w64-${{ matrix.arch }}-autotools
+          mingw-w64-${{ matrix.arch }}-pcre2
+          autoconf-wrapper
+          automake-wrapper
+          perl
+          patch
+          diffutils
+
+    - name: Bootstrap
+      run: ./bootstrap
+
+    - name: Configure
+      run: ./configure --with-pcre2
+
+    - name: Build
+      run: make -j$(nproc)
+
+    - name: Run tests
+      run: make check
 
     - name: Show test results on failure
       if: failure()
