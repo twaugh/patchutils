@@ -36,23 +36,22 @@ src_interdiff_LDADD = lib/libgnu.a @LIBOBJS@
 src_filterdiff_LDADD = lib/libgnu.a @LIBOBJS@
 src_rediff_LDADD = lib/libgnu.a @LIBOBJS@
 
-# Manual pages that are simple .so references
-additional_manpages = doc/gitdiff.1 doc/gitdiffview.1 doc/svndiff.1 doc/svndiffview.1
-
 if HAVE_XMLTO
 # The man pages are generated from DocBook XML.
 interdiff_manpage = doc/interdiff.1
 other_manpages = doc/filterdiff.1 doc/fixcvsdiff.1 doc/rediff.1 \
 	doc/editdiff.1 doc/combinediff.1 doc/lsdiff.1 doc/splitdiff.1 \
 	doc/grepdiff.1 doc/recountdiff.1 doc/unwrapdiff.1 doc/dehtmldiff.1 \
-	doc/flipdiff.1 doc/espdiff.1 doc/patchview.1
-man_MANS = $(interdiff_manpage) $(other_manpages) $(additional_manpages)
+	doc/flipdiff.1 doc/espdiff.1 doc/patchview.1 \
+	doc/gitdiff.1 doc/gitdiffview.1 doc/gitshow.1 doc/gitshowview.1 \
+	doc/svndiff.1 doc/svndiffview.1
+man_MANS = $(interdiff_manpage) $(other_manpages)
 
 $(other_manpages): $(interdiff_manpage)
 $(interdiff_manpage): doc/patchutils.xml
 	$(XMLTO) man -o doc $<
 else
-man_MANS = $(additional_manpages)
+man_MANS =
 endif
 
 # Special rules for combinediff, flipdiff, lsdiff, grepdiff and patchview, which are
