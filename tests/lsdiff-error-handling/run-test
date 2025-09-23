@@ -1,0 +1,90 @@
+#!/bin/sh
+
+# Test error handling and edge cases in lsdiff command-line parsing
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Test 1: Help option should exit with code 0
+echo "=== Test 1: Help option ==="
+${LSDIFF} --help >help_output 2>help_errors
+exit_code=$?
+[ $exit_code -eq 0 ] || { echo "Help should exit with code 0, got $exit_code"; exit 1; }
+grep -q -i "usage:" help_output || { echo "Help output should contain usage/Usage"; exit 1; }
+
+# Test 2: Version option should exit with code 0
+echo "=== Test 2: Version option ==="
+${LSDIFF} --version >version_output 2>version_errors
+exit_code=$?
+[ $exit_code -eq 0 ] || { echo "Version should exit with code 0, got $exit_code"; exit 1; }
+grep -q "lsdiff" version_output || { echo "Version output should contain lsdiff"; exit 1; }
+
+# Test 3: Invalid -p option (non-numeric)
+echo "=== Test 3: Invalid -p option ==="
+${LSDIFF} -p abc /dev/null >invalid_p_output 2>invalid_p_errors
+exit_code=$?
+[ $exit_code -ne 0 ] || { echo "Invalid -p should fail"; exit 1; }
+
+# Test 4: Invalid --strip option (non-numeric)
+echo "=== Test 4: Invalid --strip option ==="
+${LSDIFF} --strip=abc /dev/null >invalid_strip_output 2>invalid_strip_errors
+exit_code=$?
+[ $exit_code -ne 0 ] || { echo "Invalid --strip should fail"; exit 1; }
+# Both implementations handle invalid arguments (either specific error or help text)
+grep -q -i "invalid argument to --strip\|option\|usage" invalid_strip_errors || { echo "Should show error or help for invalid --strip argument"; exit 1; }
+
+# Test 5: Invalid --git-prefixes option
+echo "=== Test 5: Invalid --git-prefixes option ==="
+${LSDIFF} --git-prefixes=invalid /dev/null >invalid_git_output 2>invalid_git_errors
+exit_code=$?
+[ $exit_code -ne 0 ] || { echo "Invalid --git-prefixes should fail"; exit 1; }
+# Original implementation has specific error message for --git-prefixes
+grep -q "invalid argument to --git-prefixes" invalid_git_errors || { echo "Should report invalid git-prefixes argument"; exit 1; }
+
+# Test 6: Multiple -F options (should fail)
+echo "=== Test 6: Multiple -F options ==="
+${LSDIFF} -F 1 -F 2 /dev/null >multiple_f_output 2>multiple_f_errors
+exit_code=$?
+[ $exit_code -ne 0 ] || { echo "Multiple -F options should fail"; exit 1; }
+
+# Test 7: Multiple --lines options (should fail)
+echo "=== Test 7: Multiple --lines options ==="
+${LSDIFF} --lines=1 --lines=2 /dev/null >multiple_lines_output 2>multiple_lines_errors
+exit_code=$?
+[ $exit_code -ne 0 ] || { echo "Multiple --lines options should fail"; exit 1; }
+
+# Test 8: Multiple --hunks options (should fail)
+echo "=== Test 8: Multiple --hunks options ==="
+${LSDIFF} --hunks=1 --hunks=2 /dev/null >multiple_hunks_output 2>multiple_hunks_errors
+exit_code=$?
+[ $exit_code -ne 0 ] || { echo "Multiple --hunks options should fail"; exit 1; }
+
+# Test 9: Invalid range format for -F
+echo "=== Test 9: Invalid range format for -F ==="
+${LSDIFF} -F "abc" /dev/null >invalid_range_output 2>invalid_range_errors
+exit_code=$?
+[ $exit_code -ne 0 ] || { echo "Invalid range format should fail"; exit 1; }
+grep -q "not understood" invalid_range_errors || { echo "Should report range not understood"; exit 1; }
+
+# Test 10: Invalid range (start > end) for -F
+echo "=== Test 10: Invalid range (start > end) for -F ==="
+${LSDIFF} -F "5-2" /dev/null >invalid_range2_output 2>invalid_range2_errors
+exit_code=$?
+[ $exit_code -ne 0 ] || { echo "Invalid range (start > end) should fail"; exit 1; }
+grep -q "invalid range" invalid_range2_errors || { echo "Should report invalid range"; exit 1; }
+
+# Test 11: Empty range specification for -F
+echo "=== Test 11: Empty range specification for -F ==="
+${LSDIFF} -F "" /dev/null >empty_range_output 2>empty_range_errors
+exit_code=$?
+[ $exit_code -ne 0 ] || { echo "Empty range should fail"; exit 1; }
+grep -q "missing number in range list" empty_range_errors || { echo "Should report missing number"; exit 1; }
+
+# Test 12: Invalid range format with trailing garbage
+echo "=== Test 12: Invalid range format with trailing garbage ==="
+${LSDIFF} -F "1-2xyz" /dev/null >trailing_garbage_output 2>trailing_garbage_errors
+exit_code=$?
+[ $exit_code -ne 0 ] || { echo "Range with trailing garbage should fail"; exit 1; }
+grep -q "not understood" trailing_garbage_errors || { echo "Should report trailing garbage not understood"; exit 1; }
+
+echo "All error handling tests passed!"
+exit 0

@@ -35,6 +35,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <limits.h>
+#include <time.h>
 #ifdef HAVE_UNISTD_H
 # include <unistd.h>
 #endif /* HAVE_UNISTD_H */
@@ -47,6 +48,8 @@
 #endif /* HAVE_SYS_WAIT_H */
 
 #include "util.h"
+#include "diff.h"
+#include "patch_scanner.h"
 
 /* safe malloc */
 void *xmalloc (size_t size)
@@ -435,5 +438,272 @@ cleanup:
 		free(temp_name);
 	}
 	return ret;
+}
+
+/* Patch-specific utility functions */
+
+/**
+ * Check if a file exists based on filename and timestamp.
+ *
+ * This function determines file existence by:
+ * 1. Returning 0 (false) if filename is "/dev/null"
+ * 2. Parsing the timestamp and checking if it's an epoch timestamp
+ * 3. Returning 0 (false) for epoch timestamps (indicating deleted files)
+ * 4. Returning 1 (true) for normal timestamps
+ *
+ * @param filename The filename from the patch header
+ * @param timestamp The timestamp portion from the patch header
+ * @return 1 if file exists, 0 if it doesn't exist (deleted)
+ */
+int patch_file_exists(const char *filename, const char *timestamp)
+{
+	struct tm t;
+	long zone = -1;
+
+	if (!strcmp (filename, "/dev/null"))
+		return 0;
+
+	if (read_timestamp (timestamp, &t, &zone))
+		return 1;
+
+	/* If the time is less that fifteen hours either side of the
+	 * start of 1970, and it's an exact multiple of 15 minutes, it's
+	 * very likely to be the result of ctime(&zero). */
+	if (t.tm_sec == 0 &&
+	    ((t.tm_year == 69 && t.tm_mon == 11 && t.tm_mday == 31 &&
+	      t.tm_hour >= 9) ||
+	     (t.tm_year == 70 && t.tm_mon == 0 && t.tm_mday == 1 &&
+	      t.tm_hour <= 15)) &&
+	    (t.tm_min % 15) == 0) {
+		if (zone != -1) {
+			/* Extra checking, since we know the timezone. */
+			long offset = 0;
+			if (t.tm_year == 69) {
+				offset = 100 * (t.tm_hour - 24);
+				if (t.tm_min)
+					offset += 100 + t.tm_min - 60;
+			} else {
+				offset = 100 * t.tm_hour;
+				offset += t.tm_min;
+			}
+
+			if (offset != zone)
+				return 1;
+		}
+
+		return 0;
+	}
+
+	/* Otherwise, it's a real file timestamp. */
+	return 1;
+}
+
+/**
+ * Determine file status character from patch headers.
+ *
+ * @param headers Parsed patch headers
+ * @param empty_as_absent Whether empty files should be treated as absent (-E flag)
+ * @return Status character: '+' (new), '-' (deleted), '!' (modified)
+ */
+char patch_determine_file_status(const struct patch_headers *headers, int empty_as_absent)
+{
+	int old_file_exists = 1;
+	int new_file_exists = 1;
+
+	if (headers->type == PATCH_TYPE_GIT_EXTENDED) {
+		/* For Git diffs, use the git_type to determine existence */
+		switch (headers->git_type) {
+		case GIT_DIFF_NEW_FILE:
+			old_file_exists = 0;
+			new_file_exists = 1;
+			break;
+		case GIT_DIFF_DELETED_FILE:
+			old_file_exists = 1;
+			new_file_exists = 0;
+			break;
+		case GIT_DIFF_RENAME:
+		case GIT_DIFF_PURE_RENAME:
+		case GIT_DIFF_COPY:
+		case GIT_DIFF_MODE_ONLY:
+		case GIT_DIFF_MODE_CHANGE:
+		case GIT_DIFF_NORMAL:
+		case GIT_DIFF_BINARY:
+		default:
+			old_file_exists = 1;
+			new_file_exists = 1;
+			break;
+		}
+	} else {
+		/* For unified/context diffs, check filenames and timestamps */
+
+		/* First check for /dev/null filenames */
+		if (headers->old_name && !strcmp(headers->old_name, "/dev/null")) {
+			old_file_exists = 0;
+		}
+		if (headers->new_name && !strcmp(headers->new_name, "/dev/null")) {
+			new_file_exists = 0;
+		}
+
+		/* Then check timestamps if both files have real names */
+		if (headers->old_name && headers->new_name &&
+		    strcmp(headers->old_name, "/dev/null") != 0 &&
+		    strcmp(headers->new_name, "/dev/null") != 0) {
+
+			int found_timestamp = 0;
+			for (unsigned int i = 0; i < headers->num_headers; i++) {
+				const char *line = headers->header_lines[i];
+				if (strncmp(line, "--- ", 4) == 0) {
+					/* Skip past "--- " and filename, find timestamp */
+					const char *tab = strchr(line + 4, '\t');
+					if (tab) {
+						found_timestamp = 1;
+						if (headers->type == PATCH_TYPE_CONTEXT) {
+							/* In context diffs, --- refers to the new file */
+							new_file_exists = patch_file_exists(headers->new_name, tab + 1);
+						} else {
+							/* In unified diffs, --- refers to the old file */
+							old_file_exists = patch_file_exists(headers->old_name, tab + 1);
+						}
+					}
+				} else if (strncmp(line, "+++ ", 4) == 0) {
+					/* Skip past "+++ " and filename, find timestamp */
+					const char *tab = strchr(line + 4, '\t');
+					if (tab) {
+						found_timestamp = 1;
+						new_file_exists = patch_file_exists(headers->new_name, tab + 1);
+					}
+				} else if (strncmp(line, "*** ", 4) == 0 && headers->type == PATCH_TYPE_CONTEXT) {
+					/* Context diff old file header: *** old_file timestamp */
+					const char *tab = strchr(line + 4, '\t');
+					if (tab) {
+						found_timestamp = 1;
+						old_file_exists = patch_file_exists(headers->old_name, tab + 1);
+					}
+				}
+			}
+
+			/* For context diffs without timestamps, use filename heuristics */
+			if (!found_timestamp && headers->type == PATCH_TYPE_CONTEXT) {
+				/* If filenames are different, this might be a rename/new/delete case */
+				if (strcmp(headers->old_name, headers->new_name) != 0) {
+					/* Use empty-as-absent logic to determine the actual status */
+					/* This will be handled below in the empty_as_absent section */
+					/* For now, keep both as existing and let empty analysis decide */
+				}
+			}
+		}
+	}
+
+	/* Handle empty_as_absent logic */
+	if (empty_as_absent && old_file_exists && new_file_exists) {
+		/* Both files exist, but check if one is effectively empty based on hunk data */
+		int old_is_empty = 1;  /* Assume empty until proven otherwise */
+		int new_is_empty = 1;  /* Assume empty until proven otherwise */
+
+		/* Parse hunk headers from the patch to determine if files are empty */
+		for (unsigned int i = 0; i < headers->num_headers; i++) {
+			const char *line = headers->header_lines[i];
+
+			/* Look for unified diff hunk headers: @@ -offset,count +offset,count @@ */
+			if (strncmp(line, "@@ ", 3) == 0) {
+				unsigned long orig_count = 1, new_count = 1;  /* Default counts */
+				char *p;
+
+				/* Find original count after '-' */
+				p = strchr(line, '-');
+				if (p) {
+					p++;
+					/* Skip offset */
+					strtoul(p, &p, 10);
+					/* Look for count after comma */
+					if (*p == ',') {
+						p++;
+						orig_count = strtoul(p, NULL, 10);
+					}
+					/* If no comma, count is 1 (already set) */
+				}
+
+				/* Find new count after '+' */
+				p = strchr(line, '+');
+				if (p) {
+					p++;
+					/* Skip offset */
+					strtoul(p, &p, 10);
+					/* Look for count after comma */
+					if (*p == ',') {
+						p++;
+						new_count = strtoul(p, NULL, 10);
+					}
+					/* If no comma, count is 1 (already set) */
+				}
+
+				/* If any hunk has content, the file is not empty */
+				if (orig_count > 0) {
+					old_is_empty = 0;
+				}
+				if (new_count > 0) {
+					new_is_empty = 0;
+				}
+			}
+			/* Handle context diff hunk headers: *** offset,count **** */
+			else if (strncmp(line, "*** ", 4) == 0 && strstr(line, " ****")) {
+				char *comma = strchr(line + 4, ',');
+				unsigned long orig_count;
+				if (comma) {
+					orig_count = strtoul(comma + 1, NULL, 10);
+				} else {
+					/* Single number format: *** number **** */
+					char *space = strstr(line + 4, " ****");
+					if (space) {
+						*space = '\0'; /* Temporarily null-terminate */
+						orig_count = strtoul(line + 4, NULL, 10);
+						*space = ' '; /* Restore the space */
+					} else {
+						orig_count = 1; /* Fallback */
+					}
+				}
+				if (orig_count > 0) {
+					old_is_empty = 0;
+				}
+			}
+			/* Handle context diff new file headers: --- offset,count ---- */
+			else if (strncmp(line, "--- ", 4) == 0 && strstr(line, " ----")) {
+				char *comma = strchr(line + 4, ',');
+				unsigned long new_count;
+				if (comma) {
+					new_count = strtoul(comma + 1, NULL, 10);
+				} else {
+					/* Single number format: --- number ---- */
+					char *space = strstr(line + 4, " ----");
+					if (space) {
+						*space = '\0'; /* Temporarily null-terminate */
+						new_count = strtoul(line + 4, NULL, 10);
+						*space = ' '; /* Restore the space */
+					} else {
+						new_count = 1; /* Fallback */
+					}
+				}
+				if (new_count > 0) {
+					new_is_empty = 0;
+				}
+			}
+		}
+
+		/* Apply empty-as-absent logic */
+		if (old_is_empty && !new_is_empty) {
+			return '+'; /* Treat as new file (old was empty) */
+		} else if (!old_is_empty && new_is_empty) {
+			return '-'; /* Treat as deleted file (new is empty) */
+		}
+		/* If both empty or both non-empty, fall through to normal logic */
+	}
+
+	/* Determine status based on file existence */
+	if (!old_file_exists && new_file_exists)
+		return '+'; /* New file */
+	else if (old_file_exists && !new_file_exists)
+		return '-'; /* Deleted file */
+	else
+		return '!'; /* Modified file */
 }
 

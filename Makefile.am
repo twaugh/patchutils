@@ -4,6 +4,16 @@ SUBDIRS = lib
 DISTCLEANFILES = src/stamp-h[0-9]* src/config.h
 
 bin_PROGRAMS = src/interdiff src/filterdiff src/rediff
+
+# lsdiff is provided by symlink to filterdiff (unless scanner-patchfilter is enabled)
+
+# Scanner-based unified patchfilter tool (experimental)
+if USE_SCANNER_PATCHFILTER
+bin_PROGRAMS += src/patchfilter
+endif
+
+# Development/debug utilities (not installed by default)
+noinst_PROGRAMS = src/scanner_debug
 bin_SCRIPTS = \
 	scripts/fixcvsdiff \
 	scripts/splitdiff \
@@ -32,9 +42,29 @@ src_filterdiff_SOURCES = src/filterdiff.c src/util.c src/util.h src/diff.c \
 		src/diff.h
 src_rediff_SOURCES = src/rediff.c src/util.c src/util.h src/diff.c src/diff.h
 
+# Note: lsdiff functionality is now provided by:
+# - symlink to filterdiff (traditional)
+# - patchfilter in list mode (scanner-based)
+
+if USE_SCANNER_PATCHFILTER
+src_patchfilter_SOURCES = src/patchfilter.c src/patchfilter.h \
+		src/ls.c src/grep.c src/filter.c \
+		src/patch_scanner.c src/patch_scanner.h \
+		src/util.c src/util.h src/diff.c src/diff.h
+endif
+
 src_interdiff_LDADD = lib/libgnu.a @LIBOBJS@
 src_filterdiff_LDADD = lib/libgnu.a @LIBOBJS@
 src_rediff_LDADD = lib/libgnu.a @LIBOBJS@
+
+if USE_SCANNER_PATCHFILTER
+src_patchfilter_LDADD = lib/libgnu.a @LIBOBJS@
+endif
+
+# Scanner debug utility
+src_scanner_debug_SOURCES = src/scanner_debug.c src/patch_scanner.c src/patch_scanner.h \
+		src/util.c src/util.h src/diff.c src/diff.h
+src_scanner_debug_LDADD = lib/libgnu.a @LIBOBJS@
 
 if HAVE_XMLTO
 # The man pages are generated from DocBook XML.
@@ -62,8 +92,14 @@ src/combinediff$(EXEEXT): src/interdiff$(EXEEXT)
 src/flipdiff$(EXEEXT): src/interdiff$(EXEEXT)
 	ln -sf $(notdir $<) $@
 
+if !USE_SCANNER_PATCHFILTER
 src/lsdiff$(EXEEXT): src/filterdiff$(EXEEXT)
 	ln -sf $(notdir $<) $@
+else
+# When patchfilter is enabled, create lsdiff symlink to patchfilter
+src/lsdiff$(EXEEXT): src/patchfilter$(EXEEXT)
+	ln -sf $(notdir $<) $@
+endif
 
 src/grepdiff$(EXEEXT): src/filterdiff$(EXEEXT)
 	ln -sf $(notdir $<) $@
@@ -74,7 +110,11 @@ src/patchview$(EXEEXT): src/filterdiff$(EXEEXT)
 install-exec-hook:
 	ln -sf "`echo interdiff|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo combinediff|sed '$(transform)'`"
 	ln -sf "`echo interdiff|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo flipdiff|sed '$(transform)'`"
+if !USE_SCANNER_PATCHFILTER
 	ln -sf "`echo filterdiff|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo lsdiff|sed '$(transform)'`"
+else
+	ln -sf "`echo patchfilter|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo lsdiff|sed '$(transform)'`"
+endif
 	ln -sf "`echo filterdiff|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo grepdiff|sed '$(transform)'`"
 	ln -sf "`echo filterdiff|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo patchview|sed '$(transform)'`"
 
@@ -188,8 +228,17 @@ TESTS = tests/newline1/run-test \
 	tests/lsdiff-hunks-option/run-test \
 	tests/lsdiff-lines-option/run-test \
 	tests/lsdiff-exclusion-combined/run-test \
+	tests/lsdiff-combination-filters/run-test \
+	tests/lsdiff-exclusion-mode/run-test \
 	tests/lsdiff-verbose-levels/run-test \
 	tests/lsdiff-range-exclude/run-test \
+	tests/lsdiff-error-handling/run-test \
+	tests/lsdiff-include-exclude-file/run-test \
+	tests/lsdiff-path-prefixes/run-test \
+	tests/lsdiff-decompression/run-test \
+	tests/lsdiff-context-diff-empty-files/run-test \
+	tests/lsdiff-patch-scanner-errors/run-test \
+	tests/lsdiff-strip-vs-match-warning/run-test \
 	tests/patchview1/run-test \
 	tests/patchview2/run-test \
 	tests/fuzz1/run-test \
@@ -304,17 +353,32 @@ TESTS = tests/newline1/run-test \
 	tests/git-deleted-file/run-test \
 	tests/git-pure-rename/run-test \
 	tests/git-diff-edge-cases/run-test \
-	tests/malformed-diff-headers/run-test
+	tests/malformed-diff-headers/run-test \
+	tests/scanner/run-test
+
+# Scanner debug tests (only when scanner-patchfilter is enabled)
+if USE_SCANNER_PATCHFILTER
+TESTS += \
+	tests/scanner-debug/run-test \
+	tests/scanner-debug/test-output-validation
+endif
 
 # These ones don't work yet.
 # Feel free to send me patches. :-)
 XFAIL_TESTS = \
 	tests/delhunk5/run-test \
 	tests/delhunk6/run-test \
-	tests/rediff-empty-hunk/run-test \
-	tests/lsdiff-hunks-option/run-test \
-	tests/lsdiff-lines-option/run-test \
-	tests/lsdiff-exclusion-combined/run-test
+	tests/rediff-empty-hunk/run-test
+
+# lsdiff advanced tests: expected to fail unless scanner-patchfilter is enabled
+if !USE_SCANNER_PATCHFILTER
+XFAIL_TESTS += \
+  tests/lsdiff-lines-option/run-test \
+  tests/lsdiff-hunks-option/run-test \
+  tests/lsdiff-exclusion-combined/run-test \
+  tests/lsdiff-combination-filters/run-test \
+  tests/lsdiff-exclusion-mode/run-test
+endif
 
 test-perms: src/combinediff$(EXEEXT) src/flipdiff$(EXEEXT) \
 		src/lsdiff$(EXEEXT) src/grepdiff$(EXEEXT) src/patchview$(EXEEXT) \
@@ -346,6 +410,10 @@ lib/libgnu.a:
 distclean-local:
 	-rm -rf $(top_builddir)/test-arena
 	-rm -f lib-built
+	-if [ -f $(top_builddir)/tests/scanner/Makefile ]; then \
+		cd $(top_builddir)/tests/scanner && $(MAKE) distclean; \
+	fi
+	-rm -rf $(top_builddir)/tests/scanner
 
 if ENABLE_FUZZING
 # Fuzzing-specific instrumented binaries
@@ -431,6 +499,8 @@ endif
 EXTRA_DIST = $(man_MANS) \
 	tests/common.sh tests/soak-test \
 	$(TESTS) $(XFAIL_TESTS) \
+	tests/scanner/test_basic.c tests/scanner/test_accumulated_headers.c tests/scanner/test_input_validation.c tests/scanner/Makefile tests/scanner/README.md \
+	src/patch_scanner.c src/patch_scanner.h \
 	README.md BUGS COPYING TODO ChangeLog \
 	bootstrap \
 	patchutils.spec \

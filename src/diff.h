@@ -18,6 +18,9 @@
  *
  */
 
+#ifndef DIFF_H
+#define DIFF_H
+
 #include <time.h>
 
 int num_pathname_components (const char *x);
@@ -26,7 +29,9 @@ int num_pathname_components (const char *x);
  * Find the best name from a list.
  *
  * Of the names with the fewest path name components, select the
- * one with the shortest base name.
+ * one with the shortest base name.  Of any remaining candidates,
+ * select the one with the shortest name. In the case of a tie
+ * between source and target names, select the source name.
  *
  */
 char *best_name (int n, char **names);
@@ -57,12 +62,14 @@ int read_timestamp (const char *timestamp,
 /* Git diff support */
 enum git_diff_type {
 	GIT_DIFF_NORMAL = 0,	/* Regular diff with hunks */
-	GIT_DIFF_RENAME,	/* Pure rename (similarity index 100%) */
-	GIT_DIFF_COPY,		/* File copy (similarity < 100%) */
-	GIT_DIFF_BINARY,	/* Binary file diff */
-	GIT_DIFF_MODE_ONLY,	/* Mode change only */
 	GIT_DIFF_NEW_FILE,	/* New file creation */
-	GIT_DIFF_DELETED_FILE	/* File deletion */
+	GIT_DIFF_DELETED_FILE,	/* File deletion */
+	GIT_DIFF_RENAME,	/* File rename */
+	GIT_DIFF_PURE_RENAME,	/* Pure rename (100% similarity) */
+	GIT_DIFF_COPY,		/* File copy */
+	GIT_DIFF_MODE_ONLY,	/* Mode change only */
+	GIT_DIFF_MODE_CHANGE,	/* Mode change with content changes */
+	GIT_DIFF_BINARY		/* Binary file diff */
 };
 
 enum git_prefix_mode {
@@ -77,3 +84,5 @@ char *strip_git_prefix_from_filename (const char *filename, enum git_prefix_mode
 enum git_diff_type detect_git_diff_type (char **headers, unsigned int num_headers);
 int extract_git_filenames (char **headers, unsigned int num_headers,
 			   char **old_name, char **new_name, enum git_prefix_mode prefix_mode);
+
+#endif /* DIFF_H */

@@ -60,7 +60,8 @@ int num_pathname_components (const char *x)
  *
  * Of the names with the fewest path name components, select the
  * one with the shortest base name.  Of any remaining candidates,
- * select the one with the shortest name.
+ * select the one with the shortest name. In the case of a tie
+ * between source and target names, select the source name.
  *
  */
 char *best_name (int n, char **names)
@@ -124,7 +125,8 @@ char *best_name (int n, char **names)
 
 		len = strlen (names[i]);
 		if ((best_n == -1) ||
-		    (len < best_n)) {
+		    (len < best_n) ||
+		    (len == best_n && i == 0)) { /* In case of tie, prefer source (index 0) */
 			best_n = len;
 			best = i;
 		}

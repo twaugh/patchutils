@@ -178,6 +178,20 @@ AC_MSG_RESULT(yes)
 AC_DEFINE_UNQUOTED(PATCH, "$PATCH", How patch(1) is called)
 AC_DEFINE_UNQUOTED(DIFF, "$DIFF", How diff(1) is called)
 
+# Scanner-based unified patchfilter tool (experimental)
+AC_MSG_CHECKING([whether to enable scanner-based patchfilter tool])
+AC_ARG_ENABLE([scanner-patchfilter],
+              [AS_HELP_STRING([--enable-scanner-patchfilter],
+                              [build experimental unified scanner-based patchfilter tool @<:@default=no@:>@])],
+              [], [enable_scanner_patchfilter=no])
+AC_MSG_RESULT($enable_scanner_patchfilter)
+
+AM_CONDITIONAL([USE_SCANNER_PATCHFILTER], [test "x$enable_scanner_patchfilter" = xyes])
+
+if test "x$enable_scanner_patchfilter" = xyes; then
+    AC_DEFINE([USE_SCANNER_PATCHFILTER], [1], [Build scanner-based patchfilter tool])
+fi
+
 gl_INIT
 
 AC_CONFIG_FILES([
