@@ -1,7 +1,7 @@
 Summary: A collection of programs for manipulating patch files
 Name: @PACKAGE@
 Version: @VERSION@
-Release: 0.1
+Release: 0.1%{?dist}
 License: GPL-2.0-or-later
 URL: http://cyberelk.net/tim/patchutils/
 Source0: http://cyberelk.net/tim/data/patchutils/stable/%{name}-%{version}.tar.xz
@@ -34,15 +34,14 @@ make check
 %install
 %make_install
 
+
 %files
 %{!?_licensedir:%global license %doc}
 %doc AUTHORS ChangeLog README.md BUGS NEWS patchview/README.patchview
 %license COPYING
 %{_bindir}/*
 %{_datadir}/bash-completion/completions/*
-%if 0%{?have_xmlto}
 %{_mandir}/*/*
-%endif
 
 %changelog
 * Tue Jan  6 2004 Tim Waugh <twaugh@redhat.com>
