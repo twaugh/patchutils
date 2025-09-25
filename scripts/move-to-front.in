@@ -1,4 +1,13 @@
 #!/bin/bash
+
+# move-to-front - an example of how flipdiff can be used
+
+if [ "x$1" == "x--version" ]
+then
+  echo "move-to-front - patchutils version @VERSION@"
+  exit 0
+fi
+
 if [ "$#" -eq 0 ] || [ "x$1" == "x--help" ]
 then
   echo "usage: move-to-front [PATCHES..] PATCH"

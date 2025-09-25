@@ -39,6 +39,8 @@ Patchutils is a small collection of programs that operate on patch files. It pro
 
 - **flipdiff** - Exchanges the order of two patches.
 
+- **move-to-front** - An example of how flipdiff can be used.
+
 - **dehtmldiff** - Extracts a diff from an HTML page.
 
 - **editdiff** - Edit a patch file interactively.
