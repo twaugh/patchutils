@@ -7,3 +7,6 @@ Marko Kreen <marko@l-t.ee>
 
 Matthias Hanisch <matze@camline.com>
 	- Major interdiff speed-ups, combinediff implementation.
+
+Sérgio Basto <sergio@serjux.com>
+	- patchview and 6 helper scripts to work with git and svn, implemented range exclusion, added some short option variants.
