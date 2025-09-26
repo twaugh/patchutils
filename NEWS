@@ -29,6 +29,8 @@ Patchutils news
 	Added manual pages for gitdiff, gitdiffview, svndiff, and svndiffview
 	commands. Addresses GitHub issue #112.
 
+	Updated bash completions.
+
 0.4.3 (stable)
 
 	Added --in-place option to more tools for editing files in place.
