@@ -1,10 +1,22 @@
+# Set autoconf to 1 to enable building from the Git repository
+# See: https://github.com/twaugh/patchutils?tab=readme-ov-file#building-from-the-git-repository
+%bcond autoconf 1
+
+%if %{with autoconf}
+%global source_url https://github.com/twaugh/patchutils/archive/%{version}
+%global tar_ext gz
+%else
+%global source_url https://cyberelk.net/tim/data/patchutils/stable
+%global tar_ext xz
+%endif
+
 Summary: A collection of programs for manipulating patch files
 Name: @PACKAGE@
 Version: @VERSION@
 Release: 0.1%{?dist}
 License: GPL-2.0-or-later
 URL: http://cyberelk.net/tim/patchutils/
-Source0: http://cyberelk.net/tim/data/patchutils/stable/%{name}-%{version}.tar.xz
+Source0: %{source_url}/%{name}-%{version}.tar.%{tar_ext}
 Obsoletes: interdiff <= 0.0.10
 Provides: interdiff = 0.0.11
 Requires: patch
@@ -12,8 +24,11 @@ BuildRequires: make
 BuildRequires: gcc
 BuildRequires: perl-generators
 BuildRequires: xmlto
+%if %{with autoconf}
 BuildRequires: automake
 BuildRequires: autoconf
+BuildRequires: gnulib-devel
+%endif
 
 %description
 This is a collection of programs that can manipulate patch files in
@@ -25,6 +40,9 @@ and simply listing the files modified by a patch.
 %setup -q
 
 %build
+%if %{with autoconf}
+./bootstrap
+%endif
 %configure
 %make_build
 
