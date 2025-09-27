@@ -66,6 +66,12 @@ doc/dehtmldiff.1
 doc/flipdiff.1
 doc/espdiff.1
 doc/patchview.1
+doc/gitdiff.1
+doc/gitdiffview.1
+doc/gitshow.1
+doc/gitshowview.1
+doc/svndiff.1
+doc/svndiffview.1
 
 # Tests
 /test-arena
