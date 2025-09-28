@@ -183,13 +183,14 @@ gl_INIT
 AC_CONFIG_FILES([
 Makefile
 lib/Makefile
+scripts/fixcvsdiff
 scripts/splitdiff
 scripts/editdiff
-scripts/fixcvsdiff
 scripts/recountdiff
 scripts/unwrapdiff
 scripts/dehtmldiff
 scripts/espdiff
+scripts/move-to-front
 patchutils.spec
 ])
 AC_OUTPUT

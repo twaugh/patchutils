@@ -11,6 +11,7 @@ bin_SCRIPTS = \
 	scripts/recountdiff \
 	scripts/unwrapdiff \
 	scripts/dehtmldiff \
+	scripts/move-to-front \
 	scripts/espdiff
 
 dist_bin_SCRIPTS = \
@@ -436,7 +437,6 @@ EXTRA_DIST = $(man_MANS) \
 	patchutils.spec \
 	doc/patchutils.xml \
 	patchview/README.patchview \
-	scripts/move-to-front \
 	m4/gnulib-cache.m4 \
 	Makefile.fuzz \
 	fuzz/README.md fuzz/generate_corpus.sh fuzz/run_fuzz.sh fuzz/analyze_crashes.sh \
