@@ -68,3 +68,6 @@
 /getline.m4
 /fseterr.m4
 /gettext_h.m4
+/eealloc.m4
+/locale-fr.m4
+/wchar_t.m4
