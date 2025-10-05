@@ -1,0 +1,101 @@
+#!/usr/bin/python3
+# SPDX-License-Identifier: GPL-2.0-or-later
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2015-2025 Sérgio Basto <sergio@serjux.com>
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by the
+# Free Software Foundation; either version 2 of the License, or (at your
+# option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+# for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+# patchview-wrapper - wrapper for Git/SVN commands (e.g., "git diff",
+# "git show", "svn diff") piped into patchview, optionally also piped into
+# an editor
+
+
+import os
+import sys
+import argparse
+from subprocess import Popen, PIPE
+
+enviro = os.environ
+workdir = '.'
+editor = os.environ.get("EDITOR", "vim")
+
+tools = ["git", "svn"]
+prog = os.path.basename(sys.argv[0])
+
+tool = None
+for t in tools:
+    if prog.startswith(t):
+        tool = t
+        break
+
+if tool is None:
+    sys.stderr.write(f"Error: program name must start with one of {tools} (got '{prog}')\n")
+    sys.exit(1)
+
+tool_cmd = prog[len(tool):]
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-v', '--debug',
+                    help='writes the commands that will be executed',
+                    action='store_true')
+parser.add_argument('git_args', nargs='*', default=[])
+parser.add_argument('patchview_args', nargs=argparse.REMAINDER)
+args, unknown = parser.parse_known_args()
+largs = vars(args).get("git_args")
+rargs = vars(args).get("patchview_args")
+
+if tool_cmd.endswith("view"):
+    # pipeline: first_pipe | second_pipe | editor
+    tool_cmd = tool_cmd[:-4]  # remove "view"
+    git_cmd = [tool, tool_cmd] + largs
+    patchview_cmd = ["patchview"] + rargs + unknown
+
+    p1 = Popen(git_cmd, stdout=PIPE, env=enviro, cwd='.')
+    p2 = Popen(patchview_cmd, stdin=p1.stdout, stdout=PIPE, env=enviro, cwd=workdir)
+    p1.stdout.close()
+
+    dest_cmd = [editor, "-R", "-"]
+    p3 = Popen(dest_cmd, stdin=PIPE)
+    if args.debug:
+        debug_str = "%s | %s | %s\n" % (" ".join(git_cmd),
+                                     " ".join(patchview_cmd),
+                                     " ".join(dest_cmd))
+        p3.stdin.write(debug_str.encode())
+        p3.stdin.flush()
+
+    for chunk in iter(lambda: p2.stdout.read(4096), b''):
+        p3.stdin.write(chunk)
+        p3.stdin.flush()
+
+    p2.stdout.close()
+    p3.stdin.close()
+    p3.wait()
+else:
+    # pipeline normal: tool cmd | patchview
+    git_cmd = [tool, tool_cmd] + largs
+    patchview_cmd = ["patchview"] + rargs + unknown
+
+    p1 = Popen(git_cmd, stdout=PIPE, env=os.environ, cwd='.')
+    p2 = Popen(patchview_cmd, stdin=p1.stdout, stdout=PIPE, env=enviro, cwd=workdir)
+    p1.stdout.close()
+
+    # debug print
+    if args.debug:
+        print("%s | %s" % (" ".join(git_cmd), " ".join(patchview_cmd)))
+        sys.stdout.flush()
+
+    sys.stdout.buffer.write(p2.communicate()[0])
+
