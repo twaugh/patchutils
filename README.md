@@ -67,7 +67,8 @@ make install
 
 ## Building from the Git repository
 
-After cloning the source from GitHub, you need to run `./bootstrap` to generate the `configure` script.
+After cloning the source from GitHub, run `./bootstrap` to generate the `configure` script.
+This step requires **automake**, **autoconf**, and **gnulib-devel** to be installed on your system.
 
 ## Requirements
 
