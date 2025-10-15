@@ -61,7 +61,7 @@ if tool_cmd.endswith("view"):
     # pipeline: first_pipe | second_pipe | editor
     tool_cmd = tool_cmd[:-4]  # remove "view"
     git_cmd = [tool, tool_cmd] + largs
-    patchview_cmd = ["patchview"] + rargs + unknown
+    patchview_cmd = ["filterdiff"] + rargs + unknown
 
     p1 = Popen(git_cmd, stdout=PIPE, env=enviro, cwd='.')
     p2 = Popen(patchview_cmd, stdin=p1.stdout, stdout=PIPE, env=enviro, cwd=workdir)
