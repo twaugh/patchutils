@@ -14,12 +14,7 @@ bin_SCRIPTS = \
 	scripts/espdiff
 
 dist_bin_SCRIPTS = \
-	patchview/gitdiff \
-	patchview/gitdiffview \
-	patchview/gitshow \
-	patchview/gitshowview \
-	patchview/svndiff \
-	patchview/svndiffview
+	patchview/patchview-wrapper$(EXEEXT)
 
 # Bash completion files
 bashcompletiondir = $(datadir)/bash-completion/completions
@@ -56,27 +51,46 @@ endif
 
 # Special rules for combinediff, flipdiff, lsdiff, grepdiff and patchview, which are
 # just symlinks.
-src/combinediff$(EXEEXT): src/interdiff$(EXEEXT)
+
+interdiff_links = \
+	src/combinediff$(EXEEXT) \
+	src/flipdiff$(EXEEXT)
+
+filterdiff_links = \
+	src/lsdiff$(EXEEXT) \
+	src/grepdiff$(EXEEXT) \
+	src/patchview$(EXEEXT)
+
+patchview_links = \
+	patchview/gitdiff$(EXEEXT) \
+	patchview/gitdiffview$(EXEEXT) \
+	patchview/gitshow$(EXEEXT) \
+	patchview/gitshowview$(EXEEXT) \
+	patchview/svndiff$(EXEEXT) \
+	patchview/svndiffview$(EXEEXT)
+
+$(interdiff_links): src/interdiff$(EXEEXT)
 	ln -sf $(notdir $<) $@
 
-src/flipdiff$(EXEEXT): src/interdiff$(EXEEXT)
+$(filterdiff_links): src/filterdiff$(EXEEXT)
 	ln -sf $(notdir $<) $@
 
-src/lsdiff$(EXEEXT): src/filterdiff$(EXEEXT)
-	ln -sf $(notdir $<) $@
-
-src/grepdiff$(EXEEXT): src/filterdiff$(EXEEXT)
-	ln -sf $(notdir $<) $@
-
-src/patchview$(EXEEXT): src/filterdiff$(EXEEXT)
+$(patchview_links): patchview/patchview-wrapper$(EXEEXT)
 	ln -sf $(notdir $<) $@
 
 install-exec-hook:
-	ln -sf "`echo interdiff|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo combinediff|sed '$(transform)'`"
-	ln -sf "`echo interdiff|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo flipdiff|sed '$(transform)'`"
-	ln -sf "`echo filterdiff|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo lsdiff|sed '$(transform)'`"
-	ln -sf "`echo filterdiff|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo grepdiff|sed '$(transform)'`"
-	ln -sf "`echo filterdiff|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo patchview|sed '$(transform)'`"
+	@for f in $(interdiff_links); do \
+	    ln -sf "`echo interdiff$(EXEEXT) | sed '$(transform)'`" \
+	             "$(DESTDIR)$(bindir)/`basename $$f | sed '$(transform)'`"; \
+	done
+	@for f in $(filterdiff_links); do \
+	    ln -sf "`echo filterdiff$(EXEEXT) | sed '$(transform)'`" \
+	             "$(DESTDIR)$(bindir)/`basename $$f | sed '$(transform)'`"; \
+	done
+	@for f in $(patchview_links); do \
+	    ln -sf "`echo patchview-wrapper$(EXEEXT) | sed '$(transform)'`" \
+	             "$(DESTDIR)$(bindir)/`basename $$f | sed '$(transform)'`"; \
+	done
 
 install-data-hook:
 	if [ -d "$(DESTDIR)$(bashcompletiondir)" ]; then \
@@ -89,12 +103,16 @@ install-data-hook:
 		done; \
 	fi
 
-uninstall-hook:
-	rm -f $(DESTDIR)$(bindir)/"`echo combinediff|sed '$(transform)'`"
-	rm -f $(DESTDIR)$(bindir)/"`echo flipdiff|sed '$(transform)'`"
-	rm -f $(DESTDIR)$(bindir)/"`echo lsdiff|sed '$(transform)'`"
-	rm -f $(DESTDIR)$(bindir)/"`echo grepdiff|sed '$(transform)'`"
-	rm -f $(DESTDIR)$(bindir)/"`echo patchview|sed '$(transform)'`"
+uninstall-local:
+	@for f in $(interdiff_links); do \
+	    rm -f "$(DESTDIR)$(bindir)/`basename $$f | sed '$(transform)'`"; \
+	done
+	@for f in $(filterdiff_links); do \
+	    rm -f "$(DESTDIR)$(bindir)/`basename $$f | sed '$(transform)'`"; \
+	done
+	@for f in $(patchview_links); do \
+	    rm -f "$(DESTDIR)$(bindir)/`basename $$f | sed '$(transform)'`"; \
+	done
 	if [ -d "$(DESTDIR)$(bashcompletiondir)" ]; then \
 		cd "$(DESTDIR)$(bashcompletiondir)" && \
 		for cmd in filterdiff lsdiff grepdiff interdiff combinediff flipdiff rediff \
@@ -105,7 +123,7 @@ uninstall-hook:
 		rm -f patchutils; \
 	fi
 
-CLEANFILES=src/combinediff src/flipdiff src/lsdiff src/grepdiff src/patchview
+CLEANFILES = $(interdiff_links) $(filterdiff_links) $(patchview_links)
 MAINTAINERCLEANFILES=$(man_MANS)
 
 # Regression tests.

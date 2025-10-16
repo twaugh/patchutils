@@ -22,6 +22,9 @@
 # "git show", "svn diff") piped into patchview, optionally also piped into
 # an editor
 
+# Note: gitdiff, gitdiffview, gitshow, gitshowview, svndiff, svndiffview
+# are symbolic links pointing to this wrapper.
+# They are automatically created by Makefile.am.
 
 import os
 import sys
