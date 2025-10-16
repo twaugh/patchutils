@@ -24,6 +24,13 @@
 #include "util.h"
 #include "diff.h"
 
+/* Range structure (for --files, --lines, --hunks options) */
+struct range {
+	struct range *next;
+	unsigned long start;
+	unsigned long end;
+};
+
 /* Tool modes */
 enum tool_mode {
     MODE_FILTER,    /* filterdiff, patchview */
@@ -47,5 +54,23 @@ int filename_matches_patterns(const patch_headers_t *headers,
                              int strip_components);
 char patchfilter_determine_file_status(const patch_headers_t *headers);  /* Basic version */
 char *patchfilter_get_best_filename(const patch_headers_t *headers);     /* Basic version */
+
+/* Path manipulation functions */
+const char *strip_path_components(const char *filename, int components);
+
+/* Filename resolution functions */
+int count_pathname_components(const char *name);
+const char *choose_best_name(const char **names, int count);
+void add_filename_candidate(char **stripped_candidates, const char **candidates,
+                           int *count, const char *filename, enum git_prefix_mode git_prefix_mode);
+char *get_best_filename(const struct patch_headers *headers, enum git_prefix_mode git_prefix_mode,
+                       int strip_output_components, const char *add_prefix,
+                       const char *add_old_prefix, const char *add_new_prefix);
+
+/* File status determination */
+char determine_file_status(const struct patch_headers *headers, int empty_files_as_absent);
+
+/* Range parsing */
+void parse_range(struct range **r, const char *rstr);
 
 #endif /* PATCHFILTER_H */
