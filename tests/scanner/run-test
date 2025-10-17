@@ -16,23 +16,16 @@ top_srcdir="$(cd "$top_srcdir" && pwd)"
 # Source the common test environment
 . "$top_srcdir/tests/common.sh"
 
-# Ensure the build directory exists
-mkdir -p "$top_builddir/tests/scanner"
-
-# Copy source files from srcdir to builddir (needed for distcheck)
-for file in Makefile test_basic.c test_accumulated_headers.c test_input_validation.c README.md; do
-    if [ -f "$top_srcdir/tests/scanner/$file" ] && [ ! -f "$top_builddir/tests/scanner/$file" ]; then
-        cp "$top_srcdir/tests/scanner/$file" "$top_builddir/tests/scanner/$file"
+# Scanner tests are now built by the main build system
+# Just verify they exist
+echo "Checking scanner test programs..."
+for test_prog in test_basic test_accumulated_headers test_input_validation; do
+    if [ ! -x "$top_builddir/tests/scanner/$test_prog" ]; then
+        echo "Error: Scanner test program $test_prog not found or not executable"
+        echo "Make sure the main build system has built the scanner tests"
+        exit 1
     fi
 done
-
-# Build the scanner test
-echo "Building scanner test..."
-cd "$top_builddir/tests/scanner"
-make >/dev/null 2>&1 || {
-    echo "Failed to build scanner test"
-    exit 1
-}
 
 # Run the scanner tests
 echo "Running patch scanner unit tests..."
