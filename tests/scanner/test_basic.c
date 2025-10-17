@@ -135,7 +135,7 @@ static void test_simple_unified_diff(void)
         case PATCH_CONTENT_HUNK_LINE:
             found_hunk_lines++;
             assert(content->data.line != NULL);
-            assert(content->data.line->content != NULL);
+            assert(content->data.line->line != NULL);
             break;
 
         case PATCH_CONTENT_NON_PATCH:
@@ -1359,7 +1359,7 @@ static void test_context_diff_hunk_line_classification(void)
             hunk_line_count++;
 
             /* Check the specific content and type of hunk lines */
-            const char *line_content = content->data.line->content;
+            const char *line_content = content->data.line->length > 0 ? content->data.line->line + 1 : "";
             char line_type = content->data.line->type;
 
             if (line_type == '+') {
@@ -1457,7 +1457,7 @@ static void test_context_diff_multi_hunk_parsing(void)
         case PATCH_CONTENT_HUNK_LINE:
             if (content->data.line->type == '!') {
                 change_line_count++;
-                const char *line_content = content->data.line->content;
+                const char *line_content = content->data.line->length > 0 ? content->data.line->line + 1 : "";
                 if (strstr(line_content, "a")) {
                     found_change_a = 1;
                 } else if (strstr(line_content, "b")) {

@@ -178,14 +178,16 @@ struct patch_hunk {
  * - PATCH_LINE_NO_NEWLINE ('\\'): Not a real line, indicates previous line has no newline
  *
  * CONTENT HANDLING:
- * - content points to line text WITHOUT the leading +/- prefix character
- * - length is the byte length of the content (may include embedded nulls)
- * - content is NOT null-terminated (use length for bounds)
+ * - line points to the FULL original line INCLUDING the +/- prefix character
+ * - length is the byte length of the full line (includes prefix, excludes newline)
+ * - line is NOT null-terminated (use length for bounds)
+ * - To get content without prefix: use (line + 1) with (length - 1)
+ * - The type field indicates what the prefix character is
  */
 struct patch_hunk_line {
     enum patch_hunk_line_type type; /* Line operation type (space, +, -, !, \) */
-    const char *content;         /* Line content without +/- prefix (NOT null-terminated) */
-    size_t length;               /* Length of content in bytes */
+    const char *line;            /* Full original line INCLUDING prefix (NOT null-terminated) */
+    size_t length;               /* Length of full line in bytes (includes prefix, excludes newline) */
     long position;               /* Byte offset in input where this line appears */
 };
 

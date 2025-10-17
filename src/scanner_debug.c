@@ -181,10 +181,13 @@ int main(int argc, char *argv[])
                     case PATCH_LINE_NO_NEWLINE: type_str = "\\"; break;
                     default: type_str = "?"; break;
                     }
+                    /* Extract content without prefix for display */
+                    const char *line_content = content->data.line->length > 0 ? content->data.line->line + 1 : "";
+                    size_t content_len = content->data.line->length > 0 ? content->data.line->length - 1 : 0;
                     snprintf(line_desc, sizeof(line_desc), "%s%.*s",
                             type_str,
-                            (int)(content->data.line->length > 60 ? 60 : content->data.line->length),
-                            content->data.line->content ? content->data.line->content : "");
+                            (int)(content_len > 60 ? 60 : content_len),
+                            line_content);
                     /* Remove newline for cleaner display */
                     char *nl = strchr(line_desc, '\n');
                     if (nl) *nl = '\0';
@@ -420,9 +423,12 @@ static void print_hunk_line_info(const struct patch_hunk_line *line)
     printf("  %sType:%s %s", C(COLOR_BOLD), C(COLOR_RESET),
            hunk_line_type_name(line->type));
 
-    if (show_content && line->content) {
+    if (show_content && line->line && line->length > 0) {
         printf(" %sContent:%s ", C(COLOR_BOLD), C(COLOR_RESET));
-        print_content_sample(line->content, line->length);
+        /* Extract content without prefix for display */
+        const char *content = line->length > 0 ? line->line + 1 : "";
+        size_t content_len = line->length > 0 ? line->length - 1 : 0;
+        print_content_sample(content, content_len);
     } else {
         printf("\n");
     }

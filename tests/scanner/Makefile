@@ -37,8 +37,15 @@ test_accumulated_headers: test_accumulated_headers.o $(SCANNER_OBJS)
 test_input_validation: test_input_validation.o $(SCANNER_OBJS)
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
+# Header dependencies
+SCANNER_HEADERS = ../../src/patch_scanner.h ../../src/util.h ../../src/diff.h
+
 # Object files
-%.o: %.c
+%.o: %.c $(SCANNER_HEADERS)
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
+
+# Scanner object dependencies
+../../src/%.o: ../../src/%.c $(SCANNER_HEADERS)
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
 
 # Run tests
