@@ -1924,6 +1924,131 @@ static void test_mixed_binary_text_patches(void)
     printf("✓ Mixed binary and text patches test passed\n");
 }
 
+static void test_context_field_unified_diff(void)
+{
+    printf("Running context field unified diff test...\n");
+
+    const char *test_patch =
+        "--- file1\n"
+        "+++ file1\n"
+        "@@ -1,3 +1,3 @@\n"
+        " context line\n"
+        "-removed line\n"
+        "+added line\n";
+
+    FILE *fp = string_to_file(test_patch);
+    assert(fp != NULL);
+    patch_scanner_t *scanner = patch_scanner_create(fp);
+    assert(scanner != NULL);
+
+    const patch_content_t *content;
+    enum patch_scanner_result result;
+
+    /* Skip headers */
+    result = patch_scanner_next(scanner, &content);
+    assert(result == PATCH_SCAN_OK && content->type == PATCH_CONTENT_HEADERS);
+
+    /* Skip hunk header */
+    result = patch_scanner_next(scanner, &content);
+    assert(result == PATCH_SCAN_OK && content->type == PATCH_CONTENT_HUNK_HEADER);
+
+    /* Test context line */
+    result = patch_scanner_next(scanner, &content);
+    assert(result == PATCH_SCAN_OK && content->type == PATCH_CONTENT_HUNK_LINE);
+    assert(content->data.line->type == PATCH_LINE_CONTEXT);
+    assert(content->data.line->context == PATCH_CONTEXT_BOTH);
+
+    /* Test removed line */
+    result = patch_scanner_next(scanner, &content);
+    assert(result == PATCH_SCAN_OK && content->type == PATCH_CONTENT_HUNK_LINE);
+    assert(content->data.line->type == PATCH_LINE_REMOVED);
+    assert(content->data.line->context == PATCH_CONTEXT_BOTH);
+
+    /* Test added line */
+    result = patch_scanner_next(scanner, &content);
+    assert(result == PATCH_SCAN_OK && content->type == PATCH_CONTENT_HUNK_LINE);
+    assert(content->data.line->type == PATCH_LINE_ADDED);
+    assert(content->data.line->context == PATCH_CONTEXT_BOTH);
+
+    patch_scanner_destroy(scanner);
+    fclose(fp);
+    printf("✓ Context field unified diff test passed\n");
+}
+
+static void test_context_field_context_diff(void)
+{
+    printf("Running context field context diff test...\n");
+
+    const char *test_patch =
+        "*** file1\n"
+        "--- file1\n"
+        "***************\n"
+        "*** 1,3 ****\n"
+        "  context line\n"
+        "- removed line\n"
+        "! old version\n"
+        "--- 1,3 ----\n"
+        "  context line\n"
+        "+ added line\n"
+        "! new version\n";
+
+    FILE *fp = string_to_file(test_patch);
+    assert(fp != NULL);
+    patch_scanner_t *scanner = patch_scanner_create(fp);
+    assert(scanner != NULL);
+
+    const patch_content_t *content;
+    enum patch_scanner_result result;
+
+    /* Skip headers */
+    result = patch_scanner_next(scanner, &content);
+    assert(result == PATCH_SCAN_OK && content->type == PATCH_CONTENT_HEADERS);
+
+    /* Skip hunk header */
+    result = patch_scanner_next(scanner, &content);
+    assert(result == PATCH_SCAN_OK && content->type == PATCH_CONTENT_HUNK_HEADER);
+
+    /* Test context line from old section (buffered, emitted later) */
+    result = patch_scanner_next(scanner, &content);
+    assert(result == PATCH_SCAN_OK && content->type == PATCH_CONTENT_HUNK_LINE);
+    assert(content->data.line->type == PATCH_LINE_CONTEXT);
+    assert(content->data.line->context == PATCH_CONTEXT_BOTH);
+
+    /* Test removed line from old section (buffered, emitted later) */
+    result = patch_scanner_next(scanner, &content);
+    assert(result == PATCH_SCAN_OK && content->type == PATCH_CONTENT_HUNK_LINE);
+    assert(content->data.line->type == PATCH_LINE_REMOVED);
+    assert(content->data.line->context == PATCH_CONTEXT_BOTH);
+
+    /* Test changed line from old section (buffered, emitted later) */
+    result = patch_scanner_next(scanner, &content);
+    assert(result == PATCH_SCAN_OK && content->type == PATCH_CONTENT_HUNK_LINE);
+    assert(content->data.line->type == PATCH_LINE_CHANGED);
+    assert(content->data.line->context == PATCH_CONTEXT_OLD);
+
+    /* Test context line from new section */
+    result = patch_scanner_next(scanner, &content);
+    assert(result == PATCH_SCAN_OK && content->type == PATCH_CONTENT_HUNK_LINE);
+    assert(content->data.line->type == PATCH_LINE_CONTEXT);
+    assert(content->data.line->context == PATCH_CONTEXT_BOTH);
+
+    /* Test added line from new section */
+    result = patch_scanner_next(scanner, &content);
+    assert(result == PATCH_SCAN_OK && content->type == PATCH_CONTENT_HUNK_LINE);
+    assert(content->data.line->type == PATCH_LINE_ADDED);
+    assert(content->data.line->context == PATCH_CONTEXT_BOTH);
+
+    /* Test changed line from new section */
+    result = patch_scanner_next(scanner, &content);
+    assert(result == PATCH_SCAN_OK && content->type == PATCH_CONTENT_HUNK_LINE);
+    assert(content->data.line->type == PATCH_LINE_CHANGED);
+    assert(content->data.line->context == PATCH_CONTEXT_NEW);
+
+    patch_scanner_destroy(scanner);
+    fclose(fp);
+    printf("✓ Context field context diff test passed\n");
+}
+
 int main(void)
 {
     printf("Running patch scanner basic tests...\n\n");
@@ -1989,6 +2114,10 @@ int main(void)
     /* Test binary patch handling */
     test_git_binary_patch_formats();
     test_mixed_binary_text_patches();
+
+    /* Test context field functionality */
+    test_context_field_unified_diff();
+    test_context_field_context_diff();
 
     printf("\n✓ All basic tests passed!\n");
     return 0;
