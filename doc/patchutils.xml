@@ -956,8 +956,7 @@ patch.file]]></screen></para>
         <para>For CI/CD systems that need line numbers matching the original
 	  diff context (useful for error reporting), use the original-* variants:
 
-<screen><![CDATA[grepdiff pattern --output-matching=hunk \
-  --as-numbered-lines=original-after patch.file]]></screen></para>
+<screen><![CDATA[filterdiff --as-numbered-lines=original-after patch.file]]></screen></para>
         <para>Filterdiff can also be used to convert between unified
 	  and context format diffs:
 
@@ -2100,12 +2099,6 @@ This is the same as gitdiff but uses git show instead of git diff.
 	  are used instead of POSIX regular expressions, and the <option>-E</option>
 	  option has no effect since PCRE already supports extended regular
 	  expression features by default.</para>
-        <para>For example, to see the patches in
-	  <filename>my.patch</filename> which contain the regular
-	  expression <quote>pf_gfp_mask</quote>, use:
-
-<screen><![CDATA[grepdiff pf_gfp_mask my.patch | \
-  xargs -rn1 filterdiff my.patch -i]]></screen></para>
         <para>You can use unified, context, and Git format diffs with
 	  this program. Git format includes support for binary files,
 	  file renames, permission mode changes, and other Git-specific
@@ -2409,6 +2402,23 @@ This is the same as gitdiff but uses git show instead of git diff.
       </refsect1>
       <refsect1>
         <title>Examples</title>
+        <para>To quickly identify which files in a large patch contain
+	  memory allocation changes (useful for code review):
+
+<screen><![CDATA[grepdiff "malloc\|free\|realloc" large-patch.diff]]></screen></para>
+        <para>This shows only the filenames, giving you a quick overview
+	  without being overwhelmed by diff content.</para>
+        <para>To see the actual hunks containing the pattern:
+
+<screen><![CDATA[grepdiff --output-matching=hunk "malloc" patch.diff]]></screen></para>
+        <para>To see complete file diffs for files containing the pattern:
+
+<screen><![CDATA[grepdiff --output-matching=file "malloc" patch.diff]]></screen></para>
+        <para>For CI/CD systems that need line numbers matching the original
+	  diff context (useful for error reporting):
+
+<screen><![CDATA[grepdiff pattern --output-matching=hunk \
+  --as-numbered-lines=original-after patch.file]]></screen></para>
         <para>Git format diffs are fully supported. For example, to find
 	  files in a git patch that contain changes to malloc calls:
 
