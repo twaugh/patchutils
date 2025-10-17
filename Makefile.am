@@ -381,12 +381,12 @@ TESTS = tests/newline1/run-test \
 	tests/git-deleted-file/run-test \
 	tests/git-pure-rename/run-test \
 	tests/git-diff-edge-cases/run-test \
-	tests/malformed-diff-headers/run-test \
-	tests/scanner/run-test
+	tests/malformed-diff-headers/run-test
 
-# Scanner debug tests (only when scanner-patchfilter is enabled)
+# Scanner tests (only when scanner-patchfilter is enabled)
 if USE_SCANNER_PATCHFILTER
 TESTS += \
+	tests/scanner/run-test \
 	tests/scanner-debug/run-test \
 	tests/scanner-debug/test-output-validation
 endif

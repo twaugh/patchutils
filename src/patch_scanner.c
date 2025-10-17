@@ -172,9 +172,9 @@ static int scanner_context_buffer_init(patch_scanner_t *scanner)
 
 static void scanner_context_buffer_clear(patch_scanner_t *scanner)
 {
-    /* Free the content strings we allocated */
+    /* Free the line strings we allocated */
     for (unsigned int i = 0; i < scanner->context_buffer_count; i++) {
-        free((void*)scanner->context_buffer[i].content);
+        free((void*)scanner->context_buffer[i].line);
     }
     scanner->context_buffer_count = 0;
     scanner->context_buffer_emit_index = 0;
@@ -203,10 +203,10 @@ static int scanner_context_buffer_add(patch_scanner_t *scanner, const struct pat
         scanner->context_buffer_allocated = new_size;
     }
 
-    /* Copy the line data (we need to own the content string) */
+    /* Copy the line data (we need to own the line string) */
     scanner->context_buffer[scanner->context_buffer_count] = *line;
-    scanner->context_buffer[scanner->context_buffer_count].content = strdup(line->content);
-    if (!scanner->context_buffer[scanner->context_buffer_count].content) {
+    scanner->context_buffer[scanner->context_buffer_count].line = strndup(line->line, line->length);
+    if (!scanner->context_buffer[scanner->context_buffer_count].line) {
         return PATCH_SCAN_MEMORY_ERROR;
     }
 
@@ -1392,9 +1392,17 @@ static int scanner_emit_hunk_line(patch_scanner_t *scanner, const char *line)
     }
 
     scanner->current_line.type = (enum patch_hunk_line_type)line_type;
-    scanner->current_line.content = line + 1;
-    scanner->current_line.length = strlen(line) - 1;
     scanner->current_line.position = scanner->current_position;
+
+    /* Populate full line including prefix, excluding trailing newline */
+    scanner->current_line.line = line;
+    size_t line_len = strlen(line);
+    /* Strip trailing newline if present */
+    if (line_len > 0 && line[line_len - 1] == '\n') {
+        scanner->current_line.length = line_len - 1;
+    } else {
+        scanner->current_line.length = line_len;
+    }
 
     scanner_init_content(scanner, PATCH_CONTENT_HUNK_LINE);
     scanner->current_content.data.line = &scanner->current_line;
