@@ -1554,9 +1554,9 @@ static void test_context_diff_hunk_separator_handling(void)
                 assert(content->data.hunk->orig_count == 4);
             } else if (hunk_header_count == 2) {
                 /* Second hunk: *** 6,9 ****
-                 * NOTE: Scanner currently parses count as 9 (should be 4) */
+                 * Lines 6 through 9 = count of 4 */
                 assert(content->data.hunk->orig_offset == 6);
-                assert(content->data.hunk->orig_count == 9);
+                assert(content->data.hunk->orig_count == 4);
             }
             break;
 

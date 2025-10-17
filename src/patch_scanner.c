@@ -1220,7 +1220,7 @@ static int scanner_emit_context_hunk_header(patch_scanner_t *scanner, const char
     unsigned long res;
     char *p;
 
-    /* Parse *** <orig_offset>[,<orig_count>] **** */
+    /* Parse *** <orig_offset>[,<orig_end_line>] **** */
 
     /* Find original offset after '*** ' */
     p = (char *)line + sizeof("*** ") - 1;
@@ -1237,7 +1237,7 @@ static int scanner_emit_context_hunk_header(patch_scanner_t *scanner, const char
     }
     scanner->current_hunk.orig_offset = res;
 
-    /* Check for comma and count */
+    /* Check for comma and end line */
     if (*endptr == ',') {
         p = endptr + 1;
         errno = 0;
@@ -1249,7 +1249,8 @@ static int scanner_emit_context_hunk_header(patch_scanner_t *scanner, const char
         if (res == ULONG_MAX && errno == ERANGE) {
             return PATCH_SCAN_ERROR;
         }
-        scanner->current_hunk.orig_count = res;
+        /* In context diff, the second number is the end line, not count */
+        scanner->current_hunk.orig_count = res - scanner->current_hunk.orig_offset + 1;
     } else {
         /* In context diffs, offset 0 indicates empty file */
         if (scanner->current_hunk.orig_offset == 0) {
@@ -1291,7 +1292,7 @@ static int scanner_emit_context_new_hunk_header(patch_scanner_t *scanner, const 
     unsigned long res;
     char *p;
 
-    /* Parse --- <new_offset>[,<new_count>] ---- */
+    /* Parse --- <new_offset>[,<new_end_line>] ---- */
 
     /* Find new offset after '--- ' */
     p = (char *)line + sizeof("--- ") - 1;
@@ -1308,7 +1309,7 @@ static int scanner_emit_context_new_hunk_header(patch_scanner_t *scanner, const 
     }
     scanner->current_hunk.new_offset = res;
 
-    /* Check for comma and count */
+    /* Check for comma and end line */
     if (*endptr == ',') {
         p = endptr + 1;
         errno = 0;
@@ -1320,7 +1321,8 @@ static int scanner_emit_context_new_hunk_header(patch_scanner_t *scanner, const 
         if (res == ULONG_MAX && errno == ERANGE) {
             return PATCH_SCAN_ERROR;
         }
-        scanner->current_hunk.new_count = res;
+        /* In context diff, the second number is the end line, not count */
+        scanner->current_hunk.new_count = res - scanner->current_hunk.new_offset + 1;
     } else {
         /* In context diffs, offset 0 indicates empty file */
         if (scanner->current_hunk.new_offset == 0) {
