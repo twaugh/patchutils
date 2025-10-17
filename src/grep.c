@@ -56,9 +56,11 @@ enum match_filter {
 
 /* Line numbering modes (for --as-numbered-lines) */
 enum numbered_mode {
-	NUMBERED_NONE = 0,  /* No line numbering */
-	NUMBERED_BEFORE,    /* Show original file line numbers */
-	NUMBERED_AFTER      /* Show new file line numbers */
+	NUMBERED_NONE = 0,          /* No line numbering */
+	NUMBERED_BEFORE,            /* Show original file line numbers */
+	NUMBERED_AFTER,             /* Show new file line numbers */
+	NUMBERED_ORIGINAL_BEFORE,   /* Show original line numbers from diff (before) */
+	NUMBERED_ORIGINAL_AFTER     /* Show original line numbers from diff (after) */
 };
 
 /* Global options (grepdiff-specific) */
@@ -571,18 +573,42 @@ static void output_buffered_file(struct buffered_file *file)
 
 	/* Special handling for numbered line mode */
 	if (numbered_mode != NUMBERED_NONE) {
-		/* Output appropriate file header based on diff format and mode */
-		if (numbered_mode == NUMBERED_BEFORE) {
-			if (file->is_context_diff) {
-				printf("*** %s\n", file->old_filename ? file->old_filename : file->best_filename);
-			} else {
-				printf("--- %s\n", file->old_filename ? file->old_filename : file->best_filename);
+		/* Output diff headers, but filter to show only the appropriate file header based on mode */
+		for (i = 0; i < file->num_headers; i++) {
+			const char *line = file->header_lines[i];
+
+			/* Always output non-file headers (diff --git, index, etc.) */
+			if (strncmp(line, "--- ", 4) != 0 && strncmp(line, "+++ ", 4) != 0 &&
+			    strncmp(line, "*** ", 4) != 0) {
+				printf("%s", line);
 			}
-		} else { /* NUMBERED_AFTER */
-			if (file->is_context_diff) {
-				printf("--- %s\n", file->new_filename ? file->new_filename : file->best_filename);
-			} else {
-				printf("+++ %s\n", file->new_filename ? file->new_filename : file->best_filename);
+			/* For file headers, only output the one appropriate for the mode */
+			else if (numbered_mode == NUMBERED_BEFORE || numbered_mode == NUMBERED_ORIGINAL_BEFORE) {
+				/* For before modes, output old file headers */
+				if (file->is_context_diff) {
+					/* In context diffs: *** is old, --- is new */
+					if (strncmp(line, "*** ", 4) == 0) {
+						printf("%s", line);
+					}
+				} else {
+					/* In unified diffs: --- is old, +++ is new */
+					if (strncmp(line, "--- ", 4) == 0) {
+						printf("%s", line);
+					}
+				}
+			} else { /* NUMBERED_AFTER or NUMBERED_ORIGINAL_AFTER */
+				/* For after modes, output new file headers */
+				if (file->is_context_diff) {
+					/* In context diffs: *** is old, --- is new */
+					if (strncmp(line, "--- ", 4) == 0) {
+						printf("%s", line);
+					}
+				} else {
+					/* In unified diffs: --- is old, +++ is new */
+					if (strncmp(line, "+++ ", 4) == 0) {
+						printf("%s", line);
+					}
+				}
 			}
 		}
 
@@ -642,7 +668,7 @@ static void output_buffered_file(struct buffered_file *file)
 						should_include = 1;
 						linenum = hunk->orig_line_nums[j];
 					}
-				} else { /* NUMBERED_AFTER */
+				} else if (numbered_mode == NUMBERED_AFTER) {
 					/* Show lines as they exist after the patch */
 					if ((line_type == PATCH_LINE_ADDED) ||
 					    (line_type == PATCH_LINE_CONTEXT) ||
@@ -656,6 +682,24 @@ static void output_buffered_file(struct buffered_file *file)
 							/* For file mode, use actual new file line numbers */
 							linenum = hunk->new_line_nums[j];
 						}
+					}
+				} else if (numbered_mode == NUMBERED_ORIGINAL_BEFORE) {
+					/* Show lines with original line numbers from diff (before) */
+					if ((line_type == PATCH_LINE_REMOVED) ||
+					    (line_type == PATCH_LINE_CONTEXT) ||
+					    (line_type == PATCH_LINE_CHANGED && hunk->line_contexts[j] == PATCH_CONTEXT_OLD)) {
+						should_include = 1;
+						/* Use original hunk offset from diff header */
+						linenum = hunk->orig_offset;
+					}
+				} else { /* NUMBERED_ORIGINAL_AFTER */
+					/* Show lines with original line numbers from diff (after) */
+					if ((line_type == PATCH_LINE_ADDED) ||
+					    (line_type == PATCH_LINE_CONTEXT) ||
+					    (line_type == PATCH_LINE_CHANGED && hunk->line_contexts[j] == PATCH_CONTEXT_NEW)) {
+						should_include = 1;
+						/* Use original hunk offset from diff header */
+						linenum = hunk->new_offset;
 					}
 				}
 
@@ -731,8 +775,16 @@ static void output_hunk(struct buffered_file *file, struct buffered_hunk *hunk, 
 			int should_show = line_passes_filter(line_type, hunk->line_contexts[i], line_content);
 
 			if (should_show) {
-				unsigned long linenum = (numbered_mode == NUMBERED_BEFORE) ?
-				                        hunk->orig_line_nums[i] : hunk->new_line_nums[i];
+				unsigned long linenum;
+				if (numbered_mode == NUMBERED_BEFORE) {
+					linenum = hunk->orig_line_nums[i];
+				} else if (numbered_mode == NUMBERED_AFTER) {
+					linenum = hunk->new_line_nums[i];
+				} else if (numbered_mode == NUMBERED_ORIGINAL_BEFORE) {
+					linenum = hunk->orig_offset;
+				} else { /* NUMBERED_ORIGINAL_AFTER */
+					linenum = hunk->new_offset;
+				}
 				printf("%lu\t:%s\n", linenum, line_content);
 			}
 		}
@@ -945,12 +997,16 @@ int run_grep_mode(int argc, char *argv[])
 			}
 			break;
 		case 1000 + 'L':
-			if (!strncmp(optarg, "before", 6)) {
+			if (!strncmp(optarg, "original-before", 15)) {
+				numbered_mode = NUMBERED_ORIGINAL_BEFORE;
+			} else if (!strncmp(optarg, "original-after", 14)) {
+				numbered_mode = NUMBERED_ORIGINAL_AFTER;
+			} else if (!strncmp(optarg, "before", 6)) {
 				numbered_mode = NUMBERED_BEFORE;
 			} else if (!strncmp(optarg, "after", 5)) {
 				numbered_mode = NUMBERED_AFTER;
 			} else {
-				error(EXIT_FAILURE, 0, "invalid argument to --as-numbered-lines: %s (expected 'before' or 'after')", optarg);
+				error(EXIT_FAILURE, 0, "invalid argument to --as-numbered-lines: %s (expected 'before', 'after', 'original-before', or 'original-after')", optarg);
 			}
 			break;
 		case 1000 + 'l':

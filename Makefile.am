@@ -445,13 +445,6 @@ XFAIL_TESTS += \
   tests/lsdiff-exclusion-mode/run-test
 endif
 
-# grepdiff original-line-numbers test: expected to fail when using scanner-patchfilter
-# (requires --as-numbered-lines=original-* options not yet implemented)
-if USE_SCANNER_PATCHFILTER
-XFAIL_TESTS += \
-  tests/grepdiff-original-line-numbers/run-test
-endif
-
 test-perms: src/combinediff$(EXEEXT) src/flipdiff$(EXEEXT) \
 		src/lsdiff$(EXEEXT) src/grepdiff$(EXEEXT) src/patchview$(EXEEXT) \
 		scripts/splitdiff
