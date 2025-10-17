@@ -51,6 +51,7 @@ if USE_SCANNER_PATCHFILTER
 src_patchfilter_SOURCES = src/patchfilter.c src/patchfilter.h \
 		src/ls.c src/grep.c src/filter.c \
 		src/patch_scanner.c src/patch_scanner.h \
+		src/patch_common.c src/patch_common.h \
 		src/util.c src/util.h src/diff.c src/diff.h
 
 # Scanner test program sources

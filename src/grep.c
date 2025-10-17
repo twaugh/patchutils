@@ -37,6 +37,7 @@
 #endif
 
 #include "patchfilter.h"
+#include "patch_common.h"
 
 /* Output modes */
 enum output_mode {
@@ -60,37 +61,17 @@ enum numbered_mode {
 	NUMBERED_AFTER      /* Show new file line numbers */
 };
 
-/* Global options */
+/* Global options (grepdiff-specific) */
 static enum output_mode output_mode = OUTPUT_LIST;
 static enum match_filter match_filter = MATCH_ALL;
 static enum numbered_mode numbered_mode = NUMBERED_NONE;
-static int show_line_numbers = 0;     /* -n, --line-number */
-static int number_files = 0;          /* -N, --number-files */
-static int show_patch_names = -1;     /* -H/-h, --with-filename/--no-filename */
-static int strip_components = 0;      /* -p, --strip-match */
-static int strip_output_components = 0; /* --strip */
-static int verbose = 0;               /* -v, --verbose */
-static int unzip = 0;                 /* -z, --decompress */
 static int extended_regexp = 0;       /* -E, --extended-regexp */
-static enum git_prefix_mode git_prefix_mode = GIT_PREFIX_KEEP; /* --git-prefixes */
-
-/* Path prefix options */
-static char *add_prefix = NULL;         /* --addprefix */
-static char *add_old_prefix = NULL;     /* --addoldprefix */
-static char *add_new_prefix = NULL;     /* --addnewprefix */
-
-/* Pattern matching */
-static struct patlist *pat_include = NULL;  /* -i, --include */
-static struct patlist *pat_exclude = NULL;  /* -x, --exclude */
 
 /* Grep patterns */
 static regex_t *grep_patterns = NULL;
 static int num_grep_patterns = 0;
 static int max_grep_patterns = 0;
 
-/* File counter for -N option */
-static int file_number = 0;
-static unsigned long filecount = 0;
 
 /* Buffered hunk structure for output modes */
 struct buffered_hunk {
@@ -131,8 +112,6 @@ struct buffered_file {
 /* Forward declarations */
 static void syntax(int err) __attribute__((noreturn));
 static void process_patch_file(FILE *fp, const char *filename);
-static void display_filename(const char *filename, const char *patchname, unsigned long linenum);
-static int should_display_file(const char *filename);
 static void add_grep_pattern(const char *pattern);
 static void add_patterns_from_file(const char *filename);
 static int line_matches_patterns(const char *line);
@@ -267,30 +246,6 @@ static int line_passes_filter(int line_type, int line_context, const char *conte
 	return 0;
 }
 
-static int should_display_file(const char *filename)
-{
-	/* Apply include/exclude patterns */
-	if (pat_exclude && patlist_match(pat_exclude, filename))
-		return 0;
-	if (pat_include && !patlist_match(pat_include, filename))
-		return 0;
-
-	return 1;
-}
-
-static void display_filename(const char *filename, const char *patchname, unsigned long linenum)
-{
-	if (show_patch_names > 0)
-		printf("%s:", patchname);
-
-	if (show_line_numbers)
-		printf("%lu\t", linenum);
-
-	if (number_files)
-		printf("File #%-3lu\t", filecount);
-
-	printf("%s\n", filename);
-}
 
 static void init_buffered_file(struct buffered_file *file)
 {
@@ -400,8 +355,6 @@ static void add_hunk_line(struct buffered_hunk *hunk, const struct patch_hunk_li
 	hunk->num_lines++;
 }
 
-/* Global cumulative line counter for tracking across multiple files */
-static unsigned long global_line_offset = 0;
 
 static void process_patch_file(FILE *fp, const char *filename)
 {

@@ -36,27 +36,13 @@
 #endif
 
 #include "patchfilter.h"
+#include "patch_common.h"
 
-/* Global options */
+/* Global options (lsdiff-specific) */
 static int show_status = 0;           /* -s, --status */
-static int show_line_numbers = 0;     /* -n, --line-number */
-static int number_files = 0;          /* -N, --number-files */
-static int show_patch_names = -1;     /* -H/-h, --with-filename/--no-filename */
 static int empty_files_as_absent = 0; /* -E, --empty-files-as-absent */
-static int strip_components = 0;      /* -p, --strip-match */
-static int strip_output_components = 0; /* --strip */
-static int verbose = 0;               /* -v, --verbose */
-static int unzip = 0;                 /* -z, --decompress */
-static enum git_prefix_mode git_prefix_mode = GIT_PREFIX_KEEP; /* --git-prefixes */
 
-/* Path prefix options */
-static char *add_prefix = NULL;         /* --addprefix */
-static char *add_old_prefix = NULL;     /* --addoldprefix */
-static char *add_new_prefix = NULL;     /* --addnewprefix */
-
-/* Pattern matching */
-static struct patlist *pat_include = NULL;  /* -i, --include */
-static struct patlist *pat_exclude = NULL;  /* -x, --exclude */
+/* Pattern matching (lsdiff-specific) */
 static struct range *files = NULL;          /* -F, --files */
 static int files_exclude = 0;               /* -F with x prefix */
 static struct range *lines = NULL;          /* --lines */
@@ -64,9 +50,6 @@ static int lines_exclude = 0;               /* --lines with x prefix */
 static struct range *hunks = NULL;          /* --hunks */
 static int hunks_exclude = 0;               /* --hunks with x prefix */
 
-/* File counter for -N option */
-static int file_number = 0;
-static unsigned long filecount = 0;
 
 /* Structure to hold pending file information */
 struct pending_file {
@@ -87,9 +70,8 @@ struct pending_file {
 /* Forward declarations */
 static void syntax(int err) __attribute__((noreturn));
 static void process_patch_file(FILE *fp, const char *filename);
-static void display_filename(const char *filename, const char *patchname, char status, unsigned long linenum);
 /* determine_file_status, get_best_filename, parse_range, and other shared functions are declared in patchfilter.h */
-static int should_display_file(const char *filename);
+static int file_range_filter(const char *filename);
 static int lines_in_range(unsigned long orig_offset, unsigned long orig_count);
 static int hunk_in_range(unsigned long hunknum);
 static void process_pending_file(struct pending_file *pending);
@@ -129,15 +111,10 @@ static void syntax(int err)
     exit(err);
 }
 
-static int should_display_file(const char *filename)
+/* File range filter callback for ls-specific functionality */
+static int file_range_filter(const char *filename)
 {
-    /* TODO: Apply pattern matching to the filename AFTER prefix handling and stripping */
-
-    /* Apply include/exclude patterns */
-    if (pat_exclude && patlist_match(pat_exclude, filename))
-        return 0;
-    if (pat_include && !patlist_match(pat_include, filename))
-        return 0;
+    (void)filename; /* Unused - we use global file_number instead */
 
     /* Apply file range filter */
     if (files) {
@@ -163,26 +140,6 @@ static int should_display_file(const char *filename)
     return 1;
 }
 
-static void display_filename(const char *filename, const char *patchname, char status, unsigned long linenum)
-{
-    if (show_patch_names > 0)
-        printf("%s:", patchname);
-
-    if (show_line_numbers)
-        printf("%lu\t", linenum);
-
-    if (number_files)
-        printf("File #%-3lu\t", filecount);
-
-    if (show_status)
-        printf("%c ", status);
-
-    printf("%s\n", filename);
-}
-
-
-/* Global cumulative line counter for tracking across multiple files */
-static unsigned long global_line_offset = 0;
 
 static void process_patch_file(FILE *fp, const char *filename)
 {
@@ -228,7 +185,7 @@ static void process_patch_file(FILE *fp, const char *filename)
                 pending.header_line = header_line;
                 pending.old_is_empty = 1;  /* Assume empty until proven otherwise */
                 pending.new_is_empty = 1;  /* Assume empty until proven otherwise */
-                pending.should_display = should_display_file(best_filename);
+                pending.should_display = should_display_file_extended(best_filename, file_range_filter);
                 pending.is_context_diff = (content->data.headers->type == PATCH_TYPE_CONTEXT);
                 pending.has_matching_lines = 0;  /* Reset line matching flag */
                 pending.has_excluded_lines = 0;  /* Reset line exclusion flag */
@@ -238,8 +195,8 @@ static void process_patch_file(FILE *fp, const char *filename)
                 best_filename = NULL;  /* Transfer ownership, don't free */
             } else {
                 /* Normal processing - display immediately */
-                if (should_display_file(best_filename)) {
-                    display_filename(best_filename, filename, status, header_line);
+                if (should_display_file_extended(best_filename, file_range_filter)) {
+                    display_filename_extended(best_filename, filename, header_line, status, show_status);
                     current_file = best_filename;  /* Track current file for verbose output */
                 } else {
                     current_file = NULL;  /* Don't show hunks for filtered files */
@@ -692,7 +649,7 @@ static void process_pending_file(struct pending_file *pending)
     }
 
     if (should_display) {
-        display_filename(pending->best_filename, pending->patchname, final_status, pending->header_line);
+        display_filename_extended(pending->best_filename, pending->patchname, pending->header_line, final_status, show_status);
     }
 
     free(pending->best_filename);
