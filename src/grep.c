@@ -144,6 +144,7 @@ static void add_hunk_line(struct buffered_hunk *hunk, const struct patch_hunk_li
                           unsigned long orig_line, unsigned long new_line);
 static void output_buffered_file(struct buffered_file *file);
 static void output_hunk(struct buffered_file *file, struct buffered_hunk *hunk, int hunk_num);
+static int line_passes_filter(int line_type, int line_context, const char *content);
 
 static void syntax(int err)
 {
@@ -241,6 +242,28 @@ static int line_matches_patterns(const char *line)
 		}
 	}
 
+	return 0;
+}
+
+static int line_passes_filter(int line_type, int line_context, const char *content)
+{
+	if (!line_matches_patterns(content)) {
+		return 0;
+	}
+
+	switch (match_filter) {
+	case MATCH_ALL:
+		return 1;
+	case MATCH_REMOVALS:
+		return (line_type == PATCH_LINE_REMOVED) ||
+		       (line_type == PATCH_LINE_CHANGED && line_context == PATCH_CONTEXT_OLD);
+	case MATCH_ADDITIONS:
+		return (line_type == PATCH_LINE_ADDED) ||
+		       (line_type == PATCH_LINE_CHANGED && line_context == PATCH_CONTEXT_NEW);
+	case MATCH_MODIFICATIONS:
+		return (line_type == PATCH_LINE_CHANGED) ||
+		       (line_type == PATCH_LINE_REMOVED);
+	}
 	return 0;
 }
 
@@ -476,34 +499,12 @@ static void process_patch_file(FILE *fp, const char *filename)
 
 		/* Check if this line matches grep patterns and passes match filter */
 		char *temp_content = xstrndup(line->content, line->content_length);
-		int matches = line_matches_patterns(temp_content);
+		int passes_filter = line_passes_filter(line->type, line->context, temp_content);
 		free(temp_content);
 
-		if (matches) {
-			/* Apply match filter to determine if this line should count as a match */
-			int passes_filter = 0;
-			switch (match_filter) {
-			case MATCH_ALL:
-				passes_filter = 1;
-				break;
-			case MATCH_REMOVALS:
-				passes_filter = (line->type == PATCH_LINE_REMOVED) ||
-				                (line->type == PATCH_LINE_CHANGED && line->context == PATCH_CONTEXT_OLD);
-				break;
-			case MATCH_ADDITIONS:
-				passes_filter = (line->type == PATCH_LINE_ADDED) ||
-				                (line->type == PATCH_LINE_CHANGED && line->context == PATCH_CONTEXT_NEW);
-				break;
-			case MATCH_MODIFICATIONS:
-				passes_filter = (line->type == PATCH_LINE_CHANGED) ||
-				                (line->type == PATCH_LINE_REMOVED);
-				break;
-			}
-
-			if (passes_filter) {
-				current_hunk->has_match = 1;
-				current_file.has_match = 1;
-			}
+		if (passes_filter) {
+			current_hunk->has_match = 1;
+			current_file.has_match = 1;
 		}
 
 			/* Store the line if we're in file/hunk output mode */
@@ -774,27 +775,7 @@ static void output_hunk(struct buffered_file *file, struct buffered_hunk *hunk, 
 			const char *line_content = hunk->line_contents[i];  /* Use clean content */
 
 			/* Check match filter */
-			int should_show = 0;
-			switch (match_filter) {
-			case MATCH_ALL:
-				should_show = line_matches_patterns(line_content);
-				break;
-			case MATCH_REMOVALS:
-				should_show = ((line_type == PATCH_LINE_REMOVED) ||
-				               (line_type == PATCH_LINE_CHANGED && hunk->line_contexts[i] == PATCH_CONTEXT_OLD)) &&
-				              line_matches_patterns(line_content);
-				break;
-			case MATCH_ADDITIONS:
-				should_show = ((line_type == PATCH_LINE_ADDED) ||
-				               (line_type == PATCH_LINE_CHANGED && hunk->line_contexts[i] == PATCH_CONTEXT_NEW)) &&
-				              line_matches_patterns(line_content);
-				break;
-			case MATCH_MODIFICATIONS:
-				should_show = ((line_type == PATCH_LINE_CHANGED) ||
-				               (line_type == PATCH_LINE_REMOVED)) &&
-				              line_matches_patterns(line_content);
-				break;
-			}
+			int should_show = line_passes_filter(line_type, hunk->line_contexts[i], line_content);
 
 			if (should_show) {
 				unsigned long linenum = (numbered_mode == NUMBERED_BEFORE) ?
@@ -823,32 +804,7 @@ static void output_hunk(struct buffered_file *file, struct buffered_hunk *hunk, 
 
 		/* Output old section lines */
 		for (i = 0; i < hunk->orig_count && i < hunk->num_lines; i++) {
-			int line_type = hunk->line_types[i];
 			const char *line = hunk->lines[i];
-
-			/* Apply match filter if set */
-			if (match_filter != MATCH_ALL) {
-				const char *line_content = hunk->line_contents[i];  /* Use clean content */
-				int is_match = line_matches_patterns(line_content);
-
-				if (!is_match) {
-					continue;  /* Not a matching line, skip */
-				}
-
-				/* Check filter type */
-				if (match_filter == MATCH_REMOVALS &&
-				    line_type != PATCH_LINE_REMOVED &&
-				    !(line_type == PATCH_LINE_CHANGED && hunk->line_contexts[i] == PATCH_CONTEXT_OLD)) {
-					continue;
-				}
-				if (match_filter == MATCH_ADDITIONS) {
-					continue;  /* No additions in old section */
-				}
-				if (match_filter == MATCH_MODIFICATIONS &&
-				    !(line_type == PATCH_LINE_CHANGED && hunk->line_contexts[i] == PATCH_CONTEXT_OLD)) {
-					continue;
-				}
-			}
 
 			printf("%s\n", line);
 		}
@@ -863,32 +819,7 @@ static void output_hunk(struct buffered_file *file, struct buffered_hunk *hunk, 
 
 		/* Output new section lines */
 		for (i = hunk->orig_count; i < hunk->num_lines; i++) {
-			int line_type = hunk->line_types[i];
 			const char *line = hunk->lines[i];
-
-			/* Apply match filter if set */
-			if (match_filter != MATCH_ALL) {
-				const char *line_content = hunk->line_contents[i];  /* Use clean content */
-				int is_match = line_matches_patterns(line_content);
-
-				if (!is_match) {
-					continue;  /* Not a matching line, skip */
-				}
-
-				/* Check filter type */
-				if (match_filter == MATCH_REMOVALS) {
-					continue;  /* No removals in new section */
-				}
-				if (match_filter == MATCH_ADDITIONS &&
-				    line_type != PATCH_LINE_ADDED &&
-				    !(line_type == PATCH_LINE_CHANGED && hunk->line_contexts[i] == PATCH_CONTEXT_NEW)) {
-					continue;
-				}
-				if (match_filter == MATCH_MODIFICATIONS &&
-				    !(line_type == PATCH_LINE_CHANGED && hunk->line_contexts[i] == PATCH_CONTEXT_NEW)) {
-					continue;
-				}
-			}
 
 			printf("%s\n", line);
 		}
@@ -914,35 +845,7 @@ static void output_hunk(struct buffered_file *file, struct buffered_hunk *hunk, 
 
 		/* Output unified diff lines */
 		for (i = 0; i < hunk->num_lines; i++) {
-			int line_type = hunk->line_types[i];
 			const char *line = hunk->lines[i];
-
-			/* Apply match filter if set */
-			if (match_filter != MATCH_ALL) {
-				const char *line_content = hunk->line_contents[i];  /* Use clean content */
-				int is_match = line_matches_patterns(line_content);
-
-				if (!is_match) {
-					continue;  /* Not a matching line, skip */
-				}
-
-				/* Check filter type */
-				if (match_filter == MATCH_REMOVALS &&
-				    line_type != PATCH_LINE_REMOVED &&
-				    !(line_type == PATCH_LINE_CHANGED && hunk->line_contexts[i] == PATCH_CONTEXT_OLD)) {
-					continue;
-				}
-				if (match_filter == MATCH_ADDITIONS &&
-				    line_type != PATCH_LINE_ADDED &&
-				    !(line_type == PATCH_LINE_CHANGED && hunk->line_contexts[i] == PATCH_CONTEXT_NEW)) {
-					continue;
-				}
-				if (match_filter == MATCH_MODIFICATIONS &&
-				    line_type != PATCH_LINE_CHANGED &&
-				    line_type != PATCH_LINE_REMOVED) {
-					continue;
-				}
-			}
 
 			printf("%s\n", line);
 		}
