@@ -111,20 +111,26 @@ interdiff_links = \
 	src/flipdiff$(EXEEXT)
 
 filterdiff_links = \
-	src/grepdiff$(EXEEXT) \
 	src/patchview$(EXEEXT)
 
 if !USE_SCANNER_PATCHFILTER
-filterdiff_links += src/lsdiff$(EXEEXT)
+filterdiff_links += src/lsdiff$(EXEEXT) \
+	src/grepdiff$(EXEEXT)
 endif
 
-# lsdiff symlink target varies based on USE_SCANNER_PATCHFILTER
+# lsdiff and grepdiff symlink targets vary based on USE_SCANNER_PATCHFILTER
 if !USE_SCANNER_PATCHFILTER
 src/lsdiff$(EXEEXT): src/filterdiff$(EXEEXT)
 	ln -sf $(notdir $<) $@
+
+src/grepdiff$(EXEEXT): src/filterdiff$(EXEEXT)
+	ln -sf $(notdir $<) $@
 else
-# When patchfilter is enabled, create lsdiff symlink to patchfilter
+# When patchfilter is enabled, create lsdiff and grepdiff symlinks to patchfilter
 src/lsdiff$(EXEEXT): src/patchfilter$(EXEEXT)
+	ln -sf $(notdir $<) $@
+
+src/grepdiff$(EXEEXT): src/patchfilter$(EXEEXT)
 	ln -sf $(notdir $<) $@
 endif
 
@@ -156,6 +162,7 @@ install-exec-hook:
 	done
 if USE_SCANNER_PATCHFILTER
 	ln -sf "`echo patchfilter|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo lsdiff|sed '$(transform)'`"
+	ln -sf "`echo patchfilter|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo grepdiff|sed '$(transform)'`"
 endif
 	@for f in $(patchview_links); do \
 	    ln -sf "`echo patchview-wrapper$(EXEEXT) | sed '$(transform)'`" \
@@ -182,6 +189,7 @@ uninstall-local:
 	done
 if USE_SCANNER_PATCHFILTER
 	rm -f $(DESTDIR)$(bindir)/"`echo lsdiff|sed '$(transform)'`"
+	rm -f $(DESTDIR)$(bindir)/"`echo grepdiff|sed '$(transform)'`"
 endif
 	@for f in $(patchview_links); do \
 	    rm -f "$(DESTDIR)$(bindir)/`basename $$f | sed '$(transform)'`"; \
@@ -196,7 +204,12 @@ endif
 		rm -f patchutils; \
 	fi
 
-CLEANFILES = $(interdiff_links) $(filterdiff_links) $(patchview_links)
+patchfilter_links =
+if USE_SCANNER_PATCHFILTER
+patchfilter_links += src/lsdiff$(EXEEXT) src/grepdiff$(EXEEXT)
+endif
+
+CLEANFILES = $(interdiff_links) $(filterdiff_links) $(patchview_links) $(patchfilter_links)
 MAINTAINERCLEANFILES=$(man_MANS)
 
 # Regression tests.
@@ -429,6 +442,13 @@ XFAIL_TESTS += \
   tests/lsdiff-exclusion-combined/run-test \
   tests/lsdiff-combination-filters/run-test \
   tests/lsdiff-exclusion-mode/run-test
+endif
+
+# grepdiff original-line-numbers test: expected to fail when using scanner-patchfilter
+# (requires --as-numbered-lines=original-* options not yet implemented)
+if USE_SCANNER_PATCHFILTER
+XFAIL_TESTS += \
+  tests/grepdiff-original-line-numbers/run-test
 endif
 
 test-perms: src/combinediff$(EXEEXT) src/flipdiff$(EXEEXT) \
