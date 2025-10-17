@@ -198,10 +198,11 @@ struct patch_hunk {
  * - Unified diffs don't have this behavior (changed lines appear as separate - and + lines)
  *
  * CONTENT HANDLING:
- * - line points to the FULL original line INCLUDING the +/- prefix character
+ * - line points to the FULL original line INCLUDING the prefix character
  * - length is the byte length of the full line (includes prefix, excludes newline)
- * - line is NOT null-terminated (use length for bounds)
- * - To get content without prefix: use (line + 1) with (length - 1)
+ * - content points to clean content WITHOUT prefix or format-specific spaces
+ * - content_length is the byte length of the clean content
+ * - Neither line nor content are null-terminated (use length fields for bounds)
  * - The type field indicates what the prefix character is
  */
 struct patch_hunk_line {
@@ -209,6 +210,8 @@ struct patch_hunk_line {
     enum patch_line_context context; /* Which file version this line represents */
     const char *line;            /* Full original line INCLUDING prefix (NOT null-terminated) */
     size_t length;               /* Length of full line in bytes (includes prefix, excludes newline) */
+    const char *content;         /* Clean content WITHOUT prefix/spaces (NOT null-terminated) */
+    size_t content_length;       /* Length of clean content in bytes */
     long position;               /* Byte offset in input where this line appears */
 };
 
