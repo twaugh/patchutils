@@ -210,6 +210,15 @@ static int scanner_context_buffer_add(patch_scanner_t *scanner, const struct pat
         return PATCH_SCAN_MEMORY_ERROR;
     }
 
+    /* Update content pointer to point into the copied buffer */
+    if (line->content && line->content >= line->line && line->content < line->line + line->length) {
+        /* Calculate offset of content within original line */
+        size_t content_offset = line->content - line->line;
+        /* Update content to point into copied buffer */
+        scanner->context_buffer[scanner->context_buffer_count].content =
+            scanner->context_buffer[scanner->context_buffer_count].line + content_offset;
+    }
+
     scanner->context_buffer_count++;
     return PATCH_SCAN_OK;
 }
@@ -1427,6 +1436,25 @@ static int scanner_emit_hunk_line(patch_scanner_t *scanner, const char *line)
         scanner->current_line.length = line_len - 1;
     } else {
         scanner->current_line.length = line_len;
+    }
+
+    /* Populate clean content without prefix/spaces */
+    if (scanner->current_line.length > 0) {
+        /* Skip the prefix character */
+        scanner->current_line.content = scanner->current_line.line + 1;
+        scanner->current_line.content_length = scanner->current_line.length - 1;
+
+        /* For context diffs, skip the additional space after prefix */
+        if (scanner->current_headers.type == PATCH_TYPE_CONTEXT &&
+            scanner->current_line.content_length > 0 &&
+            scanner->current_line.content[0] == ' ') {
+            scanner->current_line.content++;
+            scanner->current_line.content_length--;
+        }
+    } else {
+        /* Empty line */
+        scanner->current_line.content = scanner->current_line.line;
+        scanner->current_line.content_length = 0;
     }
 
     scanner_init_content(scanner, PATCH_CONTENT_HUNK_LINE);

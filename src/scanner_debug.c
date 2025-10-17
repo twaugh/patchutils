@@ -433,12 +433,10 @@ static void print_hunk_line_info(const struct patch_hunk_line *line)
     }
     printf(" %sContext:%s %s", C(COLOR_BOLD), C(COLOR_RESET), context_name);
 
-    if (show_content && line->line && line->length > 0) {
+    if (show_content && line->content && line->content_length > 0) {
         printf(" %sContent:%s ", C(COLOR_BOLD), C(COLOR_RESET));
-        /* Extract content without prefix for display */
-        const char *content = line->length > 0 ? line->line + 1 : "";
-        size_t content_len = line->length > 0 ? line->length - 1 : 0;
-        print_content_sample(content, content_len);
+        /* Use the clean content field */
+        print_content_sample(line->content, line->content_length);
     } else {
         printf("\n");
     }
