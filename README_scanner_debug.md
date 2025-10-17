@@ -21,25 +21,26 @@ scanner_debug [OPTIONS] [FILE]
 ### Options
 
 - `-h, --help` - Show help message
-- `-v, --verbose` - Show verbose output with positions and details
-- `-c, --content` - Show content samples for events
-- `-p, --positions` - Show file positions for all events
+- `-v, --verbose` - Use multi-line output instead of compact
+- `-c, --content` - Show content samples for events (verbose mode)
+- `-p, --positions` - Show file positions for all events (verbose mode)
+- `-x, --extra` - Show extra details like Git metadata (verbose mode)
 - `--color` - Use colored output (great for terminals)
 
 ### Examples
 
 ```bash
 # Basic usage
-scanner_debug patch.diff
+scanner_debug example.patch
 
 # Colored output with content samples
-scanner_debug --color --content complex.patch
+scanner_debug --color --content example.patch
 
 # Debug from stdin
 diff -u old new | scanner_debug --verbose
 
 # Debug context diffs with full details
-scanner_debug --color --content --verbose context.patch
+scanner_debug --color --verbose --content --extra example.patch
 ```
 
 ## Event Types
@@ -62,7 +63,10 @@ Individual patch lines with type and context:
 - **Removed ('-')**: Removed lines (context: both)
 - **Changed ('!')**: Changed lines (context diffs only)
   - Emitted twice: first as context "old", then as context "new"
-  - Same line content, different context indicating old vs new version
+  - Different line content: old version first, then new version
+- **No Newline ('\\')**: No newline marker lines (context: both)
+
+**Note**: "context: both" means the line applies to both old and new file versions conceptually. Only changed lines ('!') in context diffs get special context handling (old/new).
 
 ### BINARY
 Binary patch markers (`Binary files differ`, `GIT binary patch`)
@@ -84,38 +88,185 @@ scanner_debug --content context_with_empty.patch | grep "HUNK_LINE.*--.*----"
 
 ### Understand Git Diff Parsing
 ```bash
-scanner_debug --verbose --color git_extended.patch
+scanner_debug --verbose --color --extra example.patch
 # Shows Git metadata parsing and type detection
 ```
 
 ### Debug Complex Patches
 ```bash
-scanner_debug --color --content --verbose complex_series.patch > debug.log
+scanner_debug --color --verbose --content --extra example.patch > debug.log
 # Full event trace for complex multi-file patches
 ```
 
 ## Output Format
 
+For the following example patch:
+```diff
+--- old.txt	2024-01-01 12:00:00.000000000 +0000
++++ new.txt	2024-01-01 12:01:00.000000000 +0000
+@@ -1,4 +1,4 @@
+ line1
+-old line
++new line
+ line3
+ line4
+```
+
+### Compact Mode (default)
 ```
 Scanner Debug Output for: example.patch
 ================================================================
-[HEADERS] HEADERS (line 1, pos 0)
+  2 HEADERS      Unified: old.txt → new.txt
+  3 HUNK_HEADER  -1,4 +1,4
+  4 HUNK_LINE     line1
+  5 HUNK_LINE    -old line
+  6 HUNK_LINE    +new line
+  7 HUNK_LINE     line3
+  8 HUNK_LINE     line4
+================================================================
+Summary: Processed 7 events, scanner finished normally
+```
+
+### Verbose Mode (-v/--verbose)
+```
+Scanner Debug Output for: example.patch
+================================================================
+[HEADERS]
   Type: Unified
   Old: old.txt
   New: new.txt
 
-[HUNK_HEADER] HUNK_HEADER (line 3, pos 25)
-  Range: -1,3 +1,3
+[HUNK_HEADER]
+  Range: -1,4 +1,4
 
-[HUNK_LINE] HUNK_LINE (line 4, pos 38)
-  Type: Context (' ') Context: both Content: "line1\n"
+[HUNK_LINE]
+  Type: Context (' ') Context: both
 
-[HUNK_LINE] HUNK_LINE (line 5, pos 45)
-  Type: Removed ('-') Context: both Content: "old line\n"
+[HUNK_LINE]
+  Type: Removed ('-') Context: both
+
+[HUNK_LINE]
+  Type: Added ('+') Context: both
+
+[HUNK_LINE]
+  Type: Context (' ') Context: both
+
+[HUNK_LINE]
+  Type: Context (' ') Context: both
 
 ================================================================
-Summary: Processed 6 events, scanner finished normally
+Summary: Processed 7 events, scanner finished normally
 ```
+
+### Verbose Mode with Content (--verbose --content)
+```
+Scanner Debug Output for: example.patch
+================================================================
+[HEADERS]
+  Type: Unified
+  Old: old.txt
+  New: new.txt
+
+[HUNK_HEADER]
+  Range: -1,4 +1,4
+
+[HUNK_LINE]
+  Type: Context (' ') Context: both Content: "line1"
+
+[HUNK_LINE]
+  Type: Removed ('-') Context: both Content: "old line"
+
+[HUNK_LINE]
+  Type: Added ('+') Context: both Content: "new line"
+
+[HUNK_LINE]
+  Type: Context (' ') Context: both Content: "line3"
+
+[HUNK_LINE]
+  Type: Context (' ') Context: both Content: "line4"
+
+================================================================
+Summary: Processed 7 events, scanner finished normally
+```
+
+## Context Diff Example
+
+For comparison, here's the same patch in context format (converted using `filterdiff --format=context`):
+```diff
+*** old.txt	2024-01-01 12:00:00.000000000 +0000
+--- new.txt	2024-01-01 12:01:00.000000000 +0000
+***************
+*** 1,4 ****
+  line1
+! old line
+  line3
+  line4
+--- 1,4 ----
+  line1
+! new line
+  line3
+  line4
+```
+
+### Context Diff - Compact Mode
+```
+Scanner Debug Output for: example-context.patch
+================================================================
+  2 HEADERS      Context: old.txt → new.txt
+  4 HUNK_HEADER  -1,4 +1,4
+  9 HUNK_LINE      line1
+  9 HUNK_LINE    ! old line
+  9 HUNK_LINE      line3
+  9 HUNK_LINE      line4
+ 10 HUNK_LINE      line1
+ 11 HUNK_LINE    ! new line
+ 12 HUNK_LINE      line3
+ 13 HUNK_LINE      line4
+================================================================
+Summary: Processed 10 events, scanner finished normally
+```
+
+### Context Diff - Verbose Mode with Content
+```
+Scanner Debug Output for: example-context.patch
+================================================================
+[HEADERS]
+  Type: Context
+  Old: old.txt
+  New: new.txt
+
+[HUNK_HEADER]
+  Range: -1,4 +1,4
+
+[HUNK_LINE]
+  Type: Context (' ') Context: both Content: "line1"
+
+[HUNK_LINE]
+  Type: Changed ('!') Context: old Content: "old line"
+
+[HUNK_LINE]
+  Type: Context (' ') Context: both Content: "line3"
+
+[HUNK_LINE]
+  Type: Context (' ') Context: both Content: "line4"
+
+[HUNK_LINE]
+  Type: Context (' ') Context: both Content: "line1"
+
+[HUNK_LINE]
+  Type: Changed ('!') Context: new Content: "new line"
+
+[HUNK_LINE]
+  Type: Context (' ') Context: both Content: "line3"
+
+[HUNK_LINE]
+  Type: Context (' ') Context: both Content: "line4"
+
+================================================================
+Summary: Processed 10 events, scanner finished normally
+```
+
+**Note**: In context diffs, changed lines (`!`) are emitted twice - first with the old content (context: old), then with the new content (context: new). This demonstrates the dual emission behavior described earlier.
 
 ## Color Coding
 
