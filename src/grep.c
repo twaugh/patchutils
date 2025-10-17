@@ -863,46 +863,52 @@ int run_grep_mode(int argc, char *argv[])
 	int i;
 	FILE *fp;
 
-	/* Reset global state for each invocation */
-	global_line_offset = 0;
+	/* Initialize common options */
+	init_common_options();
 
 	setlocale(LC_TIME, "C");
 
 	while (1) {
-		static struct option long_options[] = {
-			{"help", 0, 0, 1000 + 'H'},
-			{"version", 0, 0, 1000 + 'V'},
-			{"line-number", 0, 0, 'n'},
-			{"number-files", 0, 0, 'N'},
-			{"with-filename", 0, 0, 'H'},
-			{"no-filename", 0, 0, 'h'},
-			{"strip-match", 1, 0, 'p'},
-			{"include", 1, 0, 'i'},
-			{"exclude", 1, 0, 'x'},
-			{"verbose", 0, 0, 'v'},
-			{"decompress", 0, 0, 'z'},
-			{"extended-regexp", 0, 0, 'E'},
-			{"file", 1, 0, 'f'},
-			{"git-prefixes", 1, 0, 1000 + 'G'},
-			{"strip", 1, 0, 1000 + 'S'},
-			{"addprefix", 1, 0, 1000 + 'A'},
-			{"addoldprefix", 1, 0, 1000 + 'O'},
-			{"addnewprefix", 1, 0, 1000 + 'N'},
-			{"output-matching", 1, 0, 1000 + 'M'},
-			{"only-match", 1, 0, 1000 + 'm'},
-			{"as-numbered-lines", 1, 0, 1000 + 'L'},
-			/* Mode options (handled by patchfilter, but need to be recognized) */
-			{"list", 0, 0, 1000 + 'l'},
-			{"filter", 0, 0, 1000 + 'F'},
-			{"grep", 0, 0, 1000 + 'g'},
-			{0, 0, 0, 0}
-		};
+		static struct option long_options[MAX_TOTAL_OPTIONS];
+		int next_idx = 0;
 
-		char *end;
-		int c = getopt_long(argc, argv, "nNHhp:i:x:vzEf:", long_options, NULL);
+		/* Add common long options */
+		add_common_long_options(long_options, &next_idx);
+
+		/* Add tool-specific long options */
+		long_options[next_idx++] = (struct option){"help", 0, 0, 1000 + 'H'};
+		long_options[next_idx++] = (struct option){"version", 0, 0, 1000 + 'V'};
+		long_options[next_idx++] = (struct option){"extended-regexp", 0, 0, 'E'};
+		long_options[next_idx++] = (struct option){"file", 1, 0, 'f'};
+		long_options[next_idx++] = (struct option){"output-matching", 1, 0, 1000 + 'M'};
+		long_options[next_idx++] = (struct option){"only-match", 1, 0, 1000 + 'm'};
+		long_options[next_idx++] = (struct option){"as-numbered-lines", 1, 0, 1000 + 'L'};
+		/* Mode options (handled by patchfilter, but need to be recognized) */
+		long_options[next_idx++] = (struct option){"list", 0, 0, 1000 + 'l'};
+		long_options[next_idx++] = (struct option){"filter", 0, 0, 1000 + 'F'};
+		long_options[next_idx++] = (struct option){"grep", 0, 0, 1000 + 'g'};
+		long_options[next_idx++] = (struct option){0, 0, 0, 0};
+
+		/* Safety check: ensure we haven't exceeded MAX_TOTAL_OPTIONS */
+		if (next_idx > MAX_TOTAL_OPTIONS) {
+			error(EXIT_FAILURE, 0, "Internal error: too many total options (%d > %d). "
+			      "Increase MAX_TOTAL_OPTIONS in patch_common.h", next_idx, MAX_TOTAL_OPTIONS);
+		}
+
+		/* Combine common and tool-specific short options */
+		char short_options[64];
+		snprintf(short_options, sizeof(short_options), "%sEf:", get_common_short_options());
+
+		int c = getopt_long(argc, argv, short_options, long_options, NULL);
 		if (c == -1)
 			break;
 
+		/* Try common option parsing first */
+		if (parse_common_option(c, optarg)) {
+			continue;
+		}
+
+		/* Handle tool-specific options */
 		switch (c) {
 		case 1000 + 'H':
 			syntax(0);
@@ -910,69 +916,11 @@ int run_grep_mode(int argc, char *argv[])
 		case 1000 + 'V':
 			printf("grepdiff - patchutils version %s\n", VERSION);
 			exit(0);
-		case 'n':
-			show_line_numbers = 1;
-			break;
-		case 'N':
-			number_files = 1;
-			break;
-		case 'H':
-			show_patch_names = 1;
-			break;
-		case 'h':
-			show_patch_names = 0;
-			break;
-		case 'p':
-			strip_components = strtoul(optarg, &end, 0);
-			if (optarg == end)
-				syntax(1);
-			break;
-		case 'i':
-			patlist_add(&pat_include, optarg);
-			break;
-		case 'x':
-			patlist_add(&pat_exclude, optarg);
-			break;
-		case 'v':
-			verbose++;
-			if (show_line_numbers && verbose > 1)
-				number_files = 1;
-			break;
-		case 'z':
-			unzip = 1;
-			break;
 		case 'E':
 			extended_regexp = 1;
 			break;
 		case 'f':
 			add_patterns_from_file(optarg);
-			break;
-		case 1000 + 'G':
-			if (!strcmp(optarg, "strip")) {
-				git_prefix_mode = GIT_PREFIX_STRIP;
-			} else if (!strcmp(optarg, "keep")) {
-				git_prefix_mode = GIT_PREFIX_KEEP;
-			} else {
-				error(EXIT_FAILURE, 0, "invalid argument to --git-prefixes: %s (expected 'strip' or 'keep')", optarg);
-			}
-			break;
-		case 1000 + 'S':
-			{
-				char *end;
-				strip_output_components = strtoul(optarg, &end, 0);
-				if (optarg == end) {
-					error(EXIT_FAILURE, 0, "invalid argument to --strip: %s", optarg);
-				}
-			}
-			break;
-		case 1000 + 'A':
-			add_prefix = optarg;
-			break;
-		case 1000 + 'O':
-			add_old_prefix = optarg;
-			break;
-		case 1000 + 'N':
-			add_new_prefix = optarg;
 			break;
 		case 1000 + 'M':
 			if (!strncmp(optarg, "file", 4)) {
@@ -1059,10 +1007,7 @@ int run_grep_mode(int argc, char *argv[])
 	}
 
 	/* Clean up */
-	if (pat_include)
-		patlist_free(&pat_include);
-	if (pat_exclude)
-		patlist_free(&pat_exclude);
+	cleanup_common_options();
 	if (grep_patterns) {
 		for (i = 0; i < num_grep_patterns; i++) {
 			regfree(&grep_patterns[i]);

@@ -333,48 +333,52 @@ int run_ls_mode(int argc, char *argv[])
     int i;
     FILE *fp;
 
-    /* Reset global line offset for each invocation */
-    global_line_offset = 0;
+    /* Initialize common options */
+    init_common_options();
 
     setlocale(LC_TIME, "C");
 
     while (1) {
-        static struct option long_options[] = {
-            {"help", 0, 0, 1000 + 'H'},
-            {"version", 0, 0, 1000 + 'V'},
-            {"status", 0, 0, 's'},
-            {"line-number", 0, 0, 'n'},
-            {"number-files", 0, 0, 'N'},
-            {"with-filename", 0, 0, 'H'},
-            {"no-filename", 0, 0, 'h'},
-            {"empty-files-as-absent", 0, 0, 'E'},
-            {"strip-match", 1, 0, 'p'},
-            {"include", 1, 0, 'i'},
-            {"exclude", 1, 0, 'x'},
-            {"include-from-file", 1, 0, 'I'},
-            {"exclude-from-file", 1, 0, 'X'},
-            {"files", 1, 0, 'F'},
-            {"verbose", 0, 0, 'v'},
-            {"decompress", 0, 0, 'z'},
-            {"git-prefixes", 1, 0, 1000 + 'G'},
-            {"strip", 1, 0, 1000 + 'S'},
-            {"addprefix", 1, 0, 1000 + 'A'},
-            {"addoldprefix", 1, 0, 1000 + 'O'},
-            {"addnewprefix", 1, 0, 1000 + 'N'},
-            {"lines", 1, 0, 1000 + 'L'},
-            {"hunks", 1, 0, '#'},
-            /* Mode options (handled by patchfilter, but need to be recognized) */
-            {"list", 0, 0, 1000 + 'l'},
-            {"filter", 0, 0, 1000 + 'f'},
-            {"grep", 0, 0, 1000 + 'g'},
-            {0, 0, 0, 0}
-        };
+        static struct option long_options[MAX_TOTAL_OPTIONS];
+        int next_idx = 0;
 
-        char *end;
-        int c = getopt_long(argc, argv, "snNHhEp:i:x:I:X:F:vz#:", long_options, NULL);
+        /* Add common long options */
+        add_common_long_options(long_options, &next_idx);
+
+        /* Add tool-specific long options */
+        long_options[next_idx++] = (struct option){"help", 0, 0, 1000 + 'H'};
+        long_options[next_idx++] = (struct option){"version", 0, 0, 1000 + 'V'};
+        long_options[next_idx++] = (struct option){"status", 0, 0, 's'};
+        long_options[next_idx++] = (struct option){"empty-files-as-absent", 0, 0, 'E'};
+        long_options[next_idx++] = (struct option){"files", 1, 0, 'F'};
+        long_options[next_idx++] = (struct option){"lines", 1, 0, 1000 + 'L'};
+        long_options[next_idx++] = (struct option){"hunks", 1, 0, '#'};
+        /* Mode options (handled by patchfilter, but need to be recognized) */
+        long_options[next_idx++] = (struct option){"list", 0, 0, 1000 + 'l'};
+        long_options[next_idx++] = (struct option){"filter", 0, 0, 1000 + 'f'};
+        long_options[next_idx++] = (struct option){"grep", 0, 0, 1000 + 'g'};
+        long_options[next_idx++] = (struct option){0, 0, 0, 0};
+
+        /* Safety check: ensure we haven't exceeded MAX_TOTAL_OPTIONS */
+        if (next_idx > MAX_TOTAL_OPTIONS) {
+            error(EXIT_FAILURE, 0, "Internal error: too many total options (%d > %d). "
+                  "Increase MAX_TOTAL_OPTIONS in patch_common.h", next_idx, MAX_TOTAL_OPTIONS);
+        }
+
+        /* Combine common and tool-specific short options */
+        char short_options[64];
+        snprintf(short_options, sizeof(short_options), "%ssEF:#:", get_common_short_options());
+
+        int c = getopt_long(argc, argv, short_options, long_options, NULL);
         if (c == -1)
             break;
 
+        /* Try common option parsing first */
+        if (parse_common_option(c, optarg)) {
+            continue;
+        }
+
+        /* Handle tool-specific options */
         switch (c) {
         case 1000 + 'H':
             syntax(0);
@@ -385,37 +389,8 @@ int run_ls_mode(int argc, char *argv[])
         case 's':
             show_status = 1;
             break;
-        case 'n':
-            show_line_numbers = 1;
-            break;
-        case 'N':
-            number_files = 1;
-            break;
-        case 'H':
-            show_patch_names = 1;
-            break;
-        case 'h':
-            show_patch_names = 0;
-            break;
         case 'E':
             empty_files_as_absent = 1;
-            break;
-        case 'p':
-            strip_components = strtoul(optarg, &end, 0);
-            if (optarg == end)
-                syntax(1);
-            break;
-        case 'i':
-            patlist_add(&pat_include, optarg);
-            break;
-        case 'x':
-            patlist_add(&pat_exclude, optarg);
-            break;
-        case 'I':
-            patlist_add_file(&pat_include, optarg);
-            break;
-        case 'X':
-            patlist_add_file(&pat_exclude, optarg);
             break;
         case 'F':
             if (files)
@@ -425,41 +400,6 @@ int run_ls_mode(int argc, char *argv[])
                 optarg = optarg + 1;
             }
             parse_range(&files, optarg);
-            break;
-        case 'v':
-            verbose++;
-            if (show_line_numbers && verbose > 1)
-                number_files = 1;
-            break;
-        case 'z':
-            unzip = 1;
-            break;
-        case 1000 + 'G':
-            if (!strcmp(optarg, "strip")) {
-                git_prefix_mode = GIT_PREFIX_STRIP;
-            } else if (!strcmp(optarg, "keep")) {
-                git_prefix_mode = GIT_PREFIX_KEEP;
-            } else {
-                error(EXIT_FAILURE, 0, "invalid argument to --git-prefixes: %s (expected 'strip' or 'keep')", optarg);
-            }
-            break;
-        case 1000 + 'S':
-            {
-                char *end;
-                strip_output_components = strtoul(optarg, &end, 0);
-                if (optarg == end) {
-                    error(EXIT_FAILURE, 0, "invalid argument to --strip: %s", optarg);
-                }
-            }
-            break;
-        case 1000 + 'A':
-            add_prefix = optarg;
-            break;
-        case 1000 + 'O':
-            add_old_prefix = optarg;
-            break;
-        case 1000 + 'N':
-            add_new_prefix = optarg;
             break;
         case 1000 + 'L':
             if (lines)
@@ -519,10 +459,7 @@ int run_ls_mode(int argc, char *argv[])
     }
 
     /* Clean up */
-    if (pat_include)
-        patlist_free(&pat_include);
-    if (pat_exclude)
-        patlist_free(&pat_exclude);
+    cleanup_common_options();
     if (files) {
         struct range *r, *next;
         for (r = files; r; r = next) {
