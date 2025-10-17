@@ -936,6 +936,9 @@ output_patch1_only (FILE *p1, FILE *out, int not_reverted)
 static int
 apply_patch (FILE *patch, const char *file, int reverted)
 {
+#define MAX_PATCH_ARGS 4
+	const char *argv[MAX_PATCH_ARGS];
+	int argc = 0;
 	const char *basename;
 	unsigned long orig_lines, new_lines;
 	size_t linelen;
@@ -959,10 +962,14 @@ apply_patch (FILE *patch, const char *file, int reverted)
 		}
 	}
 
-	w = xpipe(PATCH, &child, "w", (char **) (const char *[]) { PATCH,
-		  reverted ? (has_ignore_all_space ? "-Rlsp0" : "-Rsp0")
-			   : (has_ignore_all_space ? "-lsp0" : "-sp0"),
-		  file, NULL });
+	/* Add up to MAX_PATCH_ARGS arguments for the patch execution */
+	argv[argc++] = PATCH;
+	argv[argc++] = reverted ? (has_ignore_all_space ? "-Rlsp0" : "-Rsp0")
+				: (has_ignore_all_space ? "-lsp0" : "-sp0");
+	argv[argc++] = file;
+	argv[argc++] = NULL;
+
+	w = xpipe(PATCH, &child, "w", (char **) argv);
 
 	fprintf (w, "--- %s\n+++ %s\n", basename, basename);
 	line = NULL;
