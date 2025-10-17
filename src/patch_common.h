@@ -62,6 +62,10 @@ void init_common_options(void);
 void cleanup_common_options(void);
 
 /* Common option parsing helpers */
+#define MAX_COMMON_OPTIONS 16
+#define MAX_TOOL_OPTIONS 16  /* Generous space for tool-specific options */
+#define MAX_TOTAL_OPTIONS (MAX_COMMON_OPTIONS + MAX_TOOL_OPTIONS)
+
 void add_common_long_options(struct option *options, int *next_index);
 const char *get_common_short_options(void);
 

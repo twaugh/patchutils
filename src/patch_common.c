@@ -136,6 +136,12 @@ int parse_common_option(int c, char *optarg)
 	case 'x':
 		patlist_add(&pat_exclude, optarg);
 		return 1;
+	case 'I':
+		patlist_add_file(&pat_include, optarg);
+		return 1;
+	case 'X':
+		patlist_add_file(&pat_exclude, optarg);
+		return 1;
 	case 'v':
 		verbose++;
 		if (show_line_numbers && verbose > 1)
@@ -207,12 +213,13 @@ void cleanup_common_options(void)
 
 const char *get_common_short_options(void)
 {
-	return "nNHhp:i:x:vz";
+	return "nNHhp:i:x:I:X:vz";
 }
 
 void add_common_long_options(struct option *options, int *next_index)
 {
 	int idx = *next_index;
+	int start_idx = idx;
 
 	options[idx++] = (struct option){"line-number", 0, 0, 'n'};
 	options[idx++] = (struct option){"number-files", 0, 0, 'N'};
@@ -221,6 +228,8 @@ void add_common_long_options(struct option *options, int *next_index)
 	options[idx++] = (struct option){"strip-match", 1, 0, 'p'};
 	options[idx++] = (struct option){"include", 1, 0, 'i'};
 	options[idx++] = (struct option){"exclude", 1, 0, 'x'};
+	options[idx++] = (struct option){"include-from-file", 1, 0, 'I'};
+	options[idx++] = (struct option){"exclude-from-file", 1, 0, 'X'};
 	options[idx++] = (struct option){"verbose", 0, 0, 'v'};
 	options[idx++] = (struct option){"decompress", 0, 0, 'z'};
 	options[idx++] = (struct option){"git-prefixes", 1, 0, 1000 + 'G'};
@@ -228,6 +237,13 @@ void add_common_long_options(struct option *options, int *next_index)
 	options[idx++] = (struct option){"addprefix", 1, 0, 1000 + 'A'};
 	options[idx++] = (struct option){"addoldprefix", 1, 0, 1000 + 'O'};
 	options[idx++] = (struct option){"addnewprefix", 1, 0, 1000 + 'N'};
+
+	/* Safety check: ensure we haven't exceeded MAX_COMMON_OPTIONS */
+	if (idx - start_idx > MAX_COMMON_OPTIONS) {
+		error(EXIT_FAILURE, 0, "Internal error: too many common options (%d > %d). "
+		      "Increase MAX_COMMON_OPTIONS in patch_common.h",
+		      idx - start_idx, MAX_COMMON_OPTIONS);
+	}
 
 	*next_index = idx;
 }
