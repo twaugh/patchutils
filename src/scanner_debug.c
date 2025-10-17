@@ -1,6 +1,6 @@
 /*
  * scanner_debug.c - patch scanner debugging utility
- * Copyright (C) 2024 Tim Waugh <twaugh@redhat.com>
+ * Copyright (C) 2025 Tim Waugh <twaugh@redhat.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
