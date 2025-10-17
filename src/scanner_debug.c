@@ -423,6 +423,16 @@ static void print_hunk_line_info(const struct patch_hunk_line *line)
     printf("  %sType:%s %s", C(COLOR_BOLD), C(COLOR_RESET),
            hunk_line_type_name(line->type));
 
+    /* Show context information */
+    const char *context_name;
+    switch (line->context) {
+        case PATCH_CONTEXT_BOTH: context_name = "both"; break;
+        case PATCH_CONTEXT_OLD: context_name = "old"; break;
+        case PATCH_CONTEXT_NEW: context_name = "new"; break;
+        default: context_name = "unknown"; break;
+    }
+    printf(" %sContext:%s %s", C(COLOR_BOLD), C(COLOR_RESET), context_name);
+
     if (show_content && line->line && line->length > 0) {
         printf(" %sContent:%s ", C(COLOR_BOLD), C(COLOR_RESET));
         /* Extract content without prefix for display */

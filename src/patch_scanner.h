@@ -86,6 +86,13 @@ enum patch_hunk_line_type {
     PATCH_LINE_NO_NEWLINE = '\\' /* No newline marker */
 };
 
+/* Context for patch lines (especially important for context diff changed lines) */
+enum patch_line_context {
+    PATCH_CONTEXT_BOTH = 0,      /* Normal lines (space, +, -, \) - applies to both old and new */
+    PATCH_CONTEXT_OLD,           /* This represents the "old" version of a changed line (!) */
+    PATCH_CONTEXT_NEW            /* This represents the "new" version of a changed line (!) */
+};
+
 /**
  * Complete patch headers information.
  *
@@ -177,6 +184,19 @@ struct patch_hunk {
  * - PATCH_LINE_CHANGED ('!'): Line changed between files (context diffs only)
  * - PATCH_LINE_NO_NEWLINE ('\\'): Not a real line, indicates previous line has no newline
  *
+ * CONTEXT HANDLING:
+ * - context indicates which version of the file this line represents
+ * - PATCH_CONTEXT_BOTH: Normal lines (applies to both old and new file versions)
+ * - PATCH_CONTEXT_OLD: For PATCH_LINE_CHANGED, this is the "old" version of the line
+ * - PATCH_CONTEXT_NEW: For PATCH_LINE_CHANGED, this is the "new" version of the line
+ *
+ * CONTEXT DIFF DUAL EMISSION:
+ * - For context diffs, changed lines (!) are emitted twice with identical content:
+ *   1. First emission: during old section parsing (context = PATCH_CONTEXT_OLD)
+ *   2. Second emission: during new section parsing (context = PATCH_CONTEXT_NEW)
+ * - This allows consumers to easily filter for "before" vs "after" views
+ * - Unified diffs don't have this behavior (changed lines appear as separate - and + lines)
+ *
  * CONTENT HANDLING:
  * - line points to the FULL original line INCLUDING the +/- prefix character
  * - length is the byte length of the full line (includes prefix, excludes newline)
@@ -186,6 +206,7 @@ struct patch_hunk {
  */
 struct patch_hunk_line {
     enum patch_hunk_line_type type; /* Line operation type (space, +, -, !, \) */
+    enum patch_line_context context; /* Which file version this line represents */
     const char *line;            /* Full original line INCLUDING prefix (NOT null-terminated) */
     size_t length;               /* Length of full line in bytes (includes prefix, excludes newline) */
     long position;               /* Byte offset in input where this line appears */

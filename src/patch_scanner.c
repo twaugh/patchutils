@@ -219,7 +219,11 @@ static int scanner_context_buffer_emit_next(patch_scanner_t *scanner, const patc
     if (scanner->context_buffer_emit_index < scanner->context_buffer_count) {
         /* Emit the next buffered line */
         scanner_init_content(scanner, PATCH_CONTENT_HUNK_LINE);
-        scanner->current_content.data.line = &scanner->context_buffer[scanner->context_buffer_emit_index];
+
+        /* Get the buffered line - context was set correctly when buffered */
+        struct patch_hunk_line *buffered_line = &scanner->context_buffer[scanner->context_buffer_emit_index];
+
+        scanner->current_content.data.line = buffered_line;
         *content = &scanner->current_content;
         scanner->context_buffer_emit_index++;
         return PATCH_SCAN_OK;
@@ -528,13 +532,16 @@ int patch_scanner_next(patch_scanner_t *scanner, const patch_content_t **content
 
                 /* For context diffs, check if we should buffer this line */
                 if (scanner->context_buffering) {
-                    /* Buffer this line instead of emitting it */
+                    /* Buffer this line for later emission */
                     result = scanner_context_buffer_add(scanner, &scanner->current_line);
                     if (result != PATCH_SCAN_OK) {
                         scanner->state = STATE_ERROR;
                         return result;
                     }
-                    /* Continue to next line without emitting */
+
+                    /* All lines in old section are buffered for later emission - no immediate emission */
+
+                    /* For other lines, continue to next line without emitting */
                     continue;
                 }
 
@@ -1395,6 +1402,22 @@ static int scanner_emit_hunk_line(patch_scanner_t *scanner, const char *line)
 
     scanner->current_line.type = (enum patch_hunk_line_type)line_type;
     scanner->current_line.position = scanner->current_position;
+
+    /* Set context based on line type and diff format */
+    if (line_type == '!' && scanner->current_headers.type == PATCH_TYPE_CONTEXT) {
+        /* For context diff changed lines, context depends on when we emit:
+         * - During buffering (old section): PATCH_CONTEXT_OLD
+         * - During emission from buffer (new section): PATCH_CONTEXT_NEW
+         */
+        if (scanner->context_buffering) {
+            scanner->current_line.context = PATCH_CONTEXT_OLD;
+        } else {
+            scanner->current_line.context = PATCH_CONTEXT_NEW;
+        }
+    } else {
+        /* Normal lines apply to both old and new file versions */
+        scanner->current_line.context = PATCH_CONTEXT_BOTH;
+    }
 
     /* Populate full line including prefix, excluding trailing newline */
     scanner->current_line.line = line;

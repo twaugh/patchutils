@@ -1484,7 +1484,7 @@ static void test_context_diff_multi_hunk_parsing(void)
     /* Basic structure validation */
     assert(header_count == 1);           /* file1 */
     assert(hunk_header_count == 1);      /* one hunk */
-    assert(change_line_count == 2);      /* ! a and ! b */
+    assert(change_line_count == 2);      /* ! a (old context), ! b (new context) */
 
     /* The key assertions: change lines were found as HUNK_LINE (not NON-PATCH) */
     assert(found_change_a == 1);         /* ! a was parsed as HUNK_LINE */
