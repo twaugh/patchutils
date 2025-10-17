@@ -141,6 +141,80 @@ jobs:
     - name: Run tests
       run: make check
 
+    # Re-run failed tests with verbose output for immediate diagnostics
+    - name: Re-run failed tests with verbose output
+      if: failure()
+      run: |
+        echo "Re-running tests with VERBOSE=1 for better diagnostics..."
+        VERBOSE=1 make check || true
+
+    # Collect test artifacts on failure
+    - name: Collect test artifacts
+      if: failure()
+      run: |
+        # Create artifacts directory
+        mkdir -p test-artifacts
+
+        # Copy all log files with better organization
+        find . -name "*.log" -type f | while read logfile; do
+          # Create directory structure in artifacts
+          dirname_part=$(dirname "$logfile" | sed 's|^\./||')
+          mkdir -p "test-artifacts/logs/$dirname_part"
+          cp "$logfile" "test-artifacts/logs/$logfile"
+        done
+
+        # Copy test-arena with full structure (not just first 20 files)
+        if [ -d test-arena ]; then
+          cp -r test-arena test-artifacts/
+        fi
+
+        # Create a summary of what failed
+        if [ -f test-suite.log ]; then
+          # Extract failed tests summary
+          grep -A 5 -B 5 "FAIL\|ERROR" test-suite.log > test-artifacts/failure-summary.txt 2>/dev/null || true
+
+          # Extract just the test names that failed
+          grep "^FAIL\|^ERROR" test-suite.log | cut -d: -f2- > test-artifacts/failed-tests.txt 2>/dev/null || true
+        fi
+
+        # Create a structured failure report
+        cat > test-artifacts/failure-report.md << 'EOF'
+        # Test Failure Report
+
+        ## Build Configuration
+        - OS: ${{ matrix.os }}
+        - PCRE2: ${{ matrix.pcre2 }}
+        - Scanner Patchfilter: ${{ matrix.scanner_patchfilter }}
+        - Configure Flags: ${{ matrix.configure_flags }}
+
+        ## Failed Tests
+        EOF
+
+        if [ -f test-artifacts/failed-tests.txt ] && [ -s test-artifacts/failed-tests.txt ]; then
+          echo "The following tests failed:" >> test-artifacts/failure-report.md
+          echo '```' >> test-artifacts/failure-report.md
+          cat test-artifacts/failed-tests.txt >> test-artifacts/failure-report.md
+          echo '```' >> test-artifacts/failure-report.md
+        else
+          echo "No specific test failures found in test-suite.log" >> test-artifacts/failure-report.md
+        fi
+
+        # List all collected artifacts
+        echo "" >> test-artifacts/failure-report.md
+        echo "## Collected Artifacts" >> test-artifacts/failure-report.md
+        echo '```' >> test-artifacts/failure-report.md
+        find test-artifacts -type f | sort >> test-artifacts/failure-report.md
+        echo '```' >> test-artifacts/failure-report.md
+
+    # Upload test artifacts on failure
+    - name: Upload test artifacts
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-failure-${{ matrix.name }}-${{ github.run_number }}
+        path: test-artifacts/
+        retention-days: 30
+
     # Coverage reporting (only for coverage builds)
     - name: Generate coverage report
       if: matrix.coverage
@@ -181,17 +255,43 @@ jobs:
         fail_ci_if_error: false
         token: ${{ secrets.CODECOV_TOKEN }}
 
-    # Show failures
-    - name: Show test results on failure
+    # Show immediate failure summary in logs
+    - name: Show test failure summary
       if: failure()
       run: |
-        echo "=== Test logs ==="
-        find . -name "*.log" -type f -exec echo "=== {} ===" \; -exec cat {} \;
-        echo "=== Test arena contents ==="
-        find test-arena -type f 2>/dev/null | head -20 | while read f; do
-          echo "=== $f ==="
-          cat "$f" 2>/dev/null || echo "Cannot read file"
-        done
+        echo "=========================================="
+        echo "TEST FAILURE SUMMARY"
+        echo "=========================================="
+        echo "Build: ${{ matrix.name }}"
+        echo "Configure flags: ${{ matrix.configure_flags }}"
+        echo ""
+
+        # Show test-suite.log summary if it exists
+        if [ -f test-suite.log ]; then
+          echo "=== Test Suite Summary ==="
+          head -20 test-suite.log
+          echo ""
+
+          # Show failed tests specifically
+          if grep -q "^FAIL\|^ERROR" test-suite.log; then
+            echo "=== Failed Tests ==="
+            grep "^FAIL\|^ERROR" test-suite.log || echo "No FAIL/ERROR lines found"
+            echo ""
+
+            # Show details of failed tests
+            echo "=== Failure Details ==="
+            grep -A 10 -B 2 "^FAIL\|^ERROR" test-suite.log | head -50
+          else
+            echo "No failed tests found in test-suite.log"
+          fi
+        else
+          echo "No test-suite.log found"
+        fi
+
+        echo ""
+        echo "=========================================="
+        echo "Full details available in uploaded artifacts"
+        echo "=========================================="
 
   # Separate distcheck job (doesn't fit well in matrix)
   distcheck:
@@ -223,13 +323,58 @@ jobs:
     - name: Build and test distribution
       run: make distcheck
 
-    - name: Show test results on failure
+    # Collect distcheck artifacts on failure
+    - name: Collect distcheck artifacts
       if: failure()
       run: |
-        echo "=== Test logs ==="
-        find . -name "*.log" -type f -exec echo "=== {} ===" \; -exec cat {} \;
-        echo "=== Test arena contents ==="
-        find test-arena -type f 2>/dev/null | head -20 | while read f; do
-          echo "=== $f ==="
-          cat "$f" 2>/dev/null || echo "Cannot read file"
+        mkdir -p distcheck-artifacts
+
+        # Copy all log files
+        find . -name "*.log" -type f | while read logfile; do
+          dirname_part=$(dirname "$logfile" | sed 's|^\./||')
+          mkdir -p "distcheck-artifacts/logs/$dirname_part"
+          cp "$logfile" "distcheck-artifacts/logs/$logfile"
         done
+
+        # Copy test-arena if it exists
+        if [ -d test-arena ]; then
+          cp -r test-arena distcheck-artifacts/
+        fi
+
+        # Look for distcheck-specific directories
+        find . -name "patchutils-*" -type d | head -5 | while read distdir; do
+          if [ -d "$distdir" ]; then
+            cp -r "$distdir" distcheck-artifacts/ 2>/dev/null || true
+          fi
+        done
+
+    # Upload distcheck artifacts on failure
+    - name: Upload distcheck artifacts
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: distcheck-failure-${{ github.run_number }}
+        path: distcheck-artifacts/
+        retention-days: 30
+
+    # Show distcheck failure summary
+    - name: Show distcheck failure summary
+      if: failure()
+      run: |
+        echo "=========================================="
+        echo "DISTCHECK FAILURE SUMMARY"
+        echo "=========================================="
+
+        # Show any test-suite.log from distcheck
+        find . -name "test-suite.log" -type f | while read logfile; do
+          echo "=== $logfile ==="
+          head -20 "$logfile"
+          echo ""
+          if grep -q "^FAIL\|^ERROR" "$logfile"; then
+            echo "Failed tests in $logfile:"
+            grep "^FAIL\|^ERROR" "$logfile"
+            echo ""
+          fi
+        done
+
+        echo "Full details available in uploaded artifacts"
