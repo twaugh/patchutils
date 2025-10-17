@@ -2049,6 +2049,169 @@ static void test_context_field_context_diff(void)
     printf("✓ Context field context diff test passed\n");
 }
 
+static void test_content_field_unified_diff(void)
+{
+    printf("Running content field unified diff test...\n");
+
+    const char *test_patch =
+        "--- file1\n"
+        "+++ file1\n"
+        "@@ -1,3 +1,3 @@\n"
+        " context content\n"
+        "-removed content\n"
+        "+added content\n";
+
+    FILE *fp = string_to_file(test_patch);
+    assert(fp != NULL);
+    patch_scanner_t *scanner = patch_scanner_create(fp);
+    assert(scanner != NULL);
+
+    const patch_content_t *content;
+    enum patch_scanner_result result;
+
+    /* Skip headers */
+    result = patch_scanner_next(scanner, &content);
+    assert(result == PATCH_SCAN_OK && content->type == PATCH_CONTENT_HEADERS);
+
+    /* Skip hunk header */
+    result = patch_scanner_next(scanner, &content);
+    assert(result == PATCH_SCAN_OK && content->type == PATCH_CONTENT_HUNK_HEADER);
+
+    /* Test context line content */
+    result = patch_scanner_next(scanner, &content);
+    assert(result == PATCH_SCAN_OK && content->type == PATCH_CONTENT_HUNK_LINE);
+    assert(content->data.line->type == PATCH_LINE_CONTEXT);
+    /* Verify raw line includes prefix */
+    assert(content->data.line->length == 16); /* " context content" */
+    assert(strncmp(content->data.line->line, " context content", 16) == 0);
+    /* Verify clean content excludes prefix */
+    assert(content->data.line->content_length == 15); /* "context content" */
+    assert(strncmp(content->data.line->content, "context content", 15) == 0);
+
+    /* Test removed line content */
+    result = patch_scanner_next(scanner, &content);
+    assert(result == PATCH_SCAN_OK && content->type == PATCH_CONTENT_HUNK_LINE);
+    assert(content->data.line->type == PATCH_LINE_REMOVED);
+    /* Verify raw line includes prefix */
+    assert(content->data.line->length == 16); /* "-removed content" */
+    assert(strncmp(content->data.line->line, "-removed content", 16) == 0);
+    /* Verify clean content excludes prefix */
+    assert(content->data.line->content_length == 15); /* "removed content" */
+    assert(strncmp(content->data.line->content, "removed content", 15) == 0);
+
+    /* Test added line content */
+    result = patch_scanner_next(scanner, &content);
+    assert(result == PATCH_SCAN_OK && content->type == PATCH_CONTENT_HUNK_LINE);
+    assert(content->data.line->type == PATCH_LINE_ADDED);
+    /* Verify raw line includes prefix */
+    assert(content->data.line->length == 14); /* "+added content" */
+    assert(strncmp(content->data.line->line, "+added content", 14) == 0);
+    /* Verify clean content excludes prefix */
+    assert(content->data.line->content_length == 13); /* "added content" */
+    assert(strncmp(content->data.line->content, "added content", 13) == 0);
+
+    patch_scanner_destroy(scanner);
+    fclose(fp);
+    printf("✓ Content field unified diff test passed\n");
+}
+
+static void test_content_field_context_diff(void)
+{
+    printf("Running content field context diff test...\n");
+
+    const char *test_patch =
+        "*** file1\n"
+        "--- file1\n"
+        "***************\n"
+        "*** 1,4 ****\n"
+        "  context content\n"
+        "- removed content\n"
+        "! old changed content\n"
+        "--- 1,4 ----\n"
+        "  context content\n"
+        "+ added content\n"
+        "! new changed content\n";
+
+    FILE *fp = string_to_file(test_patch);
+    assert(fp != NULL);
+    patch_scanner_t *scanner = patch_scanner_create(fp);
+    assert(scanner != NULL);
+
+    const patch_content_t *content;
+    enum patch_scanner_result result;
+
+    /* Skip headers */
+    result = patch_scanner_next(scanner, &content);
+    assert(result == PATCH_SCAN_OK && content->type == PATCH_CONTENT_HEADERS);
+
+    /* Skip hunk header */
+    result = patch_scanner_next(scanner, &content);
+    assert(result == PATCH_SCAN_OK && content->type == PATCH_CONTENT_HUNK_HEADER);
+
+    /* Test context line content (from buffered old section) */
+    result = patch_scanner_next(scanner, &content);
+    assert(result == PATCH_SCAN_OK && content->type == PATCH_CONTENT_HUNK_LINE);
+    assert(content->data.line->type == PATCH_LINE_CONTEXT);
+    /* Verify raw line includes prefix and space */
+    assert(content->data.line->length == 17); /* "  context content" */
+    assert(strncmp(content->data.line->line, "  context content", 17) == 0);
+    /* Verify clean content excludes prefix AND space */
+    assert(content->data.line->content_length == 15); /* "context content" */
+    assert(strncmp(content->data.line->content, "context content", 15) == 0);
+
+    /* Test removed line content (from buffered old section) */
+    result = patch_scanner_next(scanner, &content);
+    assert(result == PATCH_SCAN_OK && content->type == PATCH_CONTENT_HUNK_LINE);
+    assert(content->data.line->type == PATCH_LINE_REMOVED);
+    /* Verify raw line includes prefix and space */
+    assert(content->data.line->length == 17); /* "- removed content" */
+    assert(strncmp(content->data.line->line, "- removed content", 17) == 0);
+    /* Verify clean content excludes prefix AND space */
+    assert(content->data.line->content_length == 15); /* "removed content" */
+    assert(strncmp(content->data.line->content, "removed content", 15) == 0);
+
+    /* Test changed line content from old section */
+    result = patch_scanner_next(scanner, &content);
+    assert(result == PATCH_SCAN_OK && content->type == PATCH_CONTENT_HUNK_LINE);
+    assert(content->data.line->type == PATCH_LINE_CHANGED);
+    assert(content->data.line->context == PATCH_CONTEXT_OLD);
+    /* Verify raw line includes prefix and space */
+    assert(content->data.line->length == 21); /* "! old changed content" */
+    assert(strncmp(content->data.line->line, "! old changed content", 21) == 0);
+    /* Verify clean content excludes prefix AND space */
+    assert(content->data.line->content_length == 19); /* "old changed content" */
+    assert(strncmp(content->data.line->content, "old changed content", 19) == 0);
+
+    /* Test context line content (from new section) */
+    result = patch_scanner_next(scanner, &content);
+    assert(result == PATCH_SCAN_OK && content->type == PATCH_CONTENT_HUNK_LINE);
+    assert(content->data.line->type == PATCH_LINE_CONTEXT);
+    /* Verify clean content excludes prefix AND space */
+    assert(content->data.line->content_length == 15); /* "context content" */
+    assert(strncmp(content->data.line->content, "context content", 15) == 0);
+
+    /* Test added line content (from new section) */
+    result = patch_scanner_next(scanner, &content);
+    assert(result == PATCH_SCAN_OK && content->type == PATCH_CONTENT_HUNK_LINE);
+    assert(content->data.line->type == PATCH_LINE_ADDED);
+    /* Verify clean content excludes prefix AND space */
+    assert(content->data.line->content_length == 13); /* "added content" */
+    assert(strncmp(content->data.line->content, "added content", 13) == 0);
+
+    /* Test changed line content from new section */
+    result = patch_scanner_next(scanner, &content);
+    assert(result == PATCH_SCAN_OK && content->type == PATCH_CONTENT_HUNK_LINE);
+    assert(content->data.line->type == PATCH_LINE_CHANGED);
+    assert(content->data.line->context == PATCH_CONTEXT_NEW);
+    /* Verify clean content excludes prefix AND space */
+    assert(content->data.line->content_length == 19); /* "new changed content" */
+    assert(strncmp(content->data.line->content, "new changed content", 19) == 0);
+
+    patch_scanner_destroy(scanner);
+    fclose(fp);
+    printf("✓ Content field context diff test passed\n");
+}
+
 int main(void)
 {
     printf("Running patch scanner basic tests...\n\n");
@@ -2118,6 +2281,10 @@ int main(void)
     /* Test context field functionality */
     test_context_field_unified_diff();
     test_context_field_context_diff();
+
+    /* Test content field functionality */
+    test_content_field_unified_diff();
+    test_content_field_context_diff();
 
     printf("\n✓ All basic tests passed!\n");
     return 0;
