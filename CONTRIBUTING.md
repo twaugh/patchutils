@@ -21,7 +21,7 @@ We use a dual-branch strategy for development and releases:
 1. Create your feature branch from `0.4.x`
 2. Make your changes
 3. Submit a PR targeting `0.4.x`
-4. Maintainers will cherry-pick to `master` if appropriate
+4. Maintainers will merge into `master` if appropriate
 
 #### For New Features (Development)
 1. Create your feature branch from `master`
@@ -29,7 +29,6 @@ We use a dual-branch strategy for development and releases:
 3. Submit a PR targeting `master`
 
 #### Important Notes
-- **Do not create PRs from `0.4.x` to `master`**
 - The `0.4.x` branch should only receive targeted bug fixes
 - New features should go to `master` for the 0.5.0 release
 
