@@ -14,6 +14,11 @@ endif
 
 # Development/debug utilities (not installed by default)
 noinst_PROGRAMS = src/scanner_debug
+
+# Scanner test programs (only when scanner-patchfilter is enabled)
+if USE_SCANNER_PATCHFILTER
+noinst_PROGRAMS += tests/scanner/test_basic tests/scanner/test_accumulated_headers tests/scanner/test_input_validation
+endif
 bin_SCRIPTS = \
 	scripts/fixcvsdiff \
 	scripts/splitdiff \
@@ -47,6 +52,19 @@ src_patchfilter_SOURCES = src/patchfilter.c src/patchfilter.h \
 		src/ls.c src/grep.c src/filter.c \
 		src/patch_scanner.c src/patch_scanner.h \
 		src/util.c src/util.h src/diff.c src/diff.h
+
+# Scanner test program sources
+tests_scanner_test_basic_SOURCES = tests/scanner/test_basic.c \
+		src/patch_scanner.c src/patch_scanner.h \
+		src/util.c src/util.h src/diff.c src/diff.h
+
+tests_scanner_test_accumulated_headers_SOURCES = tests/scanner/test_accumulated_headers.c \
+		src/patch_scanner.c src/patch_scanner.h \
+		src/util.c src/util.h src/diff.c src/diff.h
+
+tests_scanner_test_input_validation_SOURCES = tests/scanner/test_input_validation.c \
+		src/patch_scanner.c src/patch_scanner.h \
+		src/util.c src/util.h src/diff.c src/diff.h
 endif
 
 src_interdiff_LDADD = lib/libgnu.a @LIBOBJS@
@@ -55,6 +73,11 @@ src_rediff_LDADD = lib/libgnu.a @LIBOBJS@
 
 if USE_SCANNER_PATCHFILTER
 src_patchfilter_LDADD = lib/libgnu.a @LIBOBJS@
+
+# Scanner test program dependencies
+tests_scanner_test_basic_LDADD = lib/libgnu.a @LIBOBJS@
+tests_scanner_test_accumulated_headers_LDADD = lib/libgnu.a @LIBOBJS@
+tests_scanner_test_input_validation_LDADD = lib/libgnu.a @LIBOBJS@
 endif
 
 # Scanner debug utility
@@ -438,14 +461,10 @@ lib/libgnu.a:
 distclean-local:
 	-rm -rf $(top_builddir)/test-arena
 	-rm -f lib-built
-	-if [ -f $(top_builddir)/tests/scanner/Makefile ]; then \
-		cd $(top_builddir)/tests/scanner && $(MAKE) distclean; \
-	fi
-	-rm -rf $(top_builddir)/tests/scanner
 
 if ENABLE_FUZZING
 # Fuzzing-specific instrumented binaries
-noinst_PROGRAMS = src/fuzz-filterdiff src/fuzz-interdiff src/fuzz-rediff
+noinst_PROGRAMS += src/fuzz-filterdiff src/fuzz-interdiff src/fuzz-rediff
 
 src_fuzz_filterdiff_SOURCES = $(src_filterdiff_SOURCES)
 src_fuzz_filterdiff_LDADD = $(src_filterdiff_LDADD)
@@ -527,7 +546,7 @@ endif
 EXTRA_DIST = $(man_MANS) \
 	tests/common.sh tests/soak-test \
 	$(TESTS) $(XFAIL_TESTS) \
-	tests/scanner/test_basic.c tests/scanner/test_accumulated_headers.c tests/scanner/test_input_validation.c tests/scanner/Makefile tests/scanner/README.md \
+	tests/scanner/test_basic.c tests/scanner/test_accumulated_headers.c tests/scanner/test_input_validation.c tests/scanner/README.md \
 	src/patch_scanner.c src/patch_scanner.h \
 	README.md BUGS COPYING TODO ChangeLog \
 	bootstrap \
