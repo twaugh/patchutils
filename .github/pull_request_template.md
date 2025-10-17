@@ -6,12 +6,10 @@
 
 **If you're submitting a bug fix for the stable release:**
 - Target the `0.4.x` branch
-- Bug fixes will be cherry-picked to `master` if needed
+- Bug fixes will be merged into `master` if needed
 
 **If you're submitting a new feature:**
 - Target the `master` branch
-
-**Please do not create PRs from `0.4.x` to `master`** - this goes against our release workflow.
 
 ## Description
 <!-- Describe your changes here -->
