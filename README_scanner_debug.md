@@ -56,11 +56,13 @@ Complete patch headers (file names, types, Git metadata)
 Hunk range information (`@@ -1,3 +1,3 @@` or `*** 1,3 ****`)
 
 ### HUNK_LINE
-Individual patch lines with type:
-- **Context (' ')**: Unchanged lines
-- **Added ('+')**: Added lines
-- **Removed ('-')**: Removed lines
-- **Changed ('!')**: Changed lines (context diffs)
+Individual patch lines with type and context:
+- **Context (' ')**: Unchanged lines (context: both)
+- **Added ('+')**: Added lines (context: both)
+- **Removed ('-')**: Removed lines (context: both)
+- **Changed ('!')**: Changed lines (context diffs only)
+  - Emitted twice: first as context "old", then as context "new"
+  - Same line content, different context indicating old vs new version
 
 ### BINARY
 Binary patch markers (`Binary files differ`, `GIT binary patch`)
@@ -106,10 +108,10 @@ Scanner Debug Output for: example.patch
   Range: -1,3 +1,3
 
 [HUNK_LINE] HUNK_LINE (line 4, pos 38)
-  Type: Context (' ') Content: "line1\n"
+  Type: Context (' ') Context: both Content: "line1\n"
 
 [HUNK_LINE] HUNK_LINE (line 5, pos 45)
-  Type: Removed ('-') Content: "old line\n"
+  Type: Removed ('-') Context: both Content: "old line\n"
 
 ================================================================
 Summary: Processed 6 events, scanner finished normally
