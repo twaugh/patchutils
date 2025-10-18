@@ -5,8 +5,6 @@ DISTCLEANFILES = src/stamp-h[0-9]* src/config.h
 
 bin_PROGRAMS = src/interdiff src/filterdiff src/rediff
 
-# lsdiff is provided by symlink to filterdiff (unless scanner-patchfilter is enabled)
-
 # Scanner-based unified patchfilter tool (experimental)
 if USE_SCANNER_PATCHFILTER
 bin_PROGRAMS += src/patchfilter
@@ -151,6 +149,11 @@ $(filterdiff_links): src/filterdiff$(EXEEXT)
 
 $(patchview_links): patchview/patchview-wrapper$(EXEEXT)
 	ln -sf $(notdir $<) $@
+
+# Ensure all symlinks are created during build
+all-local: $(interdiff_links) $(filterdiff_links) src/lsdiff$(EXEEXT) src/grepdiff$(EXEEXT)
+	@test -d patchview || mkdir -p patchview
+	@$(MAKE) $(AM_MAKEFLAGS) $(patchview_links)
 
 install-exec-hook:
 	@for f in $(interdiff_links); do \
