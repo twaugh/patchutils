@@ -1,0 +1,63 @@
+#!/bin/sh
+
+# Test lsdiff -F/--files=RANGE option
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > diff
+--- file1
++++ file1
+@@ -1 +1 @@
+-old
++new
+--- file2
++++ file2
+@@ -1 +1 @@
+-foo
++bar
+--- file3
++++ file3
+@@ -1 +1 @@
+-test
++result
+--- file4
++++ file4
+@@ -1 +1 @@
+-data
++value
+EOF
+
+# Test single file
+${LSDIFF} -F2 diff 2>errors >output1 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - output1 || exit 1
+file2
+EOF
+
+# Test range
+${LSDIFF} -F2-3 diff 2>errors >output2 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - output2 || exit 1
+file2
+file3
+EOF
+
+# Test open-ended range
+${LSDIFF} -F3- diff 2>errors >output3 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - output3 || exit 1
+file3
+file4
+EOF
+
+# Test exclusion range
+${LSDIFF} -Fx2-3 diff 2>errors >output4 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - output4 || exit 1
+file1
+file4
+EOF
