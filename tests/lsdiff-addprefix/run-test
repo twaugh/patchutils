@@ -1,0 +1,26 @@
+#!/bin/sh
+
+# Test lsdiff --addprefix option
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > diff
+--- file1
++++ file1
+@@ -1 +1 @@
+-old
++new
+--- file2
++++ file2
+@@ -1 +1 @@
+-foo
++bar
+EOF
+
+${LSDIFF} --addprefix=prefix/ diff 2>errors >output || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - output || exit 1
+prefix/file1
+prefix/file2
+EOF

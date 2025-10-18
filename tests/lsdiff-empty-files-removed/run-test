@@ -1,0 +1,44 @@
+#!/bin/sh
+
+# Test lsdiff -E/--empty-files-as-removed option
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Create diffs where files become empty or start empty
+mkdir dir dir.orig
+
+# File that becomes empty (modified -> empty)
+echo content > dir.orig/becomes-empty
+touch dir/becomes-empty
+
+# File that starts empty (empty -> modified)
+touch dir.orig/was-empty
+echo content > dir/was-empty
+
+# Normal modification
+echo old > dir.orig/modified
+echo new > dir/modified
+
+${DIFF} -uN dir.orig dir > diff
+
+# Without -E, files that are/become empty show as modifications
+${LSDIFF} -s --strip=1 diff 2>errors >output1 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - output1 || exit 1
+! becomes-empty
+! modified
+! was-empty
+EOF
+
+# With -E, treat empty files as absent
+# becomes-empty: content->empty = treated as removal
+# was-empty: empty->content = treated as addition
+${LSDIFF} -sE --strip=1 diff 2>errors >output2 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - output2 || exit 1
+- becomes-empty
+! modified
++ was-empty
+EOF

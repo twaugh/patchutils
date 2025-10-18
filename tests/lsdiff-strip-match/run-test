@@ -1,0 +1,43 @@
+#!/bin/sh
+
+# Test lsdiff -p/--strip-match option
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > diff
+--- a/src/file1.c
++++ b/src/file1.c
+@@ -1 +1 @@
+-old
++new
+--- a/docs/readme.txt
++++ b/docs/readme.txt
+@@ -1 +1 @@
+-old
++new
+--- a/src/file2.c
++++ b/src/file2.c
+@@ -1 +1 @@
+-old
++new
+EOF
+
+# Use -p to strip 'a/' and 'b/' prefixes when matching
+# Include only files in src/ directory
+# Note: -p affects matching, output still shows original paths from diff
+${LSDIFF} -p1 -i 'src/*' diff 2>errors >output || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - output || exit 1
+a/src/file1.c
+a/src/file2.c
+EOF
+
+# Test that we can use --strip to also strip output
+${LSDIFF} -p1 -i 'src/*' --strip=1 diff 2>errors >output2 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - output2 || exit 1
+src/file1.c
+src/file2.c
+EOF

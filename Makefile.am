@@ -290,6 +290,11 @@ TESTS = tests/newline1/run-test \
 	tests/lsdiff13/run-test \
 	tests/lsdiff14/run-test \
 	tests/lsdiff15/run-test \
+	tests/lsdiff-number-files/run-test \
+	tests/lsdiff-files-range/run-test \
+	tests/lsdiff-empty-files-removed/run-test \
+	tests/lsdiff-addprefix/run-test \
+	tests/lsdiff-strip-match/run-test \
 	tests/lsdiff-hunks-option/run-test \
 	tests/lsdiff-lines-option/run-test \
 	tests/lsdiff-exclusion-combined/run-test \
@@ -457,6 +462,13 @@ if USE_SCANNER_PATCHFILTER
 XFAIL_TESTS += \
   tests/grepdiff-status/run-test \
   tests/grepdiff-annotate/run-test
+endif
+
+# lsdiff tests: expected to fail when scanner-patchfilter is enabled
+# (features not yet implemented in scanner-based lsdiff)
+if USE_SCANNER_PATCHFILTER
+XFAIL_TESTS += \
+  tests/lsdiff-strip-match/run-test
 endif
 
 test-perms: src/combinediff$(EXEEXT) src/flipdiff$(EXEEXT) \
