@@ -1,0 +1,49 @@
+#!/bin/sh
+
+# Test grepdiff -i/--include and -x/--exclude options
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > diff
+--- src/file1.c
++++ src/file1.c
+@@ -1 +1 @@
+-old
++new
+--- docs/readme.txt
++++ docs/readme.txt
+@@ -1 +1 @@
+-old
++new
+--- src/file2.c
++++ src/file2.c
+@@ -1 +1 @@
+-old
++new
+EOF
+
+# Test include pattern
+${GREPDIFF} -i '*.c' 'new' diff 2>errors >output || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - output || exit 1
+src/file1.c
+src/file2.c
+EOF
+
+# Test exclude pattern
+${GREPDIFF} -x '*.txt' 'new' diff 2>errors >output2 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - output2 || exit 1
+src/file1.c
+src/file2.c
+EOF
+
+# Test combination of include and exclude
+${GREPDIFF} -i 'src/*' -x '*file2*' 'new' diff 2>errors >output3 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - output3 || exit 1
+src/file1.c
+EOF

@@ -1,0 +1,34 @@
+#!/bin/sh
+
+# Test grepdiff --annotate option
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > diff
+--- file1
++++ file1
+@@ -1,2 +1,2 @@
+ context
+-old
++new
+@@ -10 +10 @@
+-another
++change
+--- file2
++++ file2
+@@ -1 +1 @@
+-foo
++bar
+EOF
+
+${GREPDIFF} --annotate --output-matching=hunk 'new' diff 2>errors >output || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - output || exit 1
+--- file1
++++ file1
+@@ -1,2 +1,2 @@ Hunk #1, file1
+ context
+-old
++new
+EOF

@@ -1,0 +1,45 @@
+#!/bin/sh
+
+# Test grepdiff -H/--with-filename and -h/--no-filename options
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > patch1
+--- file1
++++ file1
+@@ -1 +1 @@
+-old
++new
+EOF
+
+cat << EOF > patch2
+--- file2
++++ file2
+@@ -1 +1 @@
+-foo
++bar
+EOF
+
+# Test with multiple patch files (should show filenames by default)
+${GREPDIFF} 'new' patch1 patch2 2>errors >output || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - output || exit 1
+patch1:file1
+EOF
+
+# Test -H explicitly
+${GREPDIFF} -H 'new' patch1 patch2 2>errors >output2 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - output2 || exit 1
+patch1:file1
+EOF
+
+# Test -h to suppress filename
+${GREPDIFF} -h 'new' patch1 patch2 2>errors >output3 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - output3 || exit 1
+file1
+EOF
