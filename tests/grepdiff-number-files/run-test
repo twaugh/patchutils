@@ -1,0 +1,40 @@
+#!/bin/sh
+
+# Test grepdiff -N/--number-files option
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > diff
+--- file1
++++ file1
+@@ -1 +1 @@
+-old
++new
+--- file2
++++ file2
+@@ -1 +1 @@
+-foo
++bar
+--- file3
++++ file3
+@@ -1 +1 @@
+-test
++result
+EOF
+
+${GREPDIFF} -N 'new' diff 2>errors >output || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - output || exit 1
+File #1  	file1
+EOF
+
+# Test with multiple matches (pattern matches content in files 1 and 3)
+${GREPDIFF} -N '[ot]' diff 2>errors >output2 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - output2 || exit 1
+File #1  	file1
+File #2  	file2
+File #3  	file3
+EOF

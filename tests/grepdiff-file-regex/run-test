@@ -1,0 +1,36 @@
+#!/bin/sh
+
+# Test grepdiff -f/--file option (read regexes from file)
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > diff
+--- file1
++++ file1
+@@ -1 +1 @@
+-apple
++banana
+--- file2
++++ file2
+@@ -1 +1 @@
+-cherry
++date
+--- file3
++++ file3
+@@ -1 +1 @@
+-elderberry
++fig
+EOF
+
+cat << EOF > patterns
+banana
+date
+EOF
+
+${GREPDIFF} -f patterns diff 2>errors >output || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - output || exit 1
+file1
+file2
+EOF
