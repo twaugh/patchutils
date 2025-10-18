@@ -25,6 +25,8 @@ lib/Makefile.in
 *.gcno
 *.gcda
 *.gcov
+
+# Main binaries
 src/combinediff
 src/filterdiff
 src/flipdiff
@@ -33,6 +35,18 @@ src/interdiff
 src/lsdiff
 src/rediff
 src/patchview
+
+# Scanner-based binaries (experimental)
+src/patchfilter
+src/scanner_debug
+
+# Fuzzing binaries
+src/fuzz-*
+
+# Scanner test binaries
+tests/scanner/test_basic
+tests/scanner/test_accumulated_headers
+tests/scanner/test_input_validation
 
 # Build artifacts
 lib-built
@@ -49,6 +63,7 @@ lib/sys/
 /scripts/recountdiff
 /scripts/splitdiff
 /scripts/unwrapdiff
+/scripts/move-to-front
 
 # These are generated from the XML file.
 doc/interdiff.1
