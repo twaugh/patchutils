@@ -49,7 +49,7 @@ cat << EOF | cmp - output2 || exit 1
 ! another-modified
 EOF
 
-# Test with --empty-files-as-absent
+# Test with --empty-files-as-absent for file addition
 # File with only additions should be treated as new file
 cat << EOF > diff3
 --- emptyfile
@@ -66,4 +66,77 @@ ${GREPDIFF} -s --empty-files-as-absent 'content' diff3 2>errors >output3 || exit
 
 cat << EOF | cmp - output3 || exit 1
 + emptyfile
+EOF
+
+# Test with --empty-files-as-absent for file deletion
+# File with only deletions should be treated as deleted
+cat << EOF > diff4
+--- deletedfile
++++ deletedfile
+@@ -1 +0,0 @@
+-content
+@@ -60 +60 @@
+-old
++new
+EOF
+
+${GREPDIFF} -s --empty-files-as-absent 'content' diff4 2>errors >output4 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - output4 || exit 1
+- deletedfile
+EOF
+
+# Test with context diff format
+cat << EOF > diff5
+*** /dev/null
+--- newfile-ctx
+***************
+*** 0 ****
+--- 1 ----
++ content
+*** oldfile-ctx
+--- /dev/null
+***************
+*** 1 ****
+- content
+--- 0 ----
+*** modified-ctx
+--- modified-ctx
+***************
+*** 1 ****
+! old content
+--- 1 ----
+! new content
+EOF
+
+${GREPDIFF} -s 'content' diff5 2>errors >output5 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - output5 || exit 1
++ newfile-ctx
+- oldfile-ctx
+! modified-ctx
+EOF
+
+# Test context diff with --empty-files-as-absent
+cat << EOF > diff6
+*** emptyfile-ctx
+--- emptyfile-ctx
+***************
+*** 0 ****
+--- 1 ----
++ content
+***************
+*** 60 ****
+! old
+--- 60 ----
+! new
+EOF
+
+${GREPDIFF} -s --empty-files-as-absent 'content' diff6 2>errors >output6 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - output6 || exit 1
++ emptyfile-ctx
 EOF
