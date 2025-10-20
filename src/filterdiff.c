@@ -359,7 +359,7 @@ static int
 do_git_diff_no_hunks (FILE *f, char **header, unsigned int num_headers,
 		      int match, char **line, size_t *linelen,
 		      unsigned long *linenum, unsigned long start_linenum,
-		      char *status, const char *bestname, const char *patchname,
+		      char status, const char *bestname, const char *patchname,
 		      int *orig_file_exists, int *new_file_exists,
 		      enum git_diff_type git_type)
 {
@@ -386,16 +386,6 @@ do_git_diff_no_hunks (FILE *f, char **header, unsigned int num_headers,
 		break;
 	}
 
-	/* Update status based on file existence (do this early so returns below have correct status) */
-	if (status != NULL && mode != mode_filter && show_status &&
-	    orig_file_exists != NULL && new_file_exists != NULL) {
-		if (!*orig_file_exists)
-			*status = '+';
-		else if (!*new_file_exists)
-			*status = '-';
-		/* else: keep existing '!' value for modifications */
-	}
-
 	/* If this diff matches the filter, display it */
 	if (match) {
 		if (mode == mode_filter) {
@@ -404,7 +394,7 @@ do_git_diff_no_hunks (FILE *f, char **header, unsigned int num_headers,
 				fputs (header[i], stdout);
 		} else if (mode == mode_list && !displayed_filename) {
 			if (!show_status) {
-				display_filename (start_linenum, *status,
+				display_filename (start_linenum, status,
 						  bestname, patchname);
 			}
 			displayed_filename = 1;
@@ -465,7 +455,7 @@ static int
 do_unified (FILE *f, char **header, unsigned int num_headers,
 	    int match, char **line,
 	    size_t *linelen, unsigned long *linenum,
-	    unsigned long start_linenum, char *status,
+	    unsigned long start_linenum, char status,
 	    const char *bestname, const char *patchname,
 	    int *orig_file_exists, int *new_file_exists)
 {
@@ -679,9 +669,28 @@ do_unified (FILE *f, char **header, unsigned int num_headers,
 		    !regexecs (regex, num_regex, *line + 1, 0, NULL, 0)) {
 			if (output_matching == output_none) {
 				if (!displayed_filename) {
+					char display_status = status;
+					/* Update status based on file existence for grepdiff -s */
+					if (show_status) {
+						int orig_absent = orig_file_exists && !*orig_file_exists;
+						int new_absent = new_file_exists && !*new_file_exists;
+
+						/* Check for empty files if --empty-files-as-absent is set */
+						if (empty_files_as_absent) {
+							if (orig_file_exists && *orig_file_exists && orig_is_empty)
+								orig_absent = 1;
+							if (new_file_exists && *new_file_exists && new_is_empty)
+								new_absent = 1;
+						}
+
+						if (orig_absent)
+							display_status = '+';
+						else if (new_absent)
+							display_status = '-';
+					}
 					displayed_filename = 1;
 					display_filename (start_linenum,
-							  *status, bestname,
+							  display_status, bestname,
 							  patchname);
 				}
 
@@ -756,16 +765,6 @@ do_unified (FILE *f, char **header, unsigned int num_headers,
 			*new_file_exists = 0;
 	}
 
-	/* Update status based on final file existence after empty file processing */
-	if (status != NULL && mode != mode_filter && show_status &&
-	    orig_file_exists != NULL && new_file_exists != NULL) {
-		if (!*orig_file_exists)
-			*status = '+';
-		else if (!*new_file_exists)
-			*status = '-';
-		/* else: keep existing '!' value for modifications */
-	}
-
 	return ret;
 }
 
@@ -773,7 +772,7 @@ static int
 do_context (FILE *f, char **header, unsigned int num_headers,
 	    int match, char **line,
 	    size_t *linelen, unsigned long *linenum,
-	    unsigned long start_linenum, char *status,
+	    unsigned long start_linenum, char status,
 	    const char *bestname, const char *patchname,
 	    int *orig_file_exists, int *new_file_exists)
 {
@@ -1038,9 +1037,28 @@ do_context (FILE *f, char **header, unsigned int num_headers,
 				       0, NULL, 0)) {
 				if (output_matching == output_none) {
 					if (!displayed_filename) {
+						char display_status = status;
+						/* Update status based on file existence for grepdiff -s */
+						if (show_status) {
+							int orig_absent = orig_file_exists && !*orig_file_exists;
+							int new_absent = new_file_exists && !*new_file_exists;
+
+							/* Check for empty files if --empty-files-as-absent is set */
+							if (empty_files_as_absent) {
+								if (orig_file_exists && *orig_file_exists && orig_is_empty)
+									orig_absent = 1;
+								if (new_file_exists && *new_file_exists && new_is_empty)
+									new_absent = 1;
+							}
+
+							if (orig_absent)
+								display_status = '+';
+							else if (new_absent)
+								display_status = '-';
+						}
 						displayed_filename = 1;
 						display_filename(start_linenum,
-								 *status,
+								 display_status,
 								 bestname,
 								 patchname);
 					}
@@ -1170,16 +1188,6 @@ out:
 			*new_file_exists = 0;
 	}
 
-	/* Update status based on final file existence after empty file processing */
-	if (status != NULL && mode != mode_filter && show_status &&
-	    orig_file_exists != NULL && new_file_exists != NULL) {
-		if (!*orig_file_exists)
-			*status = '+';
-		else if (!*new_file_exists)
-			*status = '-';
-		/* else: keep existing '!' value for modifications */
-	}
-
 	return ret;
 }
 
@@ -1210,7 +1218,7 @@ static int filterdiff (FILE *f, const char *patchname)
 		int (*do_diff) (FILE *, char **, unsigned int,
 				int, char **, size_t *,
 				unsigned long *, unsigned long,
-				char *, const char *, const char *,
+				char, const char *, const char *,
 				int *, int *);
 
 		orig_file_exists = 0; // shut gcc up
@@ -1405,13 +1413,19 @@ static int filterdiff (FILE *f, const char *patchname)
 								/* Process the git diff (it will handle filename display) */
 				result = do_git_diff_no_hunks (f, header, num_headers,
 							     match, &line, &linelen, &linenum,
-							     start_linenum, &status, p, patchname,
+							     start_linenum, status, p, patchname,
 							     &orig_file_exists, &new_file_exists,
 							     git_type);
 
 				/* Print filename with status if in list mode and matches */
-				if (match && show_status && mode == mode_list)
+				if (match && show_status && mode == mode_list) {
+					if (!orig_file_exists)
+						status = '+';
+					else if (!new_file_exists)
+						status = '-';
+
 					display_filename (start_linenum, status, p, patchname);
+				}
 
 				/* Clean up */
 				free (git_old_name);
@@ -1500,13 +1514,19 @@ static int filterdiff (FILE *f, const char *patchname)
 		result = do_diff (f, header, num_headers,
 				  match, &line,
 				  &linelen, &linenum,
-				  start_linenum, &status, p, patchname,
+				  start_linenum, status, p, patchname,
 				  &orig_file_exists, &new_file_exists);
 
 		// print if it matches.
-		if (match && show_status && mode == mode_list)
+		if (match && show_status && mode == mode_list) {
+			if (!orig_file_exists)
+				status = '+';
+			else if (!new_file_exists)
+				status = '-';
+
 			display_filename (start_linenum, status,
 					  p, patchname);
+		}
 
 		switch (result) {
 		case EOF:
@@ -1617,6 +1637,8 @@ const char * syntax_str =
 #endif
 "  -E, --empty-files-as-absent (lsdiff)\n"
 "            treat empty files as absent (lsdiff)\n"
+"  --empty-files-as-absent (grepdiff)\n"
+"            treat empty files as absent (grepdiff)\n"
 "  -f FILE, --file=FILE (grepdiff)\n"
 "            read regular expressions from FILE (grepdiff)\n"
 "  --filter  run as 'filterdiff' (grepdiff, patchview, lsdiff)\n"
@@ -1840,7 +1862,7 @@ int main (int argc, char *argv[])
 			{"remove-timestamps", 0, 0, 1000 + 'r'},
 			{"with-filename", 0, 0, 'H'},
 			{"no-filename", 0, 0, 'h'},
-			{"empty-files-as-absent", 0, 0, 'E'},
+			{"empty-files-as-absent", 0, 0, 1000 + 'E'},
 			{"number-files", 0, 0, 'N'},
 			{"clean", 0, 0, 1000 + 'c'},
 			{"strip-match", 1, 0, 'p'},
@@ -1853,7 +1875,7 @@ int main (int argc, char *argv[])
 			{"strip-match", 1, 0, 'p'},
 			{"status", 0, 0, 's'},
 			{"extended-regexp", 0, 0, 'E'},
-			{"empty-files-as-removed", 0, 0, 'E'},
+			{"empty-files-as-removed", 0, 0, 1000 + 'E'},
 			{"file", 1, 0, 'f'},
 			{"in-place", 0, 0, 1000 + 'w'},
 			{"git-prefixes", 1, 0, 1000 + 'G'},
@@ -1880,6 +1902,12 @@ int main (int argc, char *argv[])
 			if (mode == mode_grep)
 				egrepping = REG_EXTENDED;
 			else if (mode == mode_list)
+				empty_files_as_absent = 1;
+			else syntax (1);
+			break;
+		case 1000 + 'E':
+			/* Long form --empty-files-as-absent or --empty-files-as-removed */
+			if (mode == mode_grep || mode == mode_list)
 				empty_files_as_absent = 1;
 			else syntax (1);
 			break;
