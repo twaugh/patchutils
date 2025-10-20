@@ -359,7 +359,7 @@ static int
 do_git_diff_no_hunks (FILE *f, char **header, unsigned int num_headers,
 		      int match, char **line, size_t *linelen,
 		      unsigned long *linenum, unsigned long start_linenum,
-		      char status, const char *bestname, const char *patchname,
+		      char *status, const char *bestname, const char *patchname,
 		      int *orig_file_exists, int *new_file_exists,
 		      enum git_diff_type git_type)
 {
@@ -386,6 +386,16 @@ do_git_diff_no_hunks (FILE *f, char **header, unsigned int num_headers,
 		break;
 	}
 
+	/* Update status based on file existence (do this early so returns below have correct status) */
+	if (status != NULL && mode != mode_filter && show_status &&
+	    orig_file_exists != NULL && new_file_exists != NULL) {
+		if (!*orig_file_exists)
+			*status = '+';
+		else if (!*new_file_exists)
+			*status = '-';
+		/* else: keep existing '!' value for modifications */
+	}
+
 	/* If this diff matches the filter, display it */
 	if (match) {
 		if (mode == mode_filter) {
@@ -394,7 +404,7 @@ do_git_diff_no_hunks (FILE *f, char **header, unsigned int num_headers,
 				fputs (header[i], stdout);
 		} else if (mode == mode_list && !displayed_filename) {
 			if (!show_status) {
-				display_filename (start_linenum, status,
+				display_filename (start_linenum, *status,
 						  bestname, patchname);
 			}
 			displayed_filename = 1;
@@ -455,7 +465,7 @@ static int
 do_unified (FILE *f, char **header, unsigned int num_headers,
 	    int match, char **line,
 	    size_t *linelen, unsigned long *linenum,
-	    unsigned long start_linenum, char status,
+	    unsigned long start_linenum, char *status,
 	    const char *bestname, const char *patchname,
 	    int *orig_file_exists, int *new_file_exists)
 {
@@ -671,7 +681,7 @@ do_unified (FILE *f, char **header, unsigned int num_headers,
 				if (!displayed_filename) {
 					displayed_filename = 1;
 					display_filename (start_linenum,
-							  status, bestname,
+							  *status, bestname,
 							  patchname);
 				}
 
@@ -746,6 +756,16 @@ do_unified (FILE *f, char **header, unsigned int num_headers,
 			*new_file_exists = 0;
 	}
 
+	/* Update status based on final file existence after empty file processing */
+	if (status != NULL && mode != mode_filter && show_status &&
+	    orig_file_exists != NULL && new_file_exists != NULL) {
+		if (!*orig_file_exists)
+			*status = '+';
+		else if (!*new_file_exists)
+			*status = '-';
+		/* else: keep existing '!' value for modifications */
+	}
+
 	return ret;
 }
 
@@ -753,7 +773,7 @@ static int
 do_context (FILE *f, char **header, unsigned int num_headers,
 	    int match, char **line,
 	    size_t *linelen, unsigned long *linenum,
-	    unsigned long start_linenum, char status,
+	    unsigned long start_linenum, char *status,
 	    const char *bestname, const char *patchname,
 	    int *orig_file_exists, int *new_file_exists)
 {
@@ -1020,7 +1040,7 @@ do_context (FILE *f, char **header, unsigned int num_headers,
 					if (!displayed_filename) {
 						displayed_filename = 1;
 						display_filename(start_linenum,
-								 status,
+								 *status,
 								 bestname,
 								 patchname);
 					}
@@ -1150,6 +1170,16 @@ out:
 			*new_file_exists = 0;
 	}
 
+	/* Update status based on final file existence after empty file processing */
+	if (status != NULL && mode != mode_filter && show_status &&
+	    orig_file_exists != NULL && new_file_exists != NULL) {
+		if (!*orig_file_exists)
+			*status = '+';
+		else if (!*new_file_exists)
+			*status = '-';
+		/* else: keep existing '!' value for modifications */
+	}
+
 	return ret;
 }
 
@@ -1180,7 +1210,7 @@ static int filterdiff (FILE *f, const char *patchname)
 		int (*do_diff) (FILE *, char **, unsigned int,
 				int, char **, size_t *,
 				unsigned long *, unsigned long,
-				char, const char *, const char *,
+				char *, const char *, const char *,
 				int *, int *);
 
 		orig_file_exists = 0; // shut gcc up
@@ -1375,19 +1405,13 @@ static int filterdiff (FILE *f, const char *patchname)
 								/* Process the git diff (it will handle filename display) */
 				result = do_git_diff_no_hunks (f, header, num_headers,
 							     match, &line, &linelen, &linenum,
-							     start_linenum, status, p, patchname,
+							     start_linenum, &status, p, patchname,
 							     &orig_file_exists, &new_file_exists,
 							     git_type);
 
 				/* Print filename with status if in list mode and matches */
-				if (match && show_status && mode == mode_list) {
-					if (!orig_file_exists)
-						status = '+';
-					else if (!new_file_exists)
-						status = '-';
-
+				if (match && show_status && mode == mode_list)
 					display_filename (start_linenum, status, p, patchname);
-				}
 
 				/* Clean up */
 				free (git_old_name);
@@ -1476,19 +1500,13 @@ static int filterdiff (FILE *f, const char *patchname)
 		result = do_diff (f, header, num_headers,
 				  match, &line,
 				  &linelen, &linenum,
-				  start_linenum, status, p, patchname,
+				  start_linenum, &status, p, patchname,
 				  &orig_file_exists, &new_file_exists);
 
 		// print if it matches.
-		if (match && show_status && mode == mode_list) {
-			if (!orig_file_exists)
-				status = '+';
-			else if (!new_file_exists)
-				status = '-';
-
+		if (match && show_status && mode == mode_list)
 			display_filename (start_linenum, status,
 					  p, patchname);
-		}
 
 		switch (result) {
 		case EOF:
