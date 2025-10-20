@@ -669,9 +669,28 @@ do_unified (FILE *f, char **header, unsigned int num_headers,
 		    !regexecs (regex, num_regex, *line + 1, 0, NULL, 0)) {
 			if (output_matching == output_none) {
 				if (!displayed_filename) {
+					char display_status = status;
+					/* Update status based on file existence for grepdiff -s */
+					if (show_status) {
+						int orig_absent = orig_file_exists && !*orig_file_exists;
+						int new_absent = new_file_exists && !*new_file_exists;
+
+						/* Check for empty files if --empty-files-as-absent is set */
+						if (empty_files_as_absent) {
+							if (orig_file_exists && *orig_file_exists && orig_is_empty)
+								orig_absent = 1;
+							if (new_file_exists && *new_file_exists && new_is_empty)
+								new_absent = 1;
+						}
+
+						if (orig_absent)
+							display_status = '+';
+						else if (new_absent)
+							display_status = '-';
+					}
 					displayed_filename = 1;
 					display_filename (start_linenum,
-							  status, bestname,
+							  display_status, bestname,
 							  patchname);
 				}
 
@@ -1018,9 +1037,28 @@ do_context (FILE *f, char **header, unsigned int num_headers,
 				       0, NULL, 0)) {
 				if (output_matching == output_none) {
 					if (!displayed_filename) {
+						char display_status = status;
+						/* Update status based on file existence for grepdiff -s */
+						if (show_status) {
+							int orig_absent = orig_file_exists && !*orig_file_exists;
+							int new_absent = new_file_exists && !*new_file_exists;
+
+							/* Check for empty files if --empty-files-as-absent is set */
+							if (empty_files_as_absent) {
+								if (orig_file_exists && *orig_file_exists && orig_is_empty)
+									orig_absent = 1;
+								if (new_file_exists && *new_file_exists && new_is_empty)
+									new_absent = 1;
+							}
+
+							if (orig_absent)
+								display_status = '+';
+							else if (new_absent)
+								display_status = '-';
+						}
 						displayed_filename = 1;
 						display_filename(start_linenum,
-								 status,
+								 display_status,
 								 bestname,
 								 patchname);
 					}
