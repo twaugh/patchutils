@@ -225,6 +225,7 @@ TESTS = tests/newline1/run-test \
 	tests/grepdiff8/run-test \
 	tests/grepdiff9/run-test \
 	tests/grepdiff-original-line-numbers/run-test \
+	tests/grepdiff-status/run-test \
 	tests/number1/run-test \
 	tests/number2/run-test \
 	tests/number3/run-test \
