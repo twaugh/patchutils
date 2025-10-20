@@ -1,7 +1,10 @@
 #!/bin/sh
 
 # Test grepdiff -s/--status option
-# Shows file status: + (addition), - (removal), ! (modification)
+# According to the documentation, -s should show:
+#   + for file additions
+#   - for file removals
+#   ! for file modifications
 
 . ${top_srcdir-.}/tests/common.sh
 
@@ -19,20 +22,48 @@ cat << EOF > diff
 @@ -1 +1 @@
 -old
 +new
+--- another-modified
++++ another-modified
+@@ -1,2 +1,2 @@
+ context
+-old content
++new content
 EOF
 
+# Test additions and deletions (files with 'content' pattern)
 ${GREPDIFF} -s 'content' diff 2>errors >output || exit 1
 [ -s errors ] && exit 1
 
 cat << EOF | cmp - output || exit 1
-! newfile
-! oldfile
++ newfile
+- oldfile
+! another-modified
 EOF
 
-# Test with modification
+# Test modification only (file with 'new' pattern)
 ${GREPDIFF} -s 'new' diff 2>errors >output2 || exit 1
 [ -s errors ] && exit 1
 
 cat << EOF | cmp - output2 || exit 1
 ! modified
+! another-modified
+EOF
+
+# Test with --empty-files-as-absent
+# File with only additions should be treated as new file
+cat << EOF > diff3
+--- emptyfile
++++ emptyfile
+@@ -0,0 +1 @@
++content
+@@ -60 +60 @@
+-old
++new
+EOF
+
+${GREPDIFF} -s --empty-files-as-absent 'content' diff3 2>errors >output3 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - output3 || exit 1
++ emptyfile
 EOF
