@@ -1280,11 +1280,14 @@ filterdiff -i 'b/*/newname' git-patch-with-renames.patch]]></screen></para>
           </varlistentry>
           <varlistentry>
             <term><option>-E</option>,
+	    <option>--empty-files-as-absent</option>,
 	    <option>--empty-files-as-removed</option></term>
             <listitem>
               <para>Treat empty files as absent for the purpose of
 	      displaying file additions, modifications and
-	      removals.</para>
+	      removals. For example, a file with an empty old version
+	      and additions in the new version will be treated as a
+	      file addition (+) rather than a modification (!).</para>
             </listitem>
           </varlistentry>
           <varlistentry>
@@ -1646,12 +1649,15 @@ This is the same as gitdiff but uses git show instead of git diff.
             </listitem>
           </varlistentry>
           <varlistentry>
-            <term><option>-E</option>,
+            <term>
+	    <option>--empty-files-as-absent</option>,
 	    <option>--empty-files-as-removed</option></term>
             <listitem>
               <para>Treat empty files as absent for the purpose of
 	      displaying file additions, modifications and
-	      removals.</para>
+	      removals. For example, a file with an empty old version
+	      and additions in the new version will be treated as a
+	      file addition (+) rather than a modification (!). Note: For grepdiff, only the long form is available (<option>-E</option> means <option>--extended-regexp</option> for grepdiff).</para>
             </listitem>
           </varlistentry>
           <varlistentry>

@@ -1599,6 +1599,8 @@ const char * syntax_str =
 #endif
 "  -E, --empty-files-as-absent (lsdiff)\n"
 "            treat empty files as absent (lsdiff)\n"
+"  --empty-files-as-absent (grepdiff)\n"
+"            treat empty files as absent (grepdiff)\n"
 "  -f FILE, --file=FILE (grepdiff)\n"
 "            read regular expressions from FILE (grepdiff)\n"
 "  --filter  run as 'filterdiff' (grepdiff, patchview, lsdiff)\n"
@@ -1822,7 +1824,7 @@ int main (int argc, char *argv[])
 			{"remove-timestamps", 0, 0, 1000 + 'r'},
 			{"with-filename", 0, 0, 'H'},
 			{"no-filename", 0, 0, 'h'},
-			{"empty-files-as-absent", 0, 0, 'E'},
+			{"empty-files-as-absent", 0, 0, 1000 + 'E'},
 			{"number-files", 0, 0, 'N'},
 			{"clean", 0, 0, 1000 + 'c'},
 			{"strip-match", 1, 0, 'p'},
@@ -1835,7 +1837,7 @@ int main (int argc, char *argv[])
 			{"strip-match", 1, 0, 'p'},
 			{"status", 0, 0, 's'},
 			{"extended-regexp", 0, 0, 'E'},
-			{"empty-files-as-removed", 0, 0, 'E'},
+			{"empty-files-as-removed", 0, 0, 1000 + 'E'},
 			{"file", 1, 0, 'f'},
 			{"in-place", 0, 0, 1000 + 'w'},
 			{"git-prefixes", 1, 0, 1000 + 'G'},
@@ -1862,6 +1864,12 @@ int main (int argc, char *argv[])
 			if (mode == mode_grep)
 				egrepping = REG_EXTENDED;
 			else if (mode == mode_list)
+				empty_files_as_absent = 1;
+			else syntax (1);
+			break;
+		case 1000 + 'E':
+			/* Long form --empty-files-as-absent or --empty-files-as-removed */
+			if (mode == mode_grep || mode == mode_list)
 				empty_files_as_absent = 1;
 			else syntax (1);
 			break;
