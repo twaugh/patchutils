@@ -1,0 +1,38 @@
+#!/bin/sh
+
+# Test grepdiff -s/--status option
+# Shows file status: + (addition), - (removal), ! (modification)
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > diff
+--- /dev/null
++++ newfile
+@@ -0,0 +1 @@
++content
+--- oldfile
++++ /dev/null
+@@ -1 +0,0 @@
+-content
+--- modified
++++ modified
+@@ -1 +1 @@
+-old
++new
+EOF
+
+${GREPDIFF} -s 'content' diff 2>errors >output || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - output || exit 1
+! newfile
+! oldfile
+EOF
+
+# Test with modification
+${GREPDIFF} -s 'new' diff 2>errors >output2 || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - output2 || exit 1
+! modified
+EOF
