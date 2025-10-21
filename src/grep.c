@@ -68,6 +68,8 @@ static enum output_mode output_mode = OUTPUT_LIST;
 static enum match_filter match_filter = MATCH_ALL;
 static enum numbered_mode numbered_mode = NUMBERED_NONE;
 static int extended_regexp = 0;       /* -E, --extended-regexp */
+static int show_status = 0;           /* -s, --status */
+static int empty_files_as_absent = 0; /* --empty-files-as-absent */
 
 /* Grep patterns */
 static regex_t *grep_patterns = NULL;
@@ -109,6 +111,9 @@ struct buffered_file {
 	int max_hunks;
 	int has_match;          /* Does this file have any matching hunks? */
 	int is_context_diff;
+	char initial_status;    /* Initial file status from headers (+, -, !) */
+	int orig_is_empty;      /* Is original file empty (from first hunk)? */
+	int new_is_empty;       /* Is new file empty (from first hunk)? */
 };
 
 /* Forward declarations */
@@ -134,6 +139,7 @@ static void syntax(int err)
 	fprintf(f, "Usage: %s [OPTION]... PATTERN [FILE]...\n", "grepdiff");
 	fprintf(f, "Show files modified by patches containing a regexp.\n\n");
 	fprintf(f, "Options:\n");
+	fprintf(f, "  -s, --status                 show file additions (+), removals (-), and modifications (!)\n");
 	fprintf(f, "  -n, --line-number            show line numbers\n");
 	fprintf(f, "  -N, --number-files           show file numbers (for use with filterdiff --files)\n");
 	fprintf(f, "  -H, --with-filename          show patch file names\n");
@@ -156,6 +162,7 @@ static void syntax(int err)
 	fprintf(f, "                               (PCRE regexes are used by default)\n");
 #endif
 	fprintf(f, "  -f FILE, --file=FILE         read regular expressions from FILE\n");
+	fprintf(f, "  --empty-files-as-absent      treat empty files as absent (with -s)\n");
 	fprintf(f, "      --help                   display this help and exit\n");
 	fprintf(f, "      --version                output version information and exit\n");
 	fprintf(f, "\nReport bugs to <twaugh@redhat.com>.\n");
@@ -407,6 +414,14 @@ static void process_patch_file(FILE *fp, const char *filename)
 			current_file.header_line = global_line_offset + content->data.headers->start_line;
 			current_file.is_context_diff = (content->data.headers->type == PATCH_TYPE_CONTEXT);
 
+			/* Determine initial status from headers (for -s/--status) */
+			if (show_status) {
+				current_file.initial_status = determine_file_status(content->data.headers, empty_files_as_absent);
+				/* Initialize empty file tracking - assume empty until we see hunks */
+				current_file.orig_is_empty = 1;
+				current_file.new_is_empty = 1;
+			}
+
 			/* Copy header lines for file/hunk output modes */
 			if (output_mode != OUTPUT_LIST) {
 				const struct patch_headers *hdrs = content->data.headers;
@@ -440,6 +455,16 @@ static void process_patch_file(FILE *fp, const char *filename)
 			current_hunk->header_line_number = global_line_offset + content->line_number;
 			if (hunk->context) {
 				current_hunk->context = xstrdup(hunk->context);
+			}
+
+			/* Track empty files from first hunk only (for --empty-files-as-absent) */
+			if (show_status && current_file.num_hunks == 1) {
+				if (hunk->orig_count > 0) {
+					current_file.orig_is_empty = 0;
+				}
+				if (hunk->new_count > 0) {
+					current_file.new_is_empty = 0;
+				}
 			}
 
 			/* Initialize line number tracking */
@@ -542,7 +567,34 @@ static void output_buffered_file(struct buffered_file *file)
 	/* In list mode, just print filename if it has matches */
 	if (output_mode == OUTPUT_LIST) {
 		if (file->has_match) {
-			display_filename(file->best_filename, file->patchname, file->header_line);
+			/* Calculate final status for -s/--status */
+			if (show_status) {
+				char final_status = file->initial_status;
+
+				/* Adjust status based on --empty-files-as-absent */
+				if (empty_files_as_absent) {
+					int orig_absent = (file->orig_is_empty != 0);
+					int new_absent = (file->new_is_empty != 0);
+
+					if (orig_absent && !new_absent) {
+						final_status = '+';  /* Treat as file addition */
+					} else if (!orig_absent && new_absent) {
+						final_status = '-';  /* Treat as file deletion */
+					} else if (!orig_absent && !new_absent) {
+						final_status = '!';  /* Treat as modification */
+					}
+					/* If both absent, skip the file (shouldn't normally happen) */
+					if (orig_absent && new_absent) {
+						return;
+					}
+				}
+
+				/* Display with status prefix */
+				display_filename_extended(file->best_filename, file->patchname, file->header_line,
+				                         final_status, show_status);
+			} else {
+				display_filename(file->best_filename, file->patchname, file->header_line);
+			}
 
 			/* In verbose mode with line numbers, show hunk information */
 			if (verbose > 0 && show_line_numbers) {
@@ -878,11 +930,13 @@ int run_grep_mode(int argc, char *argv[])
 		/* Add tool-specific long options */
 		long_options[next_idx++] = (struct option){"help", 0, 0, 1000 + 'H'};
 		long_options[next_idx++] = (struct option){"version", 0, 0, 1000 + 'V'};
+		long_options[next_idx++] = (struct option){"status", 0, 0, 's'};
 		long_options[next_idx++] = (struct option){"extended-regexp", 0, 0, 'E'};
 		long_options[next_idx++] = (struct option){"file", 1, 0, 'f'};
 		long_options[next_idx++] = (struct option){"output-matching", 1, 0, 1000 + 'M'};
 		long_options[next_idx++] = (struct option){"only-match", 1, 0, 1000 + 'm'};
 		long_options[next_idx++] = (struct option){"as-numbered-lines", 1, 0, 1000 + 'L'};
+		long_options[next_idx++] = (struct option){"empty-files-as-absent", 0, 0, 1000 + 'e'};
 		/* Mode options (handled by patchfilter, but need to be recognized) */
 		long_options[next_idx++] = (struct option){"list", 0, 0, 1000 + 'l'};
 		long_options[next_idx++] = (struct option){"filter", 0, 0, 1000 + 'F'};
@@ -897,7 +951,7 @@ int run_grep_mode(int argc, char *argv[])
 
 		/* Combine common and tool-specific short options */
 		char short_options[64];
-		snprintf(short_options, sizeof(short_options), "%sEf:", get_common_short_options());
+		snprintf(short_options, sizeof(short_options), "%ssEf:", get_common_short_options());
 
 		int c = getopt_long(argc, argv, short_options, long_options, NULL);
 		if (c == -1)
@@ -916,11 +970,17 @@ int run_grep_mode(int argc, char *argv[])
 		case 1000 + 'V':
 			printf("grepdiff - patchutils version %s\n", VERSION);
 			exit(0);
+		case 's':
+			show_status = 1;
+			break;
 		case 'E':
 			extended_regexp = 1;
 			break;
 		case 'f':
 			add_patterns_from_file(optarg);
+			break;
+		case 1000 + 'e':
+			empty_files_as_absent = 1;
 			break;
 		case 1000 + 'M':
 			if (!strncmp(optarg, "file", 4)) {
