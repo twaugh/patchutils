@@ -463,7 +463,6 @@ endif
 # (features not yet implemented in scanner-based grepdiff)
 if USE_SCANNER_PATCHFILTER
 XFAIL_TESTS += \
-  tests/grepdiff-status/run-test \
   tests/grepdiff-annotate/run-test
 endif
 
