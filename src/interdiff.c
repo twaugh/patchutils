@@ -123,6 +123,7 @@ static int use_colors = 0;
 static int color_option_specified = 0;
 static int debug = 0;
 static int fuzzy = 0;
+static char max_fuzz_lines_arg[sizeof("--fuzz=2147483647")] = "";
 
 static struct patlist *pat_drop_context = NULL;
 
@@ -976,6 +977,9 @@ apply_patch (FILE *patch, const char *file, int reverted, int max_fuzz_no_rej)
 		if (max_fuzz_no_rej) {
 			argv[argc++] = "--fuzz=2147483647";
 			argv[argc++] = "--reject-file=-";
+		} else if (max_fuzz_lines_arg[0] != '\0') {
+			/* Pass in the user-supplied max fuzz */
+			argv[argc++] = max_fuzz_lines_arg;
 		}
 	}
 	argv[argc++] = file;
@@ -2378,9 +2382,11 @@ syntax (int err)
 "                  don't revert it\n"
 "  --in-place      (flipdiff) Write the output to the original input\n"
 "                  files\n"
-"  --fuzzy\n"
+"  --fuzzy[=N]\n"
 "                  (interdiff) Perform a fuzzy comparison, which filters\n"
-"                  out hunks that the patch utility can apply with fuzz\n";
+"                  out hunks that the patch utility can apply with fuzz.\n"
+"                  Optionally set N to the maximum number of context lines\n"
+"                  to fuzz (which passes '--fuzz=N' to the patch utility).\n";
 
 	fprintf (err ? stderr : stdout, syntax_str, progname, progname);
 	exit (err);
@@ -2442,7 +2448,7 @@ main (int argc, char *argv[])
 			{"flip", 0, 0, 1000 + 'F' },
 			{"no-revert-omitted", 0, 0, 1000 + 'R' },
 			{"in-place", 0, 0, 1000 + 'i' },
-			{"fuzzy", 0, 0, 1000 + 'f' },
+			{"fuzzy", 2, 0, 1000 + 'f' },
 			{"debug", 0, 0, 1000 + 'D' },
 			{"strip-match", 1, 0, 'p'},
 			{"unified", 1, 0, 'U'},
@@ -2533,6 +2539,14 @@ main (int argc, char *argv[])
 		case 1000 + 'f':
 			if (mode != mode_inter)
 				syntax (1);
+			if (optarg) {
+				ret = strtoul (optarg, &end, 0);
+				if (optarg == end)
+					syntax (1);
+				snprintf (max_fuzz_lines_arg,
+					  sizeof(max_fuzz_lines_arg),
+					  "--fuzz=%u", ret);
+			}
 			fuzzy = 1;
 			break;
 		case 1000 + 'D':
