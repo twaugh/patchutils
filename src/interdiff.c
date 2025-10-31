@@ -1241,18 +1241,15 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 	fseek (p1, pos1, SEEK_SET);
 	fseek (p2, pos2, SEEK_SET);
 	create_orig (p2, &file, 0, NULL);
-	fseek (p1, pos1, SEEK_SET);
-	fseek (p2, pos2, SEEK_SET);
 	create_orig (p1, &file2, mode == mode_combine, NULL);
-	merge_lines(&file, &file2);
 	pos1 = ftell (p1);
+	fseek (p1, start1, SEEK_SET);
+	fseek (p2, start2, SEEK_SET);
+	merge_lines(&file, &file2);
 
 	/* Write it out. */
 	write_file (&file, tmpp1fd);
 	write_file (&file, tmpp2fd);
-
-	fseek (p1, start1, SEEK_SET);
-	fseek (p2, start2, SEEK_SET);
 
 	if (apply_patch (p1, tmpp1, mode == mode_combine))
 		error (EXIT_FAILURE, 0,
