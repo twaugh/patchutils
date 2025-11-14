@@ -1143,7 +1143,8 @@ trim_context (FILE *f /* positioned at start of @@ line */,
 				fwrite (line, (size_t) got, 1, out);
 				continue;
 			}
-			print_color (out, type, "%s", line);
+			print_color (out, type, "%.*s", (int) got - 1, line);
+			fputc ('\n', out);
 		}
 	}
 
