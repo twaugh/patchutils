@@ -1442,28 +1442,35 @@ index_patch_generic (FILE *patch_file, struct file_list **file_list, int need_sk
 
 		/* For patch2, we need to handle the @@ line and skip content */
 		if (need_skip_content) {
-			if (getline (&line, &linelen, patch_file) == -1) {
+			int found = 0;
+
+			while (!found &&
+			       getline (&line, &linelen, patch_file) > 0) {
+				if (strncmp (line, "@@ ", 3))
+					continue;
+
+				p = strchr (line + 3, '+');
+				if (!p)
+					continue;
+
+				p = strchr (p, ',');
+				if (p) {
+					/* Like '@@ -1,3 +1,3 @@' */
+					p++;
+					skip = strtoul (p, &end, 10);
+					if (p == end)
+						continue;
+				} else
+					/* Like '@@ -1 +1 @@' */
+					skip = 1;
+				found = 1;
+			}
+
+			if (!found) {
 				free (names[0]);
 				free (names[1]);
 				break;
 			}
-
-			if (strncmp (line, "@@ ", 3))
-				goto try_next;
-
-			p = strchr (line + 3, '+');
-			if (!p)
-				goto try_next;
-			p = strchr (p, ',');
-			if (p) {
-				/* Like '@@ -1,3 +1,3 @@' */
-				p++;
-				skip = strtoul (p, &end, 10);
-				if (p == end)
-					goto try_next;
-			} else
-				/* Like '@@ -1 +1 @@' */
-				skip = 1;
 
 			add_to_list (file_list, best_name (2, names), pos);
 
@@ -1480,7 +1487,6 @@ index_patch_generic (FILE *patch_file, struct file_list **file_list, int need_sk
 			add_to_list (file_list, best_name (2, names), pos);
 		}
 
-	try_next:
 		free (names[0]);
 		free (names[1]);
 	}
