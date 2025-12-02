@@ -1525,8 +1525,9 @@ split_patch_hunks (FILE *patch, size_t len, char *file,
 	do {
 		/* nctx[0] = pre-context lines, nctx[1] = post-context lines
 		 * ndelta[0] = deleted lines, ndelta[1] = added lines */
-		unsigned long nctx[2] = {}, ndelta[2] = {}, nctx_target;
+		unsigned long nctx[2] = {}, ndelta[2] = {};
 		unsigned long ostart, nstart, orig_nstart, start_line_idx = 0;
+		unsigned long nctx_target = 0; /* Init for spurious GCC warn */
 		struct xtra_context xctx_pre = {};
 		struct line_info *lines = NULL;
 		unsigned long num_lines = 0;
@@ -1587,14 +1588,15 @@ split_patch_hunks (FILE *patch, size_t len, char *file,
 				lines[num_lines - 1].len =
 					line - lines[num_lines - 1].s;
 
-			/* Check if this is the end. If so, terminate the hunk
-			 * now because there isn't any new line to parse. */
+			/* Count the number of characters left to parse */
 			hlen_rem = hunk + hlen - line;
-			if (!hlen_rem)
-				goto split_hunk_incl_latest;
 
-			/* Check if this is an unline that we need to remove */
-			if (unline && !strncmp (line + 1, unline, unline_len)) {
+			/* Check if this is an unline that we need to remove, or
+			 * if this is a bogus hunk. A bogus hunk may not have an
+			 * unline as its final line, hence we need to consider
+			 * this when there are no more lines left to parse. */
+			if (unline && (!hlen_rem || !strncmp (line + 1, unline,
+							      unline_len))) {
 				/* Split the hunk now if there's a delta, unless
 				 * this is a bogus hunk from a rejected patch
 				 * hunk. Bogus hunks stem from one side of the
@@ -1627,7 +1629,15 @@ split_patch_hunks (FILE *patch, size_t len, char *file,
 						skipped_lines = 1;
 						continue;
 					}
+
+					/* Bogus hunk, reset the delta counts */
+					ndelta[0] = ndelta[1] = 0;
 				}
+
+				/* Stop now when nothing remains, since all that
+				 * we've got here is a bogus hunk to discard. */
+				if (!hlen_rem)
+					break;
 
 				/* Move forward the starting line offset,
 				 * discarding any pre-context lines seen. The
@@ -1638,6 +1648,11 @@ split_patch_hunks (FILE *patch, size_t len, char *file,
 				nctx[0] = 0;
 				continue;
 			}
+
+			/* Check if this is the end. If so, terminate the hunk
+			 * now because there isn't any new line to parse. */
+			if (!hlen_rem)
+				goto split_hunk_incl_latest;
 
 			/* Record the current line, setting `len` to zero */
 			lines = xrealloc (lines, ++num_lines * sizeof (*lines));
