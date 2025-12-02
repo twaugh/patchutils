@@ -2209,9 +2209,9 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 	/* Write it out. */
 	if (fuzzy) {
 		/* Ensure the same unline is used for both files */
-		write_file (&file, tmpp1fd);
+		write_file (&file, tmpp2fd);
 		file2.unline = xstrdup (file.unline);
-		write_file (&file2, tmpp2fd);
+		write_file (&file2, tmpp1fd);
 	} else {
 		merge_lines (&file, &file2);
 		write_file (&file, tmpp1fd);
@@ -2223,7 +2223,7 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 		FILE *patch_out, *sp;
 
 		/* Split the patch hunks into smaller hunks, then apply that */
-		sp = split_patch_hunks (p1, pos1 - start1, tmpp1, &hunk_offs, NULL);
+		sp = split_patch_hunks (p2, pos2 - start2, tmpp1, &hunk_offs, NULL);
 		ret1 = apply_patch (sp, tmpp1, false, &patch_out);
 		fclose (sp);
 
@@ -2234,7 +2234,7 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 		free (hunk_offs);
 
 		/* Split the patch hunks into smaller hunks, then apply that */
-		sp = split_patch_hunks (p2, pos2 - start2, tmpp2, NULL, NULL);
+		sp = split_patch_hunks (p1, pos1 - start1, tmpp2, NULL, NULL);
 		ret2 = apply_patch (sp, tmpp2, false, NULL);
 		fclose (sp);
 
