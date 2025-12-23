@@ -970,8 +970,39 @@ output_patch1_only (FILE *p1, FILE *out, int not_reverted)
 	return 0;
 }
 
+static void
+open_rej_file (char *file, struct rej_file *rej)
+{
+	char *line = NULL;
+	size_t linelen;
+	long atat_pos;
+
+	/* Briefly modify `file` in-place to open the .rej file */
+	strcat (file, ".rej");
+	rej->fp = xopen (file, "r");
+	file[strlen (file) - strlen (".rej")] = '\0';
+
+	/* Skip (the first two) lines to get to the start of the @@ line */
+	do {
+		atat_pos = ftell (rej->fp);
+		if (getline (&line, &linelen, rej->fp) <= 0)
+			error (EXIT_FAILURE, errno,
+			       "Failed to read line from .rej");
+	} while (strncmp (line, "@@ ", 3));
+	fseek (rej->fp, atat_pos, SEEK_SET);
+
+	/* Export the line offset of the first rej hunk */
+	if (read_atatline (line, &rej->off, NULL, NULL, NULL))
+		error (EXIT_FAILURE, 0, "line not understood: %s", line);
+	free (line);
+
+	/* Go back to the @@ after apply_patch() moved the file cursor */
+	fseek (rej->fp, atat_pos, SEEK_SET);
+}
+
 static int
-apply_patch (FILE *patch, const char *file, int reverted, FILE **out)
+apply_patch (FILE *patch, const char *file, int reverted, struct rej_file *rej,
+	     FILE **out)
 {
 #define MAX_PATCH_ARGS 8
 	const char *argv[MAX_PATCH_ARGS];
@@ -1010,18 +1041,12 @@ apply_patch (FILE *patch, const char *file, int reverted, FILE **out)
 		/* Don't generate .orig files when we expect rejected hunks */
 		argv[argc++] = "--no-backup-if-mismatch";
 
-		/* When reverting a rejected hunk, use the maximum possible
-		 * fuzz and don't generate .rej files. Otherwise, either pass in
-		 * the user-supplied max fuzz, or fuzz all but one pre-context
-		 * and one post-context line by default. */
-		if (reverted) {
-			fuzz = INT_MAX;
-			argv[argc++] = "--reject-file=-";
-		} else if (max_fuzz_user >= 0) {
+		/* Either pass in the user-supplied max fuzz, or fuzz all but
+		 * one pre-context and one post-context line by default. */
+		if (max_fuzz_user >= 0)
 			fuzz = max_fuzz_user;
-		} else if (max_context) {
+		else if (max_context)
 			fuzz = max_context - 1;
-		}
 		if (asprintf (&fuzz_arg, "--fuzz=%d", fuzz) < 0)
 			error (EXIT_FAILURE, errno, "asprintf failed");
 		argv[argc++] = fuzz_arg;
@@ -1096,7 +1121,9 @@ apply_patch (FILE *patch, const char *file, int reverted, FILE **out)
 			new_lines--;
 	}
 	fclose (w);
+	free (line);
 	waitpid (child, &status, 0);
+	status = WEXITSTATUS (status);
 
 	/* Provide the output from patch if requested */
 	if (out)
@@ -1104,10 +1131,11 @@ apply_patch (FILE *patch, const char *file, int reverted, FILE **out)
 	else
 		fclose (r);
 
-	if (line)
-		free (line);
+	/* Open the reject file if requested and there are rejects */
+	if (status && rej)
+		open_rej_file ((char *) file, rej);
 
-	return WEXITSTATUS (status);
+	return status;
 }
 
 static int
@@ -2070,42 +2098,6 @@ fuzzy_relocate_hunks (const char *file, const char *unline, FILE *patch_out,
 }
 
 static void
-fuzzy_do_rej (char *file, struct rej_file *rej, const char *other_file)
-{
-	char *line = NULL;
-	size_t linelen;
-	long atat_pos;
-
-	/* Briefly modify `file` in-place to open the .rej file */
-	strcat (file, ".rej");
-	rej->fp = xopen (file, "r");
-	file[strlen (file) - strlen (".rej")] = '\0';
-
-	/* Skip (the first two) lines to get to the start of the @@ line */
-	do {
-		atat_pos = ftell (rej->fp);
-		if (getline (&line, &linelen, rej->fp) <= 0)
-			error (EXIT_FAILURE, errno,
-			       "Failed to read line from .rej");
-	} while (strncmp (line, "@@ ", 3));
-	fseek (rej->fp, atat_pos, SEEK_SET);
-
-	/* Export the line offset of the first rej hunk */
-	if (read_atatline (line, &rej->off, NULL, NULL, NULL))
-		error (EXIT_FAILURE, 0, "line not understood: %s", line);
-	free (line);
-
-	/* Revert the rejected hunks on the _other_ file, so they're excluded
-	 * from the 'diff' output. Otherwise, 'diff' will output the _reverse_
-	 * of the rejected hunks, which will muddy the final output as we will
-	 * print out the rejected hunks themselves later anyway. */
-	apply_patch (rej->fp, other_file, 1, NULL);
-
-	/* Go back to the @@ after apply_patch() moved the file cursor */
-	fseek (rej->fp, atat_pos, SEEK_SET);
-}
-
-static void
 fuzzy_cleanup (char *file, int rej)
 {
 	/* Modify the `file` string in-place */
@@ -2219,25 +2211,18 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 	fseek (p1, start1, SEEK_SET);
 	fseek (p2, start2, SEEK_SET);
 
-	/* Write it out. */
 	if (fuzzy) {
+		FILE *patch_out, *sp;
+		unsigned long *hunk_offs = NULL;
+
 		/* Ensure the same unline is used for both files */
 		write_file (&file, tmpp2fd);
 		file2.unline = xstrdup (file.unline);
 		write_file (&file2, tmpp1fd);
-	} else {
-		merge_lines (&file, &file2);
-		write_file (&file, tmpp1fd);
-		write_file (&file, tmpp2fd);
-	}
-
-	if (fuzzy) {
-		unsigned long *hunk_offs = NULL;
-		FILE *patch_out, *sp;
 
 		/* Split the patch hunks into smaller hunks, then apply that */
 		sp = split_patch_hunks (p2, pos2 - start2, tmpp1, &hunk_offs, NULL);
-		ret1 = apply_patch (sp, tmpp1, false, &patch_out);
+		ret1 = apply_patch (sp, tmpp1, false, &rej1, &patch_out);
 		fclose (sp);
 
 		/* Relocate hunks in tmpp1 in order to make them align with the
@@ -2246,9 +2231,14 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 		fclose (patch_out);
 		free (hunk_offs);
 
+		/* Revert the successful p2 deltas from tmpp1 so they don't
+		 * appear as minus lines in the final diff. */
+		fseek (p2, start2, SEEK_SET);
+		apply_patch (p2, tmpp1, true, NULL, NULL);
+
 		/* Split the patch hunks into smaller hunks, then apply that */
 		sp = split_patch_hunks (p1, pos1 - start1, tmpp2, NULL, NULL);
-		ret2 = apply_patch (sp, tmpp2, false, NULL);
+		ret2 = apply_patch (sp, tmpp2, false, &rej2, NULL);
 		fclose (sp);
 
 		/* For tmpp2 relocations, only eat unline gaps between hunks
@@ -2256,19 +2246,21 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 		 * also done to tmpp1 during its relocation pass. */
 		fuzzy_relocate_hunks (tmpp2, file.unline, NULL, NULL);
 
-		/* Handle the rejected hunks. This needs to be done after both
-		 * files are patched because it may revert a rejected hunk from
-		 * the other file. */
-		if (ret1)
-			fuzzy_do_rej (tmpp1, &rej1, tmpp2);
-		if (ret2)
-			fuzzy_do_rej (tmpp2, &rej2, tmpp1);
+		/* Revert the successful p1 deltas from tmpp2 so they don't
+		 * appear as plus lines in the final diff. */
+		fseek (p1, start1, SEEK_SET);
+		apply_patch (p1, tmpp2, true, NULL, NULL);
 	} else {
-		if (apply_patch (p1, tmpp1, mode == mode_combine, NULL))
+		/* Write it out. */
+		merge_lines (&file, &file2);
+		write_file (&file, tmpp1fd);
+		write_file (&file, tmpp2fd);
+
+		if (apply_patch (p1, tmpp1, mode == mode_combine, NULL, NULL))
 			error (EXIT_FAILURE, 0,
 			       "Error applying patch1 to reconstructed file");
 
-		if (apply_patch (p2, tmpp2, 0, NULL))
+		if (apply_patch (p2, tmpp2, 0, NULL, NULL))
 			error (EXIT_FAILURE, 0,
 			       "Error applying patch2 to reconstructed file");
 	}
@@ -2858,7 +2850,7 @@ flipdiff (FILE *p1, FILE *p2, FILE *flip1, FILE *flip2)
 	tmpfd = xmkstemp (tmpp1);
 	write_file (&intermediate, tmpfd);
 	fsetpos (p1, &at1);
-	if (apply_patch (p1, tmpp1, 1, NULL))
+	if (apply_patch (p1, tmpp1, 1, NULL, NULL))
 		error (EXIT_FAILURE, 0,
 		       "Error reconstructing original file");
 
@@ -2867,7 +2859,7 @@ flipdiff (FILE *p1, FILE *p2, FILE *flip1, FILE *flip2)
 	tmpfd = xmkstemp (tmpp3);
 	write_file (&intermediate, tmpfd);
 	fsetpos (p2, &at2);
-	if (apply_patch (p2, tmpp3, 0, NULL))
+	if (apply_patch (p2, tmpp3, 0, NULL, NULL))
 		error (EXIT_FAILURE, 0,
 		       "Error reconstructing final file");
 
