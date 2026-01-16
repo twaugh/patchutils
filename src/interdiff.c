@@ -1853,7 +1853,7 @@ parse_fuzzed_hunks (FILE *patch_out, const unsigned long *hunk_offs,
 	/* Parse out each fuzzed hunk's line offset */
 	while (getline (&line, &linelen, patch_out) > 0) {
 		struct hunk_reloc *prev = &(*relocs)[*num_relocs - 1];
-		unsigned long fuzz = 0, hnum, lnum;
+		unsigned long fuzz = 0, hnum, lnum, split_off;
 		long off;
 
 		if (sscanf (line, "Hunk #%lu succeeded at %lu (offset %ld",
@@ -1862,16 +1862,22 @@ parse_fuzzed_hunks (FILE *patch_out, const unsigned long *hunk_offs,
 			    &hnum, &lnum, &fuzz, &off) != 4)
 			continue;
 
-		/* Recover the correct new line number of the possibly-split
-		 * hunk, and skip it if it matches the relocated new line number
-		 * of the previous hunk (if any). Split hunks are contiguous. */
-		lnum -= hunk_offs[hnum - 1];
-		if (*relocs && lnum - off == prev->new - prev->off)
+		/* Get the split offset for this hunk - the difference between
+		 * the split hunk's new line number and the original hunk's. */
+		split_off = hunk_offs[hnum - 1];
+
+		/* Skip if this hunk belongs to the same original hunk as the
+		 * previous relocation. Split hunks are contiguous. Compare
+		 * original line numbers (applied position - total offset). */
+		if (*relocs && lnum - off - split_off == prev->new - prev->off)
 			continue;
 
+		/* Store the actual applied position in the patched file as `new`,
+		 * and the total offset (patch offset + split offset) needed to
+		 * relocate the hunk back to its original intended position. */
 		*relocs = xrealloc (*relocs, ++*num_relocs * sizeof (**relocs));
 		(*relocs)[*num_relocs - 1] =
-			(typeof (**relocs)){ lnum, off, fuzz };
+			(typeof (**relocs)){ lnum, off + split_off, fuzz };
 	}
 	free (line);
 }
