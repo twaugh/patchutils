@@ -973,7 +973,7 @@ output_patch1_only (FILE *p1, FILE *out, int not_reverted)
 static int
 apply_patch (FILE *patch, const char *file, int reverted, FILE **out)
 {
-#define MAX_PATCH_ARGS 9
+#define MAX_PATCH_ARGS 8
 	const char *argv[MAX_PATCH_ARGS];
 	int argc = 0;
 	const char *basename;
@@ -1002,8 +1002,8 @@ apply_patch (FILE *patch, const char *file, int reverted, FILE **out)
 
 	/* Add up to MAX_PATCH_ARGS arguments for the patch execution */
 	argv[argc++] = PATCH;
-	argv[argc++] = reverted ? (has_ignore_all_space ? "-Rlp0" : "-Rp0")
-				: (has_ignore_all_space ? "-lp0" : "-p0");
+	argv[argc++] = reverted ? (has_ignore_all_space ? "-NRlp0" : "-NRp0")
+				: (has_ignore_all_space ? "-Nlp0" : "-Np0");
 	if (fuzzy) {
 		int fuzz = 0;
 
@@ -1011,14 +1011,12 @@ apply_patch (FILE *patch, const char *file, int reverted, FILE **out)
 		argv[argc++] = "--no-backup-if-mismatch";
 
 		/* When reverting a rejected hunk, use the maximum possible
-		 * fuzz, don't generate .rej files, and don't let patch ask to
-		 * unreverse our hunk. Otherwise, either pass in the user-
-		 * supplied max fuzz, or fuzz all but one pre-context and one
-		 * post-context line by default. */
+		 * fuzz and don't generate .rej files. Otherwise, either pass in
+		 * the user-supplied max fuzz, or fuzz all but one pre-context
+		 * and one post-context line by default. */
 		if (reverted) {
 			fuzz = INT_MAX;
 			argv[argc++] = "--reject-file=-";
-			argv[argc++] = "-N";
 		} else if (max_fuzz_user >= 0) {
 			fuzz = max_fuzz_user;
 		} else if (max_context) {
