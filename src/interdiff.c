@@ -971,16 +971,17 @@ output_patch1_only (FILE *p1, FILE *out, int not_reverted)
 }
 
 static void
-open_rej_file (char *file, struct rej_file *rej)
+open_rej_file (const char *file, struct rej_file *rej)
 {
-	char *line = NULL;
+	char *rej_file, *line = NULL;
 	size_t linelen;
 	long atat_pos;
 
-	/* Briefly modify `file` in-place to open the .rej file */
-	strcat (file, ".rej");
-	rej->fp = xopen (file, "r");
-	file[strlen (file) - strlen (".rej")] = '\0';
+	/* Open the .rej file */
+	if (asprintf (&rej_file, "%s.rej", file) < 0)
+		error (EXIT_FAILURE, errno, "asprintf failed");
+	rej->fp = xopen (rej_file, "r");
+	free (rej_file);
 
 	/* Skip (the first two) lines to get to the start of the @@ line */
 	do {
@@ -1133,7 +1134,7 @@ apply_patch (FILE *patch, const char *file, int reverted, struct rej_file *rej,
 
 	/* Open the reject file if requested and there are rejects */
 	if (status && rej)
-		open_rej_file ((char *) file, rej);
+		open_rej_file (file, rej);
 
 	return status;
 }
@@ -1542,10 +1543,13 @@ split_patch_hunks (FILE *patch, size_t len, char *file,
 		/* Find the length of the unline now to use it in the loop */
 		unline_len = strlen (unline);
 	} else {
-		/* Create the output file by temporarily modifying `file` */
-		strcat (file, ".patch");
-		out = xopen (file, "w+");
-		file[strlen (file) - strlen (".patch")] = '\0';
+		char *out_file;
+
+		/* Create the output file */
+		if (asprintf (&out_file, "%s.patch", file) < 0)
+			error (EXIT_FAILURE, errno, "asprintf failed");
+		out = xopen (out_file, "w+");
+		free (out_file);
 	}
 
 	do {
@@ -2104,23 +2108,25 @@ fuzzy_relocate_hunks (const char *file, const char *unline, FILE *patch_out,
 }
 
 static void
-fuzzy_cleanup (char *file, int rej)
+fuzzy_cleanup (const char *file, int rej)
 {
-	/* Modify the `file` string in-place */
-	char *end = strchr (file, '\0');
+	size_t len = strlen (file);
+	char *tmp = xmalloc (len + sizeof (".patch"));
+	char *end = &tmp[len];
+
+	memcpy (tmp, file, len);
 
 	/* Remove the .rej file if one was generated */
 	if (rej) {
 		strcpy (end, ".rej");
-		unlink (file);
+		unlink (tmp);
 	}
 
 	/* Remove the .patch file generated from splitting up the hunks */
 	strcpy (end, ".patch");
-	unlink (file);
+	unlink (tmp);
 
-	/* Terminate `file` back at where it was terminated originally */
-	*end = '\0';
+	free (tmp);
 }
 
 static int
@@ -2128,9 +2134,8 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 {
 	const char *tmpdir = getenv ("TMPDIR");
 	unsigned int tmplen;
-	/* Reserve space for appending .rej and .patch at the end of tmpp1/2 */
-	const char tail1[] = "/interdiff-1.XXXXXX\0patch";
-	const char tail2[] = "/interdiff-2.XXXXXX\0patch";
+	const char tail1[] = "/interdiff-1.XXXXXX";
+	const char tail2[] = "/interdiff-2.XXXXXX";
 	char *tmpp1, *tmpp2;
 	int tmpp1fd, tmpp2fd;
 	struct lines_info file = { NULL, 0, 0, NULL, NULL };
