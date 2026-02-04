@@ -2131,6 +2131,55 @@ fuzzy_cleanup (const char *file, int rej)
 	free (tmp);
 }
 
+/* Run diff on two files and return a FILE* positioned at the first @@ line.
+ * The --- and +++ header lines are consumed.
+ *
+ * Returns NULL if diff is empty. The caller must waitpid() on the returned pid
+ * when return is non-NULL. */
+static FILE *
+run_diff (const char *options, const char *file1, const char *file2,
+	  pid_t *child_out)
+{
+	pid_t child;
+	FILE *in;
+	int diff_is_empty = 1;
+
+	fflush (NULL);
+
+	char *argv[2 + num_diff_opts + 2 + 1];
+	memcpy (argv, ((const char *[]) { DIFF, options }), 2 * sizeof (char *));
+	memcpy (argv + 2, diff_opts, num_diff_opts * sizeof (char *));
+	memcpy (argv + 2 + num_diff_opts,
+		((char *[]) { (char *)file1, (char *)file2, NULL }),
+		(2 + 1) * sizeof (char *));
+	in = xpipe (DIFF, &child, "r", argv);
+
+	/* Eat the first line (--- ...) */
+	for (;;) {
+		int ch = fgetc (in);
+		if (ch == EOF || ch == '\n')
+			break;
+		diff_is_empty = 0;
+	}
+
+	/* Eat the second line (+++ ...) */
+	for (;;) {
+		int ch = fgetc (in);
+		if (ch == EOF || ch == '\n')
+			break;
+	}
+
+	*child_out = child;
+
+	if (diff_is_empty) {
+		fclose (in);
+		waitpid (child, NULL, 0);
+		return NULL;
+	}
+
+	return in;
+}
+
 static int
 output_delta (FILE *p1, FILE *p2, FILE *out)
 {
@@ -2280,28 +2329,8 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 
 	fseek (p1, pos1, SEEK_SET);
 
-	fflush (NULL);
-
-	char *argv[2 + num_diff_opts + 2 + 1];
-	memcpy (argv, ((const char *[]) { DIFF, options }), 2 * sizeof (char *));
-	memcpy (argv + 2, diff_opts, num_diff_opts * sizeof (char *));
-	memcpy (argv + 2 + num_diff_opts, ((char *[]) { tmpp1, tmpp2, NULL }), (2 + 1) * sizeof (char *));
-	in = xpipe (DIFF, &child, "r", argv);
-
-	/* Eat the first line */
-	for (;;) {
-		int ch = fgetc (in);
-		if (ch == EOF || ch == '\n')
-			break;
-		diff_is_empty = 0;
-	}
-
-	/* Eat the second line */
-	for (;;) {
-		int ch = fgetc (in);
-		if (ch == EOF || ch == '\n')
-			break;
-	}
+	in = run_diff (options, tmpp1, tmpp2, &child);
+	diff_is_empty = !in;
 
 	/* Rebuild the diff hunks without unlines, since fuzzy diffing shows
 	 * context line differences that therefore may cause unlines to appear
@@ -2381,9 +2410,10 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 		fclose (tmpdiff);
 	}
 
-	if (in)
+	if (in) {
 		fclose (in);
-	waitpid (child, NULL, 0);
+		waitpid (child, NULL, 0);
+	}
 	if (debug)
 		printf ("reconstructed orig1=%s orig2=%s\n", tmpp1, tmpp2);
 	else {
