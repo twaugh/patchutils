@@ -37,6 +37,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 #ifdef HAVE_UNISTD_H
 # include <unistd.h>
 #endif /* HAVE_UNISTD_H */
@@ -47,6 +48,8 @@
 #ifdef HAVE_SYS_WAIT_H
 # include <sys/wait.h>
 #endif /* HAVE_SYS_WAIT_H */
+#include <sys/param.h>
+#include <sys/stat.h>
 
 #include "util.h"
 #include "diff.h"
@@ -110,6 +113,38 @@ struct lines_info {
 	struct lines *tail;
 };
 
+struct hunk_info {
+	char *s; /* Start of hunk */
+	size_t len; /* Length of hunk in bytes */
+	unsigned long nstart; /* Starting line number */
+	unsigned long nend; /* Ending line number (inclusive) */
+	int relocated:1, /* Whether or not this hunk was relocated */
+	    discard:1; /* Whether or not to discard this hunk */
+};
+
+struct hunk_reloc {
+	unsigned long new; /* New starting line number */
+	long off; /* Offset from the old starting line number */
+	unsigned long fuzz; /* Fuzz amount reported by patch */
+	int ignored:1; /* Whether or not this relocation was ignored */
+};
+
+struct line_info {
+	char *s; /* Start of line */
+	size_t len; /* Length of line in bytes */
+};
+
+struct xtra_context {
+	unsigned long num; /* Number of extra context lines */
+	char *s; /* String of extra context lines */
+	size_t len; /* Length of extra context string in bytes */
+};
+
+struct rej_file {
+	FILE *fp;
+	unsigned long off;
+};
+
 static int human_readable = 1;
 static char *diff_opts[100];
 static int num_diff_opts = 0;
@@ -122,6 +157,8 @@ static int no_revert_omitted = 0;
 static int use_colors = 0;
 static int color_option_specified = 0;
 static int debug = 0;
+static int fuzzy = 0;
+static int max_fuzz_user = -1;
 
 static struct patlist *pat_drop_context = NULL;
 
@@ -934,18 +971,19 @@ output_patch1_only (FILE *p1, FILE *out, int not_reverted)
 }
 
 static int
-apply_patch (FILE *patch, const char *file, int reverted)
+apply_patch (FILE *patch, const char *file, int reverted, FILE **out)
 {
-#define MAX_PATCH_ARGS 4
+#define MAX_PATCH_ARGS 9
 	const char *argv[MAX_PATCH_ARGS];
 	int argc = 0;
 	const char *basename;
 	unsigned long orig_lines, new_lines;
+	char *line, *fuzz_arg = NULL;
 	size_t linelen;
-	char *line;
+	int fildes[4];
+	FILE *r, *w;
 	pid_t child;
 	int status;
-	FILE *w;
 
 	basename = strrchr (file, '/');
 	if (basename)
@@ -964,12 +1002,68 @@ apply_patch (FILE *patch, const char *file, int reverted)
 
 	/* Add up to MAX_PATCH_ARGS arguments for the patch execution */
 	argv[argc++] = PATCH;
-	argv[argc++] = reverted ? (has_ignore_all_space ? "-Rlsp0" : "-Rsp0")
-				: (has_ignore_all_space ? "-lsp0" : "-sp0");
+	argv[argc++] = reverted ? (has_ignore_all_space ? "-Rlp0" : "-Rp0")
+				: (has_ignore_all_space ? "-lp0" : "-p0");
+	if (fuzzy) {
+		int fuzz = 0;
+
+		/* Don't generate .orig files when we expect rejected hunks */
+		argv[argc++] = "--no-backup-if-mismatch";
+
+		/* When reverting a rejected hunk, use the maximum possible
+		 * fuzz, don't generate .rej files, and don't let patch ask to
+		 * unreverse our hunk. Otherwise, either pass in the user-
+		 * supplied max fuzz, or fuzz all but one pre-context and one
+		 * post-context line by default. */
+		if (reverted) {
+			fuzz = INT_MAX;
+			argv[argc++] = "--reject-file=-";
+			argv[argc++] = "-N";
+		} else if (max_fuzz_user >= 0) {
+			fuzz = max_fuzz_user;
+		} else if (max_context) {
+			fuzz = max_context - 1;
+		}
+		if (asprintf (&fuzz_arg, "--fuzz=%d", fuzz) < 0)
+			error (EXIT_FAILURE, errno, "asprintf failed");
+		argv[argc++] = fuzz_arg;
+	}
+	/* Fuzzy mode needs hunk offset messages. Only silence output when
+	 * piping stdout wasn't requested. */
+	if (!out)
+		argv[argc++] = "--silent";
 	argv[argc++] = file;
 	argv[argc++] = NULL;
 
-	w = xpipe(PATCH, &child, "w", (char **) argv);
+	/* Flush any pending writes, set up two pipes, and then fork */
+	fflush (NULL);
+	if (pipe (fildes) == -1 || pipe (&fildes[2]) == -1)
+		error (EXIT_FAILURE, errno, "pipe failed");
+	child = fork ();
+	if (child == -1) {
+		perror ("fork");
+		exit (1);
+	}
+
+	if (child == 0) {
+		/* Keep two pipes: one open to stdin, one to stdout */
+		close (0);
+		close (1);
+		if (dup (fildes[0]) == -1 || dup (fildes[3]) == -1)
+			error (EXIT_FAILURE, errno, "dup failed");
+		close (fildes[0]);
+		close (fildes[1]);
+		close (fildes[2]);
+		close (fildes[3]);
+		execvp (argv[0], (char **)argv);
+	}
+	free (fuzz_arg);
+
+	/* Open the read and write ends of the two pipes */
+	if (!(r = fdopen (fildes[2], "r")) || !(w = fdopen (fildes[1], "w")))
+		error (EXIT_FAILURE, errno, "fdopen");
+	close (fildes[0]);
+	close (fildes[3]);
 
 	fprintf (w, "--- %s\n+++ %s\n", basename, basename);
 	line = NULL;
@@ -1006,6 +1100,12 @@ apply_patch (FILE *patch, const char *file, int reverted)
 	fclose (w);
 	waitpid (child, &status, 0);
 
+	/* Provide the output from patch if requested */
+	if (out)
+		*out = r;
+	else
+		fclose (r);
+
 	if (line)
 		free (line);
 
@@ -1031,9 +1131,12 @@ trim_context (FILE *f /* positioned at start of @@ line */,
 		unsigned long orig_count, orig_orig_count, new_orig_count;
 		unsigned long new_count, orig_new_count, new_new_count;
 		unsigned long total_count = 0;
+		char *atat_comment;
+		ssize_t got;
 
 		/* Read @@ line. */
-		if (getline (&line, &linelen, f) < 0)
+		got = getline (&line, &linelen, f);
+		if (got < 0)
 			break;
 
 		if (line[0] == '\\') {
@@ -1043,10 +1146,16 @@ trim_context (FILE *f /* positioned at start of @@ line */,
 		}
 
 		if (read_atatline (line, &orig_offset, &orig_count,
-				   &new_offset, &new_count))
+				   &new_offset, &new_count) ||
+		    !(atat_comment = strstr (line + 1, "@@")))
 			error (EXIT_FAILURE, 0, "Line not understood: %s",
 			       line);
 
+		/* Check if there's a comment after the @@ line to retain */
+		if (atat_comment + 3 - line < got)
+			atat_comment = xstrdup (atat_comment + 2);
+		else
+			atat_comment = NULL;
 		orig_orig_count = new_orig_count = orig_count;
 		orig_new_count = new_new_count = new_count;
 		fgetpos (f, &pos);
@@ -1107,17 +1216,24 @@ trim_context (FILE *f /* positioned at start of @@ line */,
 
 		fsetpos (f, &pos);
 		if (new_orig_count != 1 && new_new_count != 1)
-			print_color (out, LINE_HUNK, "@@ -%lu,%lu +%lu,%lu @@\n",
+			print_color (out, LINE_HUNK, "@@ -%lu,%lu +%lu,%lu @@",
 				     orig_offset, new_orig_count, new_offset, new_new_count);
 		else if (new_orig_count != 1)
-			print_color (out, LINE_HUNK, "@@ -%lu,%lu +%lu @@\n",
+			print_color (out, LINE_HUNK, "@@ -%lu,%lu +%lu @@",
 				     orig_offset, new_orig_count, new_offset);
 		else if (new_new_count != 1)
-			print_color (out, LINE_HUNK, "@@ -%lu +%lu,%lu @@\n",
+			print_color (out, LINE_HUNK, "@@ -%lu +%lu,%lu @@",
 				     orig_offset, new_offset, new_new_count);
 		else
-			print_color (out, LINE_HUNK, "@@ -%lu +%lu @@\n",
+			print_color (out, LINE_HUNK, "@@ -%lu +%lu @@",
 				     orig_offset, new_offset);
+
+		if (atat_comment) {
+			fputs (atat_comment, out);
+			free (atat_comment);
+		} else {
+			fputc ('\n', out);
+		}
 
 		while (total_count--) {
 			enum line_type type;
@@ -1157,17 +1273,859 @@ trim_context (FILE *f /* positioned at start of @@ line */,
 	return 0;
 }
 
+static void
+output_rej_hunks (const char *diff, struct rej_file **rej1,
+		  struct rej_file **rej2, FILE *out)
+{
+	char *line = NULL;
+
+	while (*rej1 || *rej2) {
+		struct rej_file **rej_ptr = rej1, *rej;
+		int first_line_done = 0, patch_id = 1;
+		unsigned long diff_off;
+		long next_atat_pos;
+		size_t linelen;
+		ssize_t got;
+
+		/* Pick the reject hunk that comes first */
+		if (!*rej1 || (*rej2 && (*rej2)->off < (*rej1)->off)) {
+			rej_ptr = rej2;
+			patch_id = 2;
+		}
+		rej = *rej_ptr;
+
+		if (diff) {
+			/* Wait until the current diff line is an @@ line */
+			if (strncmp (diff, "@@ ", 3))
+				return;
+
+			if (read_atatline (diff, &diff_off, NULL, NULL, NULL))
+				error (EXIT_FAILURE, 0, "line not understood: %s",
+				       diff);
+
+			/* Stop if the diff hunk comes next */
+			if (rej->off > diff_off)
+				return;
+		}
+
+		/* Write the rej hunk until EOF or the next @@ line (i.e., next
+		 * hunk). Note that rej starts at the current @@ line that we
+		 * must write, so don't look for the next @@ until after the
+		 * first line is written. */
+		for (;;) {
+			got = getline (&line, &linelen, rej->fp);
+			if (got <= 0) {
+				if (feof (rej->fp))
+					goto rej_file_eof;
+				error (EXIT_FAILURE, errno,
+				       "Failed to read line from .rej");
+			}
+			if (first_line_done) {
+				if (!strncmp (line, "@@ ", 3))
+					break;
+
+				fwrite (line, (size_t) got, 1, out);
+				next_atat_pos = ftell (rej->fp);
+			} else {
+				/* Append a comment after the @@ line indicating
+				 * this is a rejected hunk. */
+				first_line_done = 1;
+				fwrite (line, (size_t) got - 1, 1, out);
+				fprintf (out, " INTERDIFF: rejected hunk from patch%d, cannot diff context\n",
+					 patch_id);
+			}
+		}
+
+		/* Record the line offset of the next rej hunk, if any */
+		if (read_atatline (line, &rej->off, NULL, NULL, NULL))
+			error (EXIT_FAILURE, 0, "line not understood: %s", line);
+		fseek (rej->fp, next_atat_pos, SEEK_SET);
+
+		if (!feof (rej->fp))
+			continue;
+
+rej_file_eof:
+		/* Clear out this reject file pointer when it's finished */
+		*rej_ptr = NULL;
+	}
+
+	free (line);
+}
+
+/* `xctx` must come with `num` initialized and `s` and `len` zeroed */
+static void
+ctx_lookbehind (const struct line_info *lines, unsigned long start_line_idx,
+		struct xtra_context *xctx)
+{
+	unsigned long i, num = 0;
+
+	for (i = start_line_idx - 1; i < start_line_idx; i--) {
+		const struct line_info *line = &lines[i];
+
+		if (*line->s == '+')
+			continue;
+
+		/* Copy out the line and ensure the first character is a space,
+		 * since it may be a minus. */
+		xctx->s = xrealloc (xctx->s, xctx->len + line->len);
+		memmove (xctx->s + line->len, xctx->s, xctx->len);
+		memcpy (xctx->s, line->s, line->len);
+		*xctx->s = ' ';
+		xctx->len += line->len;
+
+		/* Quit when we've got the desired number of context lines */
+		if (++num == xctx->num)
+			return;
+	}
+
+	/* Record the actual number of extra content lines found, since it is
+	 * less than the number of lines requested. */
+	xctx->num = num;
+}
+
+/* `xctx` must come with `num` initialized and `s` and `len` zeroed */
+static void
+ctx_lookahead (const char *hunk, size_t hlen, struct xtra_context *xctx)
+{
+	const char *line, *next_line;
+	unsigned long num = 0;
+	size_t linelen;
+
+	/* `hunk` is positioned at the first character of the current line
+	 * parsed by split_patch_hunks(). Reduce it by one first to go to the
+	 * newline character of the previous line, to make our loop simpler. */
+	for (line = hunk - 1;; line = next_line) {
+		/* Go to the character _after_ the newline character */
+		line++;
+
+		/* Get the next line now to find the length of the line */
+		next_line = memchr (line, '\n', hunk + hlen - line);
+		if (*line == '+')
+			continue;
+
+		linelen = next_line + 1 - line;
+
+		/* Copy out the line and ensure the first character is a space,
+		 * since it may be a minus. */
+		xctx->s = xrealloc (xctx->s, xctx->len + linelen);
+		memcpy (xctx->s + xctx->len, line, linelen);
+		xctx->s[xctx->len] = ' ';
+		xctx->len += linelen;
+
+		/* Quit when we've got the desired number of context lines */
+		if (++num == xctx->num)
+			break;
+
+		/* Stop when this is the end of the hunk, recording the actual
+		 * number of extra context lines found. */
+		if (!next_line || next_line + 1 == hunk + hlen) {
+			xctx->num = num;
+			break;
+		}
+	}
+}
+
+/* Squash up to max_context*2 unlines between two hunks */
+static int
+squash_unline_gap (char **line_ptr, size_t hlen, const char *unline,
+		   size_t unline_len)
+{
+	char *hunk = *line_ptr, *line = hunk, *prev = line;
+	unsigned int num_unlines = 1;
+	int squash = 0;
+
+	for (; (line = memchr (line, '\n', hunk + hlen - line)); prev = line) {
+		/* Go to the character _after_ the newline character */
+		line++;
+
+		/* Stop when there's nothing left */
+		if (line == hunk + hlen)
+			break;
+
+		/* Move the line pointer to the last unline in the chunk of up
+		 * to max_context*2 unlines so the loop in split_patch_hunks()
+		 * skips over it and thus skips over the entire unline chunk. */
+		if (strncmp (line + 1, unline, unline_len)) {
+			squash = 1;
+			break;
+		}
+
+		if (++num_unlines > max_context * 2)
+			break;
+	}
+
+	/* Always advance the line pointer even without squashing */
+	*line_ptr = prev;
+	return squash;
+}
+
+static void
+write_xctx (struct xtra_context *xctx, FILE *out)
+{
+	if (xctx->s) {
+		fwrite (xctx->s, xctx->len, 1, out);
+		free (xctx->s);
+	}
+}
+
+/* Regenerate a patch with the hunks split up to ensure more of the patch gets
+ * applied successfully. Outputs a `hunk_offs` array (if requested) to map each
+ * hunk's post-split offset from the original hunk's new line number.
+ *
+ * When the unline is provided, that is a hint to strip unlines from context and
+ * perform splits at unlines in the middle of a hunk. */
+static FILE *
+split_patch_hunks (FILE *patch, size_t len, char *file,
+		   unsigned long **hunk_offs, const char *unline)
+{
+	char *fbuf, *hunk, *next_hunk;
+	unsigned long hnum = 0;
+	int has_output = 0;
+	size_t unline_len;
+	FILE *out;
+
+	/* Read the patch into a NUL-terminated buffer */
+	if (len) {
+		fbuf = xmalloc (len + 1);
+		if (fread (fbuf, 1, len, patch) != len)
+			error (EXIT_FAILURE, errno, "fread() of patch failed");
+	} else {
+		/* The patch is a pipe; we can't seek it, so read until EOF */
+		fbuf = NULL;
+		for (int ch; (ch = fgetc (patch)) != EOF;) {
+			fbuf = xrealloc (fbuf, ++len + 1);
+			fbuf[len - 1] = ch;
+		}
+		fclose (patch);
+	}
+	fbuf[len] = '\0';
+
+	/* Find the first hunk. `fbuf` is positioned at the start of a line. */
+	if (!strncmp (fbuf, "@@ ", 3)) {
+		hunk = fbuf;
+	} else {
+		hunk = strstr (fbuf, "\n@@ ");
+		if (!hunk)
+			error (EXIT_FAILURE, 0, "patch file malformed: %s", fbuf);
+	}
+
+	if (unline) {
+		/* Create a temporary file for the unline-cleansed output */
+		out = xtmpfile ();
+
+		/* Find the length of the unline now to use it in the loop */
+		unline_len = strlen (unline);
+	} else {
+		/* Create the output file by temporarily modifying `file` */
+		strcat (file, ".patch");
+		out = xopen (file, "w+");
+		file[strlen (file) - strlen (".patch")] = '\0';
+	}
+
+	do {
+		/* nctx[0] = pre-context lines, nctx[1] = post-context lines
+		 * ndelta[0] = deleted lines, ndelta[1] = added lines */
+		unsigned long nctx[2] = {}, ndelta[2] = {}, nctx_target;
+		unsigned long ostart, nstart, orig_nstart, start_line_idx = 0;
+		struct xtra_context xctx_pre = {};
+		struct line_info *lines = NULL;
+		unsigned long num_lines = 0;
+		int skipped_lines = 0;
+		char *line;
+		size_t hlen;
+
+		if (read_atatline (hunk, &ostart, NULL, &nstart, NULL))
+			error (EXIT_FAILURE, 0, "line not understood: %s",
+			       strsep (&hunk, "\n"));
+
+		/* Save the original hunk's new line number */
+		orig_nstart = nstart;
+
+		/* Find the next hunk now to tell where the current hunk ends */
+		next_hunk = strstr (hunk, "\n@@ ");
+		if (next_hunk)
+			hlen = ++next_hunk - hunk;
+		else
+			hlen = strlen (hunk);
+
+		/* Count the number of pre-context and post-context lines in
+		 * this hunk. The greater of the two will be the number of pre-
+		 * context and post-context lines targeted per split hunk. */
+		if (!unline) {
+			unsigned long orig_hunk_nctx[2] = {};
+
+			for (line = hunk;
+			     (line = memchr (line, '\n', hunk + hlen - line)) &&
+			     line[1] == ' '; line++, orig_hunk_nctx[0]++);
+			for (line = hunk + hlen - 1;
+			     (line = memrchr (hunk, '\n', line - hunk)) &&
+			     line[1] == ' '; line--, orig_hunk_nctx[1]++);
+			nctx_target = MAX (orig_hunk_nctx[0], orig_hunk_nctx[1]);
+		}
+
+		/* Split this hunk into multiple smaller hunks, if possible.
+		 * This is done by looking for deltas (+/- lines) that aren't
+		 * contiguous and thus have context lines in between them. Note
+		 * that the first line is intentionally skipped because the
+		 * first line is the @@ line. When no splitting occurs, this
+		 * still has the effect of trimming context lines for the hunk
+		 * to ensure the number of pre-context lines and post-context
+		 * lines are equal. */
+		for (line = hunk; (line = memchr (line, '\n', hunk + hlen - line));) {
+			unsigned long start_off = 0, onum, nnum;
+			struct line_info *start_line, *end_line;
+			struct xtra_context xctx_post = {};
+			size_t hlen_rem;
+
+			/* Go to the character _after_ the newline character */
+			line++;
+
+			/* Set the length of the previous line (if any). Only do
+			 * this once because when doing unline splitting, the
+			 * unlines aren't recorded into the lines array. */
+			if (lines && !lines[num_lines - 1].len)
+				lines[num_lines - 1].len =
+					line - lines[num_lines - 1].s;
+
+			/* Check if this is the end. If so, terminate the hunk
+			 * now because there isn't any new line to parse. */
+			hlen_rem = hunk + hlen - line;
+			if (!hlen_rem)
+				goto split_hunk_incl_latest;
+
+			/* Check if this is an unline that we need to remove */
+			if (unline && !strncmp (line + 1, unline, unline_len)) {
+				/* Split the hunk now if there's a delta, unless
+				 * this is a bogus hunk from a rejected patch
+				 * hunk. Bogus hunks stem from one side of the
+				 * diff operation consisting only of unlines.
+				 * Such diffs have only unlines in their context
+				 * and only one delta type: either additions or
+				 * subtractions, _not_ both. Discard bogus hunks
+				 * by skipping over them here, which is fine
+				 * since the corresponding rejected patch hunk
+				 * is emitted later.
+				 *
+				 * Sometimes a hunk may appear bogus when it is
+				 * not; this can be identified by checking if
+				 * there are no more than max_context*2 unlines
+				 * until the next hunk. Squash the unlines away
+				 * in that case, which alters the line numbers
+				 * of the hunk as a side effect. The assumption
+				 * is that these two hunks are related to each
+				 * other but are just slightly offset in the two
+				 * diffed files due to small bits of missing
+				 * context that were filled in with unlines. */
+				if (ndelta[0] || ndelta[1]) {
+					if (nctx[0] || nctx[1] ||
+					    (ndelta[0] && ndelta[1]))
+						goto split_hunk_incl_latest;
+
+					if (squash_unline_gap (&line, hlen_rem,
+							       unline,
+							       unline_len)) {
+						skipped_lines = 1;
+						continue;
+					}
+				}
+
+				/* Move forward the starting line offset,
+				 * discarding any pre-context lines seen. The
+				 * starting line index is set to the _next_
+				 * (non-unline) line, which may not exist. */
+				start_line_idx = num_lines;
+				start_off += nctx[0] + 1;
+				nctx[0] = 0;
+				continue;
+			}
+
+			/* Record the current line, setting `len` to zero */
+			lines = xrealloc (lines, ++num_lines * sizeof (*lines));
+			lines[num_lines - 1] = (typeof (*lines)){ line };
+
+			/* Track +/- lines as well as pre-context and post-
+			 * context lines. Split the hunk upon encountering a +/-
+			 * line after post-context lines, unless we're splitting
+			 * at unlines instead. */
+			if (*line == '+' || *line == '-') {
+				if (!unline && nctx[1]) {
+					/* The current line belongs to the
+					 * _next_ split hunk. Exclude it. */
+					end_line = &lines[num_lines - 2];
+					goto split_hunk;
+				}
+
+				ndelta[*line == '+']++;
+			} else {
+				nctx[ndelta[0] || ndelta[1]]++;
+			}
+
+			/* Keep parsing until there's a need to do a split */
+			continue;
+
+split_hunk_incl_latest:
+			/* Split the hunk including the latest recorded line */
+			end_line = &lines[num_lines - 1];
+split_hunk:
+			/* Stop now if there are no lines left to make a hunk */
+			if (start_line_idx == num_lines)
+				break;
+
+			/* Check that there's an actual delta recorded */
+			if (!ndelta[0] && !ndelta[1])
+				error (EXIT_FAILURE, 0, "hunk without +/- lines?");
+
+			/* Split the current hunk by terminating it and starting
+			 * a new hunk. When generating a patch to apply, there
+			 * must be the same number of pre-context lines as post-
+			 * context lines, otherwise patch will need to fuzz the
+			 * extra context lines. An exception is when the context
+			 * is at either the beginning or end of the file. Target
+			 * having the same number of pre-context and post-
+			 * context lines as the original hunk itself, so the
+			 * user-provided fuzz factor behaves as expected. Note
+			 * that this adjustment impacts ostart and nstart either
+			 * for the current split hunk or the next split hunk. */
+			start_line = &lines[start_line_idx];
+			if (unline) {
+				/* Add the start offset to the old/new lines */
+				ostart += start_off;
+				nstart += start_off;
+			} else if (nctx[1] < nctx_target && hlen_rem) {
+				/* If the number of post-context lines is still
+				 * below the target number afterwards, then it
+				 * means we hit the end of the original hunk
+				 * itself. It's technically fine because it
+				 * means the original hunk came with an unequal
+				 * number of pre- and post-context lines. */
+				xctx_post.num = nctx_target - nctx[1];
+				ctx_lookahead (line, hlen_rem, &xctx_post);
+			}
+
+			/* Calculate the old and new line counts */
+			onum = nnum = xctx_pre.num + /* Extra pre-context */
+				      end_line + 1 - start_line + /* Hunk */
+				      xctx_post.num; /* Extra post-context */
+			onum -= ndelta[1];
+			nnum -= ndelta[0];
+
+			/* Emit the hunk to the output file */
+			fprintf (out, "@@ -%lu,%lu +%lu,%lu @@\n",
+				 ostart, onum, nstart, nnum);
+			write_xctx (&xctx_pre, out);
+			/* If lines were skipped, then the output needs to be
+			 * written one line at a time. */
+			if (skipped_lines) {
+				skipped_lines = 0;
+				for (unsigned long i = start_line_idx;
+				     &lines[i] <= end_line; i++)
+					fwrite (lines[i].s, lines[i].len, 1, out);
+			} else {
+				fwrite (start_line->s,
+					end_line->s + end_line->len - start_line->s,
+					1, out);
+			}
+			write_xctx (&xctx_post, out);
+			has_output = 1;
+
+			/* Save the offset from this hunk's original new line */
+			if (hunk_offs) {
+				*hunk_offs = xrealloc (*hunk_offs, ++hnum *
+						       sizeof (*hunk_offs));
+				(*hunk_offs)[hnum - 1] = nstart - orig_nstart;
+			}
+
+			/* Stop when there's nothing left */
+			if (!hlen_rem)
+				break;
+
+			/* Start the next hunk */
+			start_line_idx = num_lines;
+			ostart += onum;
+			nstart += nnum;
+			if (unline) {
+				/* The current line is not included in the next
+				 * hunk when splitting at unlines. */
+				nctx[0] = nctx[1] = ndelta[0] = ndelta[1] = 0;
+			} else {
+				/* Find extra pre-context if extra post-context
+				 * was used for this split hunk, since it means
+				 * that there isn't enough normal post-context
+				 * to be the next split hunk's pre-context. */
+				start_line_idx -= 1 + nctx[1];
+				xctx_pre = (typeof (xctx_pre)){ xctx_post.num };
+				if (xctx_pre.num)
+					ctx_lookbehind (lines, start_line_idx,
+							&xctx_pre);
+
+				/* Subtract the extra post-context lines of this
+				 * hunk, the normal post-context lines of this
+				 * hunk, and the extra pre-context lines for the
+				 * _next_ hunk to get the _next_ hunk's starting
+				 * line numbers. */
+				ostart -= xctx_pre.num + xctx_post.num + nctx[1];
+				nstart -= xctx_pre.num + xctx_post.num + nctx[1];
+				nctx[0] = nctx[1];
+				nctx[1] = 0;
+				ndelta[1] = *line == '+';
+				ndelta[0] = !ndelta[1];
+			}
+		}
+		free (lines);
+	} while ((hunk = next_hunk));
+	free (fbuf);
+
+	/* No output, no party. Can happen if the hunks were only unlines. */
+	if (!has_output) {
+		fclose (out);
+		return NULL;
+	}
+
+	/* Reposition the output file back to the beginning */
+	rewind (out);
+	return out;
+}
+
+static int
+hunk_info_cmp (const void *lhs_ptr, const void *rhs_ptr)
+{
+	const struct hunk_info *lhs = lhs_ptr, *rhs = rhs_ptr;
+
+	return lhs->nstart - rhs->nstart;
+}
+
+static int
+hunk_reloc_cmp (const void *lhs_ptr, const void *rhs_ptr)
+{
+	const struct hunk_reloc *lhs = lhs_ptr, *rhs = rhs_ptr;
+
+	return lhs->new - rhs->new;
+}
+
+static void
+parse_fuzzed_hunks (FILE *patch_out, const unsigned long *hunk_offs,
+		    struct hunk_reloc **relocs, unsigned long *num_relocs)
+{
+	char *line = NULL;
+	size_t linelen;
+
+	/* Parse out each fuzzed hunk's line offset */
+	while (getline (&line, &linelen, patch_out) > 0) {
+		struct hunk_reloc *prev = &(*relocs)[*num_relocs - 1];
+		unsigned long fuzz = 0, hnum, lnum;
+		long off;
+
+		if (sscanf (line, "Hunk #%lu succeeded at %lu (offset %ld",
+			    &hnum, &lnum, &off) != 3 &&
+		    sscanf (line, "Hunk #%lu succeeded at %lu with fuzz %lu (offset %ld",
+			    &hnum, &lnum, &fuzz, &off) != 4)
+			continue;
+
+		/* Recover the correct new line number of the possibly-split
+		 * hunk, and skip it if it matches the relocated new line number
+		 * of the previous hunk (if any). Split hunks are contiguous. */
+		lnum -= hunk_offs[hnum - 1];
+		if (*relocs && lnum - off == prev->new - prev->off)
+			continue;
+
+		*relocs = xrealloc (*relocs, ++*num_relocs * sizeof (**relocs));
+		(*relocs)[*num_relocs - 1] =
+			(typeof (**relocs)){ lnum, off, fuzz };
+	}
+	free (line);
+}
+
+static void
+fuzzy_relocate_hunks (const char *file, const char *unline, FILE *patch_out,
+		      const unsigned long *hunk_offs)
+{
+	struct hunk_info *hunks = NULL;
+	struct hunk_reloc *relocs = NULL;
+	unsigned long num_hunks = 0, num_relocs = 0;
+	unsigned long i, j, num_unlines = 0;
+	char *end, *endl, *fbuf, *start;
+	int new_hunk = 1;
+	size_t unlinelen;
+	struct stat st;
+	FILE *fp;
+
+	/* Parse the fuzzed hunks when relocating for line offset differences */
+	if (patch_out)
+		parse_fuzzed_hunks (patch_out, hunk_offs, &relocs, &num_relocs);
+
+	/* Open the patched file and copy it into a buffer */
+	if (stat (file, &st) < 0)
+		error (EXIT_FAILURE, errno, "stat() fail");
+	fbuf = xmalloc (st.st_size);
+	fp = xopen (file, "r");
+	if (fread (fbuf, 1, st.st_size, fp) != st.st_size)
+		error (EXIT_FAILURE, errno, "fread() fail");
+	fclose (fp);
+
+	/* Sort the relocations array by ascending order of new line number. A
+	 * relocation may indicate that a contiguous block of code should
+	 * actually be split into two or more hunks to better align with the
+	 * other file, since they are split up in the other file. Sorting the
+	 * relocations is needed for tracking this during hunk enumeration. */
+	if (relocs)
+		qsort (relocs, num_relocs, sizeof (*relocs), hunk_reloc_cmp);
+
+	/* Enumerate every hunk in the file */
+	start = fbuf; /* Start of the line */
+	end = fbuf + st.st_size; /* End of the file */
+	unlinelen = strlen(unline); /* Unline length (includes newline char) */
+	for (endl = fbuf, i = 1, j = 0;
+	     (endl = memchr (endl, '\n', end - endl));
+	     start = ++endl, i++) {
+		size_t len = endl - start + 1;
+
+		/* Cut a new hunk if a relocated hunk starts at this line. This
+		 * is important because a relocated hunk may start in the middle
+		 * of a larger hunk, which is a hint to split the hunk. Note
+		 * that a relocation may occur on an unline, which is corrected
+		 * later on in a different loop. When that is the case, we still
+		 * need to iterate past the relocation at that line in order to
+		 * continue through the relocations array. */
+		if (j < num_relocs && i == relocs[j].new) {
+			j++;
+			new_hunk = 1;
+		}
+
+		/* Skip over unlines */
+		if (len == unlinelen && !memcmp (start, unline, len)) {
+			num_unlines++;
+			new_hunk = 1;
+			continue;
+		}
+
+		/* Keep expanding the current detected hunk */
+		if (!new_hunk) {
+			hunks[num_hunks - 1].len += len;
+			hunks[num_hunks - 1].nend++;
+			num_unlines = 0;
+			continue;
+		}
+		new_hunk = 0;
+
+		/* Start a new hunk */
+		hunks = xrealloc (hunks, ++num_hunks * sizeof (*hunks));
+		hunks[num_hunks - 1] = (typeof (*hunks)){ start, len, i, i };
+
+		/* Check the number of unlines between the end of the previous
+		 * hunk (if any) and the start of the current hunk. If there are
+		 * no more than max_context*2 unlines between the two, then eat
+		 * the unlines and combine the hunks together. Note that we must
+		 * also ignore the relocation for this hunk, if any, while
+		 * accounting for the relocation new line possibly being up to
+		 * `fuzz` lines _before_ the actual line (see more below). */
+		if (num_hunks > 1 && num_unlines <= max_context * 2) {
+			struct hunk_info *hcurr = &hunks[num_hunks - 1];
+			struct hunk_info *hprev = hcurr - 1;
+
+			for (int k = num_relocs - 1; k >= 0; k--) {
+				struct hunk_reloc *rcurr = &relocs[k];
+				unsigned long delta;
+
+				if (rcurr->new <= hcurr->nstart) {
+					delta = hcurr->nstart - rcurr->new;
+					if (delta <= rcurr->fuzz)
+						rcurr->ignored = 1;
+					break;
+				}
+			}
+
+			hcurr->nstart = hcurr->nend = hprev->nend + 1;
+		}
+		num_unlines = 0;
+	}
+
+	/* Check and possibly correct the new line number in the case of fuzzed
+	 * hunks. Patch can screw this up and emit a line number up to `fuzz`
+	 * lines _before_ the actual line. */
+	for (i = 0; i < num_relocs; i++) {
+		struct hunk_reloc *rcurr = &relocs[i];
+
+		/* Skip ignored relocations and relocations without fuzz */
+		if (rcurr->ignored || !rcurr->fuzz)
+			continue;
+
+		for (j = 0; j < num_hunks; j++) {
+			struct hunk_info *hcurr = &hunks[j];
+			unsigned long delta;
+
+			/* Find a hunk that starts within `fuzz` lines after
+			 * this relocation. If it does, correct the new line
+			 * number and the offset to use this hunk. */
+			if (hcurr->nstart >= rcurr->new) {
+				delta = hcurr->nstart - rcurr->new;
+				if (delta <= rcurr->fuzz) {
+					rcurr->new += delta;
+					rcurr->off += delta;
+				}
+				break;
+			}
+		}
+	}
+
+	/* Apply relocations */
+	for (i = 0; i < num_relocs; i++) {
+		struct hunk_reloc *rcurr = &relocs[i];
+		int found = 0;
+
+		if (rcurr->ignored)
+			continue;
+
+		for (j = 0; j < num_hunks; j++) {
+			struct hunk_info *hcurr = &hunks[j], *hprev = hcurr - 1;
+
+			/* Make sure we don't relocate a hunk more than once */
+			if (hcurr->relocated)
+				continue;
+
+			/* Look for the hunk that starts at the new line number,
+			 * subtracting the offset to get the hunk's _original_
+			 * new line number. And relocate succeeding hunks that
+			 * had their unlines squelched between this hunk. */
+			if (hcurr->nstart == rcurr->new ||
+			    (found && hcurr->nstart ==
+			     hprev->nend + rcurr->off + 1)) {
+				hcurr->nstart -= rcurr->off;
+				hcurr->nend -= rcurr->off;
+				hcurr->relocated = 1;
+				found = 1;
+			} else if (found) {
+				break;
+			}
+		}
+
+		/* Fail if we couldn't find the hunk in question */
+		if (!found)
+			error (EXIT_FAILURE, 0, "failed to relocate hunk");
+	}
+
+	/* Now that all hunks' final positions are determined, discard hunks
+	 * that overlap with a relocated hunk's new position. Such hunks will
+	 * have generated rejects on the other orig file, which will be emitted
+	 * separately and thus removing the conflicting hunk here won't result
+	 * in any loss of information from the diff. */
+	for (i = 0; i < num_hunks; i++) {
+		/* Find the next relocated hunk */
+		if (!hunks[i].relocated)
+			continue;
+
+		/* Check all non-relocated hunks for conflicts to discard. It is
+		 * possible for there to be more than one conflicting hunk. */
+		for (j = 0; j < num_hunks; j++) {
+			if (hunks[j].relocated || hunks[j].discard)
+				continue;
+
+			/* Check if hunks[j] starts or ends in hunks[i] */
+			if ((hunks[j].nstart >= hunks[i].nstart &&
+			     hunks[j].nstart <= hunks[i].nend) ||
+			    (hunks[j].nend >= hunks[i].nstart &&
+			     hunks[j].nend <= hunks[i].nend))
+				hunks[j].discard = 1;
+		}
+	}
+
+	/* Sort the hunks by ascending order of starting line number */
+	qsort (hunks, num_hunks, sizeof (*hunks), hunk_info_cmp);
+
+	/* Write the final result to the patched file, maintaining the same
+	 * unline. The result (in bytes, not lines) may be smaller than before
+	 * due to some hunks getting discarded and thus replaced by unlines, so
+	 * truncate the entire file before writing. */
+	fp = xopen (file, "w+");
+	for (i = 0, j = 1; i < num_hunks; i++) {
+		if (hunks[i].discard)
+			continue;
+
+		/* Write out unlines between the previous and current hunks */
+		for (; j < hunks[i].nstart; j++)
+			fwrite (unline, unlinelen, 1, fp);
+		j = hunks[i].nend + 1;
+
+		/* Write out the hunk itself */
+		fwrite (hunks[i].s, hunks[i].len, 1, fp);
+	}
+
+	/* All done, clean everything up */
+	fclose (fp);
+	free (fbuf);
+	free (hunks);
+	free (relocs);
+}
+
+static void
+fuzzy_do_rej (char *file, struct rej_file *rej, const char *other_file)
+{
+	char *line = NULL;
+	size_t linelen;
+	long atat_pos;
+
+	/* Briefly modify `file` in-place to open the .rej file */
+	strcat (file, ".rej");
+	rej->fp = xopen (file, "r");
+	file[strlen (file) - strlen (".rej")] = '\0';
+
+	/* Skip (the first two) lines to get to the start of the @@ line */
+	do {
+		atat_pos = ftell (rej->fp);
+		if (getline (&line, &linelen, rej->fp) <= 0)
+			error (EXIT_FAILURE, errno,
+			       "Failed to read line from .rej");
+	} while (strncmp (line, "@@ ", 3));
+	fseek (rej->fp, atat_pos, SEEK_SET);
+
+	/* Export the line offset of the first rej hunk */
+	if (read_atatline (line, &rej->off, NULL, NULL, NULL))
+		error (EXIT_FAILURE, 0, "line not understood: %s", line);
+	free (line);
+
+	/* Revert the rejected hunks on the _other_ file, so they're excluded
+	 * from the 'diff' output. Otherwise, 'diff' will output the _reverse_
+	 * of the rejected hunks, which will muddy the final output as we will
+	 * print out the rejected hunks themselves later anyway. */
+	apply_patch (rej->fp, other_file, 1, NULL);
+
+	/* Go back to the @@ after apply_patch() moved the file cursor */
+	fseek (rej->fp, atat_pos, SEEK_SET);
+}
+
+static void
+fuzzy_cleanup (char *file, int rej)
+{
+	/* Modify the `file` string in-place */
+	char *end = strchr (file, '\0');
+
+	/* Remove the .rej file if one was generated */
+	if (rej) {
+		strcpy (end, ".rej");
+		unlink (file);
+	}
+
+	/* Remove the .patch file generated from splitting up the hunks */
+	strcpy (end, ".patch");
+	unlink (file);
+
+	/* Terminate `file` back at where it was terminated originally */
+	*end = '\0';
+}
+
 static int
 output_delta (FILE *p1, FILE *p2, FILE *out)
 {
 	const char *tmpdir = getenv ("TMPDIR");
 	unsigned int tmplen;
-	const char tail1[] = "/interdiff-1.XXXXXX";
-	const char tail2[] = "/interdiff-2.XXXXXX";
+	/* Reserve space for appending .rej and .patch at the end of tmpp1/2 */
+	const char tail1[] = "/interdiff-1.XXXXXX\0patch";
+	const char tail2[] = "/interdiff-2.XXXXXX\0patch";
 	char *tmpp1, *tmpp2;
 	int tmpp1fd, tmpp2fd;
 	struct lines_info file = { NULL, 0, 0, NULL, NULL };
 	struct lines_info file2 = { NULL, 0, 0, NULL, NULL };
+	struct rej_file rej1, rej2;
+	int ret1 = 0, ret2 = 0;
 	char *oldname = NULL, *newname = NULL;
 	pid_t child;
 	FILE *in;
@@ -1244,21 +2202,63 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 	create_orig (p2, &file, 0, NULL);
 	create_orig (p1, &file2, mode == mode_combine, NULL);
 	pos1 = ftell (p1);
+	pos2 = ftell (p2);
 	fseek (p1, start1, SEEK_SET);
 	fseek (p2, start2, SEEK_SET);
-	merge_lines(&file, &file2);
 
 	/* Write it out. */
-	write_file (&file, tmpp1fd);
-	write_file (&file, tmpp2fd);
+	if (fuzzy) {
+		/* Ensure the same unline is used for both files */
+		write_file (&file, tmpp1fd);
+		file2.unline = xstrdup (file.unline);
+		write_file (&file2, tmpp2fd);
+	} else {
+		merge_lines (&file, &file2);
+		write_file (&file, tmpp1fd);
+		write_file (&file, tmpp2fd);
+	}
 
-	if (apply_patch (p1, tmpp1, mode == mode_combine))
-		error (EXIT_FAILURE, 0,
-		       "Error applying patch1 to reconstructed file");
+	if (fuzzy) {
+		unsigned long *hunk_offs = NULL;
+		FILE *patch_out, *sp;
 
-	if (apply_patch (p2, tmpp2, 0))
-		error (EXIT_FAILURE, 0,
-		       "Error applying patch2 to reconstructed file");
+		/* Split the patch hunks into smaller hunks, then apply that */
+		sp = split_patch_hunks (p1, pos1 - start1, tmpp1, &hunk_offs, NULL);
+		ret1 = apply_patch (sp, tmpp1, false, &patch_out);
+		fclose (sp);
+
+		/* Relocate hunks in tmpp1 in order to make them align with the
+		 * positions of the hunks in tmpp2. */
+		fuzzy_relocate_hunks (tmpp1, file.unline, patch_out, hunk_offs);
+		fclose (patch_out);
+		free (hunk_offs);
+
+		/* Split the patch hunks into smaller hunks, then apply that */
+		sp = split_patch_hunks (p2, pos2 - start2, tmpp2, NULL, NULL);
+		ret2 = apply_patch (sp, tmpp2, false, NULL);
+		fclose (sp);
+
+		/* For tmpp2 relocations, only eat unline gaps between hunks
+		 * that amount to no more than max_context*2 lines. This was
+		 * also done to tmpp1 during its relocation pass. */
+		fuzzy_relocate_hunks (tmpp2, file.unline, NULL, NULL);
+
+		/* Handle the rejected hunks. This needs to be done after both
+		 * files are patched because it may revert a rejected hunk from
+		 * the other file. */
+		if (ret1)
+			fuzzy_do_rej (tmpp1, &rej1, tmpp2);
+		if (ret2)
+			fuzzy_do_rej (tmpp2, &rej2, tmpp1);
+	} else {
+		if (apply_patch (p1, tmpp1, mode == mode_combine, NULL))
+			error (EXIT_FAILURE, 0,
+			       "Error applying patch1 to reconstructed file");
+
+		if (apply_patch (p2, tmpp2, 0, NULL))
+			error (EXIT_FAILURE, 0,
+			       "Error applying patch2 to reconstructed file");
+	}
 
 	fseek (p1, pos1, SEEK_SET);
 
@@ -1285,17 +2285,30 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 			break;
 	}
 
-	if (!diff_is_empty) {
+	/* Rebuild the diff hunks without unlines, since fuzzy diffing shows
+	 * context line differences that therefore may cause unlines to appear
+	 * in the diff output. We don't want any unlines in the final output. */
+	if (fuzzy && !diff_is_empty) {
+		in = split_patch_hunks (in, 0, NULL, NULL, file.unline);
+		diff_is_empty = !in;
+	}
+
+	if (!diff_is_empty || ret1 || ret2) {
+		/* Initialize the rej pointers for output_rej_hunks() */
+		struct rej_file *rej1_ptr = ret1 ? &rej1 : NULL;
+		struct rej_file *rej2_ptr = ret2 ? &rej2 : NULL;
 		/* ANOTHER temporary file!  This is to catch the case
 		 * where we just don't have enough context to generate
 		 * a proper interdiff. */
 		FILE *tmpdiff = xtmpfile ();
 		char *line = NULL;
 		size_t linelen;
-		for (;;) {
+		for (; !diff_is_empty;) {
 			ssize_t got = getline (&line, &linelen, in);
 			if (got < 0)
 				break;
+			/* Output fuzzy diff reject hunks in order */
+			output_rej_hunks (line, &rej1_ptr, &rej2_ptr, tmpdiff);
 			fwrite (line, (size_t) got, 1, tmpdiff);
 			if (*line != ' ' && !strcmp (line + 1, file.unline)) {
 				/* Uh-oh.  We're trying to output a
@@ -1320,6 +2333,9 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 			}
 		}
 		free (line);
+
+		/* Output any remaining reject hunks */
+		output_rej_hunks (NULL, &rej1_ptr, &rej2_ptr, tmpdiff);
 
 		/* First character */
 		if (human_readable) {
@@ -1347,13 +2363,18 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 		fclose (tmpdiff);
 	}
 
-	fclose (in);
+	if (in)
+		fclose (in);
 	waitpid (child, NULL, 0);
 	if (debug)
 		printf ("reconstructed orig1=%s orig2=%s\n", tmpp1, tmpp2);
 	else {
 		unlink (tmpp1);
 		unlink (tmpp2);
+		if (fuzzy) {
+			fuzzy_cleanup (tmpp1, ret1);
+			fuzzy_cleanup (tmpp2, ret2);
+		}
 	}
 	free (oldname);
 	free (newname);
@@ -1366,6 +2387,10 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 	else {
 		unlink (tmpp1);
 		unlink (tmpp2);
+		if (fuzzy) {
+			fuzzy_cleanup (tmpp1, ret1);
+			fuzzy_cleanup (tmpp2, ret2);
+		}
 	}
 	if (human_readable)
 		fprintf (out, "%s impossible; taking evasive action\n",
@@ -1820,7 +2845,7 @@ flipdiff (FILE *p1, FILE *p2, FILE *flip1, FILE *flip2)
 	tmpfd = xmkstemp (tmpp1);
 	write_file (&intermediate, tmpfd);
 	fsetpos (p1, &at1);
-	if (apply_patch (p1, tmpp1, 1))
+	if (apply_patch (p1, tmpp1, 1, NULL))
 		error (EXIT_FAILURE, 0,
 		       "Error reconstructing original file");
 
@@ -1829,7 +2854,7 @@ flipdiff (FILE *p1, FILE *p2, FILE *flip1, FILE *flip2)
 	tmpfd = xmkstemp (tmpp3);
 	write_file (&intermediate, tmpfd);
 	fsetpos (p2, &at2);
-	if (apply_patch (p2, tmpp3, 0))
+	if (apply_patch (p2, tmpp3, 0, NULL))
 		error (EXIT_FAILURE, 0,
 		       "Error reconstructing final file");
 
@@ -2231,7 +3256,12 @@ syntax (int err)
 "                  (interdiff) When a patch from patch1 is not in patch2,\n"
 "                  don't revert it\n"
 "  --in-place      (flipdiff) Write the output to the original input\n"
-"                  files\n";
+"                  files\n"
+"  --fuzzy[=N]\n"
+"                  (interdiff) Perform a fuzzy comparison, showing the minimal\n"
+"                  set of differences including those in context lines.\n"
+"                  Optionally set N to the maximum number of context lines\n"
+"                  to fuzz (which passes '--fuzz=N' to the patch utility).\n";
 
 	fprintf (err ? stderr : stdout, syntax_str, progname, progname);
 	exit (err);
@@ -2293,6 +3323,7 @@ main (int argc, char *argv[])
 			{"flip", 0, 0, 1000 + 'F' },
 			{"no-revert-omitted", 0, 0, 1000 + 'R' },
 			{"in-place", 0, 0, 1000 + 'i' },
+			{"fuzzy", 2, 0, 1000 + 'f' },
 			{"debug", 0, 0, 1000 + 'D' },
 			{"strip-match", 1, 0, 'p'},
 			{"unified", 1, 0, 'U'},
@@ -2379,6 +3410,16 @@ main (int argc, char *argv[])
 			if (mode != mode_flip)
 				syntax (1);
 			flipdiff_inplace = 1;
+			break;
+		case 1000 + 'f':
+			if (mode != mode_inter)
+				syntax (1);
+			if (optarg) {
+				max_fuzz_user = strtoul (optarg, &end, 0);
+				if (optarg == end)
+					syntax (1);
+			}
+			fuzzy = 1;
 			break;
 		case 1000 + 'D':
 			debug = 1;
