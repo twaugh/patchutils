@@ -57,20 +57,39 @@ Patchutils is a small collection of programs that operate on patch files. It pro
 
 - **svndiff** / **svndiffview** - Subversion-specific diff viewing tools.
 
-## Installation
-
-Patchutils uses the standard GNU autotools build system:
+## Building from the Git repository
 
 ```bash
+./gnulib-update.sh
+./bootstrap
 ./configure
-make
+make -j$(nproc)
+```
+
+The `gnulib-update.sh` and `./bootstrap` steps are only needed once
+(or when `configure.ac` / `Makefile.am` change). After that, just
+`./configure && make` is sufficient.
+
+This requires **automake**, **autoconf**, and **gnulib-devel** to be
+installed on your system.
+
+## Installation
+
+```bash
 make install
 ```
 
-## Building from the Git repository
+## Testing
 
-After cloning the source from GitHub, run `./bootstrap` to generate the `configure` script.
-This step requires **automake**, **autoconf**, and **gnulib-devel** to be installed on your system.
+```bash
+make check
+```
+
+Run a single test:
+
+```bash
+make check TESTS=tests/addhunk1/run-test
+```
 
 ## Requirements
 
