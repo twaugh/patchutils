@@ -432,7 +432,17 @@ TESTS = tests/newline1/run-test \
 	tests/git-deleted-file/run-test \
 	tests/git-pure-rename/run-test \
 	tests/git-diff-edge-cases/run-test \
-	tests/malformed-diff-headers/run-test
+	tests/malformed-diff-headers/run-test \
+	tests/fuzzy1/run-test \
+	tests/fuzzy2/run-test \
+	tests/fuzzy3/run-test \
+	tests/fuzzy4/run-test \
+	tests/fuzzy5/run-test \
+	tests/fuzzy6/run-test \
+	tests/fuzzy7/run-test \
+	tests/fuzzy8/run-test \
+	tests/fuzzy9/run-test \
+	tests/fuzzy10/run-test
 
 # Scanner tests (only when scanner-patchfilter is enabled)
 if USE_SCANNER_PATCHFILTER

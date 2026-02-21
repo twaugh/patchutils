@@ -1,0 +1,55 @@
+#!/bin/sh
+
+# This is an interdiff(1) testcase.
+# Test: Fuzzy diffing with differing context lines and line offsets fuzzed.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << 'EOF' > patch1
+--- file
++++ file
+@@ -5,9 +5,6 @@
+ line 5
+ if
+ 1
+-fi
+-if
+-2
+ fi
+ A
+ B
+EOF
+
+cat << 'EOF' > patch2
+--- file
++++ file
+@@ -50,9 +50,6 @@
+ line 6
+ if
+ 1
+-fi
+-if
+-2
+ fi
+ B
+ C
+EOF
+
+cat << 'EOF' > expected
+================================================================================
+*    CONTEXT DIFFERENCES - surrounding code differences between the patches    *
+================================================================================
+
+--- file
++++ file
+@@ -7,3 +8,2 @@
+ fi
+-A
+ B
+EOF
+
+${INTERDIFF} --fuzzy patch1 patch2 2>errors >output
+[ -s errors ] && exit 1
+
+cmp output expected || exit 1
