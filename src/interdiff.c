@@ -1300,6 +1300,18 @@ trim_context (FILE *f /* positioned at start of @@ line */,
 	return 0;
 }
 
+/* Skip past the two --- / +++ header lines. Returns 1 on EOF. */
+static int
+skip_header_lines (FILE *f)
+{
+	int ch;
+
+	for (int i = 0; i < 2; i++)
+		while ((ch = fgetc (f)) != '\n' && ch != EOF);
+
+	return ch == EOF;
+}
+
 static void
 output_rej_hunks (const char *diff, struct rej_file **rej1,
 		  struct rej_file **rej2, FILE *out)
@@ -2140,7 +2152,6 @@ run_diff (const char *options, const char *file1, const char *file2,
 {
 	pid_t child;
 	FILE *in;
-	int diff_is_empty = 1;
 
 	fflush (NULL);
 
@@ -2152,24 +2163,10 @@ run_diff (const char *options, const char *file1, const char *file2,
 		(2 + 1) * sizeof (char *));
 	in = xpipe (DIFF, &child, "r", argv);
 
-	/* Eat the first line (--- ...) */
-	for (;;) {
-		int ch = fgetc (in);
-		if (ch == EOF || ch == '\n')
-			break;
-		diff_is_empty = 0;
-	}
-
-	/* Eat the second line (+++ ...) */
-	for (;;) {
-		int ch = fgetc (in);
-		if (ch == EOF || ch == '\n')
-			break;
-	}
-
 	*child_out = child;
 
-	if (diff_is_empty) {
+	/* Skip past the --- / +++ lines output by diff */
+	if (skip_header_lines (in)) {
 		fclose (in);
 		waitpid (child, NULL, 0);
 		return NULL;
