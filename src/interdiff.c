@@ -62,6 +62,22 @@
 #define PATCH "patch"
 #endif
 
+/* Fuzzy mode section headers */
+#define DELTA_DIFF_HEADER \
+	"================================================================================\n" \
+	"*    DELTA DIFFERENCES - code changes that differ between the patches          *\n" \
+	"================================================================================\n\n"
+
+#define DELTA_REJ_HEADER \
+	"################################################################################\n" \
+	"!    REJECTED PATCH2 HUNKS - could not be compared; manual review needed       !\n" \
+	"################################################################################\n\n"
+
+#define CONTEXT_DIFF_HEADER \
+	"================================================================================\n" \
+	"*    CONTEXT DIFFERENCES - surrounding code differences between the patches    *\n" \
+	"================================================================================\n\n"
+
 /* Line type for coloring */
 enum line_type {
 	LINE_FILE,
@@ -159,6 +175,35 @@ static int color_option_specified = 0;
 static int debug = 0;
 static int fuzzy = 0;
 static int max_fuzz_user = -1;
+
+/* Per-file record for fuzzy mode output accumulation */
+struct fuzzy_file_record {
+	char *oldname;
+	char *newname;
+	FILE *hunks;  /* Raw hunk data (before trim_context) */
+	struct fuzzy_file_record *next;
+};
+
+/* Per-hunk change/context line arrays for rejection filtering */
+struct strarray {
+	struct line_info *lines;
+	size_t len;
+};
+
+struct hunk_lines {
+	struct strarray add, del, ctx;
+	unsigned int *ctx_dist; /* Distance from nearest +/- line */
+};
+
+struct fuzzy_file_list {
+	struct fuzzy_file_record *head;
+	struct fuzzy_file_record *tail;
+};
+
+/* Accumulators for fuzzy mode output sections */
+static struct fuzzy_file_list fuzzy_delta_files = {};
+static struct fuzzy_file_list fuzzy_ctx_files = {};
+static struct fuzzy_file_list fuzzy_delta_rej_files = {};
 
 static struct patlist *pat_drop_context = NULL;
 
@@ -1158,12 +1203,9 @@ trim_context (FILE *f /* positioned at start of @@ line */,
 		unsigned long orig_count, orig_orig_count, new_orig_count;
 		unsigned long new_count, orig_new_count, new_new_count;
 		unsigned long total_count = 0;
-		char *atat_comment;
-		ssize_t got;
 
 		/* Read @@ line. */
-		got = getline (&line, &linelen, f);
-		if (got < 0)
+		if (getline (&line, &linelen, f) < 0)
 			break;
 
 		if (line[0] == '\\') {
@@ -1173,16 +1215,10 @@ trim_context (FILE *f /* positioned at start of @@ line */,
 		}
 
 		if (read_atatline (line, &orig_offset, &orig_count,
-				   &new_offset, &new_count) ||
-		    !(atat_comment = strstr (line + 1, "@@")))
+				   &new_offset, &new_count))
 			error (EXIT_FAILURE, 0, "Line not understood: %s",
 			       line);
 
-		/* Check if there's a comment after the @@ line to retain */
-		if (atat_comment + 3 - line < got)
-			atat_comment = xstrdup (atat_comment + 2);
-		else
-			atat_comment = NULL;
 		orig_orig_count = new_orig_count = orig_count;
 		orig_new_count = new_new_count = new_count;
 		fgetpos (f, &pos);
@@ -1199,12 +1235,12 @@ trim_context (FILE *f /* positioned at start of @@ line */,
 				if (new_count) new_count--;
 				if (!pre_seen) {
 					pre++;
-					if (!strcmp (line + 1, unline))
+					if (unline && !strcmp (line + 1, unline))
 						strip_pre = pre;
 				} else {
 					post++;
 					if (strip_post ||
-					    !strcmp (line + 1, unline))
+					    (unline && !strcmp (line + 1, unline)))
 						strip_post++;
 				}
 				break;
@@ -1243,24 +1279,17 @@ trim_context (FILE *f /* positioned at start of @@ line */,
 
 		fsetpos (f, &pos);
 		if (new_orig_count != 1 && new_new_count != 1)
-			print_color (out, LINE_HUNK, "@@ -%lu,%lu +%lu,%lu @@",
+			print_color (out, LINE_HUNK, "@@ -%lu,%lu +%lu,%lu @@\n",
 				     orig_offset, new_orig_count, new_offset, new_new_count);
 		else if (new_orig_count != 1)
-			print_color (out, LINE_HUNK, "@@ -%lu,%lu +%lu @@",
+			print_color (out, LINE_HUNK, "@@ -%lu,%lu +%lu @@\n",
 				     orig_offset, new_orig_count, new_offset);
 		else if (new_new_count != 1)
-			print_color (out, LINE_HUNK, "@@ -%lu +%lu,%lu @@",
+			print_color (out, LINE_HUNK, "@@ -%lu +%lu,%lu @@\n",
 				     orig_offset, new_offset, new_new_count);
 		else
-			print_color (out, LINE_HUNK, "@@ -%lu +%lu @@",
+			print_color (out, LINE_HUNK, "@@ -%lu +%lu @@\n",
 				     orig_offset, new_offset);
-
-		if (atat_comment) {
-			fputs (atat_comment, out);
-			free (atat_comment);
-		} else {
-			fputc ('\n', out);
-		}
 
 		while (total_count--) {
 			enum line_type type;
@@ -1312,83 +1341,65 @@ skip_header_lines (FILE *f)
 	return ch == EOF;
 }
 
+/* Add a file record to a fuzzy output list */
 static void
-output_rej_hunks (const char *diff, struct rej_file **rej1,
-		  struct rej_file **rej2, FILE *out)
+fuzzy_add_file (struct fuzzy_file_list *list, const char *oldname,
+		const char *newname, FILE *hunks)
 {
-	char *line = NULL;
+	struct fuzzy_file_record *rec = xmalloc (sizeof (*rec));
 
-	while (*rej1 || *rej2) {
-		struct rej_file **rej_ptr = rej1, *rej;
-		int first_line_done = 0, patch_id = 1;
-		unsigned long diff_off;
-		long next_atat_pos;
-		size_t linelen;
-		ssize_t got;
+	rec->oldname = xstrdup (oldname);
+	rec->newname = xstrdup (newname);
+	rec->hunks = hunks;
+	rec->next = NULL;
 
-		/* Pick the reject hunk that comes first */
-		if (!*rej1 || (*rej2 && (*rej2)->off < (*rej1)->off)) {
-			rej_ptr = rej2;
-			patch_id = 2;
-		}
-		rej = *rej_ptr;
+	if (list->tail)
+		list->tail->next = rec;
+	else
+		list->head = rec;
+	list->tail = rec;
+}
 
-		if (diff) {
-			/* Wait until the current diff line is an @@ line */
-			if (strncmp (diff, "@@ ", 3))
-				return;
+/* Free a fuzzy file record list */
+static void
+fuzzy_free_list (struct fuzzy_file_list *list)
+{
+	struct fuzzy_file_record *rec = list->head;
 
-			if (read_atatline (diff, &diff_off, NULL, NULL, NULL))
-				error (EXIT_FAILURE, 0, "line not understood: %s",
-				       diff);
+	while (rec) {
+		struct fuzzy_file_record *next = rec->next;
 
-			/* Stop if the diff hunk comes next */
-			if (rej->off > diff_off)
-				return;
-		}
+		free (rec->oldname);
+		free (rec->newname);
+		if (rec->hunks)
+			fclose (rec->hunks);
+		free (rec);
+		rec = next;
+	}
+}
 
-		/* Write the rej hunk until EOF or the next @@ line (i.e., next
-		 * hunk). Note that rej starts at the current @@ line that we
-		 * must write, so don't look for the next @@ until after the
-		 * first line is written. */
-		for (;;) {
-			got = getline (&line, &linelen, rej->fp);
-			if (got <= 0) {
-				if (feof (rej->fp))
-					goto rej_file_eof;
-				error (EXIT_FAILURE, errno,
-				       "Failed to read line from .rej");
-			}
-			if (first_line_done) {
-				if (!strncmp (line, "@@ ", 3))
-					break;
+/* Output a fuzzy file list with colorization through trim_context. If
+ * skip_headers is set, skip past the --- / +++ lines (e.g. for reject files
+ * which include their own headers). */
+static void
+fuzzy_output_list (struct fuzzy_file_list *list, int skip_headers, FILE *out)
+{
+	struct fuzzy_file_record *rec;
 
-				fwrite (line, (size_t) got, 1, out);
-				next_atat_pos = ftell (rej->fp);
-			} else {
-				/* Append a comment after the @@ line indicating
-				 * this is a rejected hunk. */
-				first_line_done = 1;
-				fwrite (line, (size_t) got - 1, 1, out);
-				fprintf (out, " INTERDIFF: rejected hunk from patch%d, cannot diff context\n",
-					 patch_id);
-			}
-		}
-
-		/* Record the line offset of the next rej hunk, if any */
-		if (read_atatline (line, &rej->off, NULL, NULL, NULL))
-			error (EXIT_FAILURE, 0, "line not understood: %s", line);
-		fseek (rej->fp, next_atat_pos, SEEK_SET);
-
-		if (!feof (rej->fp))
+	for (rec = list->head; rec; rec = rec->next) {
+		if (!rec->hunks)
 			continue;
 
-rej_file_eof:
-		/* Clear out this reject file pointer when it's finished */
-		*rej_ptr = NULL;
-	}
+		rewind (rec->hunks);
 
-	free (line);
+		/* Skip past --- / +++ headers */
+		if (skip_headers && skip_header_lines (rec->hunks))
+			error (EXIT_FAILURE, 0, "truncated hunk file");
+
+		print_color (out, LINE_FILE, "--- %s\n", rec->oldname);
+		print_color (out, LINE_FILE, "+++ %s\n", rec->newname);
+		trim_context (rec->hunks, NULL, out);
+	}
 }
 
 /* `xctx` must come with `num` initialized and `s` and `len` zeroed */
@@ -1535,7 +1546,6 @@ split_patch_hunks (FILE *patch, size_t len, char *file,
 			fbuf = xrealloc (fbuf, ++len + 1);
 			fbuf[len - 1] = ch;
 		}
-		fclose (patch);
 	}
 	fbuf[len] = '\0';
 
@@ -2176,6 +2186,361 @@ run_diff (const char *options, const char *file1, const char *file2,
 }
 
 static int
+line_info_eq (const struct line_info *a, const struct line_info *b)
+{
+	return a->len == b->len && !memcmp (a->s, b->s, a->len);
+}
+
+static void
+strarray_push (struct strarray *sa, const char *str, size_t len)
+{
+	sa->lines = xrealloc (sa->lines, (sa->len + 1) * sizeof (*sa->lines));
+	sa->lines[sa->len].s = xmalloc (len);
+	memcpy (sa->lines[sa->len].s, str, len);
+	sa->lines[sa->len].len = len;
+	sa->len++;
+}
+
+static void
+strarray_free (struct strarray *sa)
+{
+	for (size_t i = 0; i < sa->len; i++)
+		free (sa->lines[i].s);
+	free (sa->lines);
+}
+
+/* Parse hunks from a FILE* into an array of hunk_lines. For delta hunks, also
+ * captures raw hunk content into raw_hunks[] for later output.
+ *
+ * Pass NULL for raw_hunks if not needed. */
+static size_t
+parse_hunks (FILE *f, struct hunk_lines **out, struct line_info **raw_hunks)
+{
+	struct hunk_lines *hunks = NULL;
+	size_t nhunks = 0, linelen;
+	char *line = NULL;
+	ssize_t got;
+
+	if (raw_hunks)
+		*raw_hunks = NULL;
+
+	rewind (f);
+	while ((got = getline (&line, &linelen, f)) > 0) {
+		unsigned char *is_delta = NULL;
+		size_t nlines = 0, ctx_idx;
+		struct hunk_lines *h;
+		unsigned int dist;
+
+		if (strncmp (line, "@@ ", 3))
+			continue;
+
+		nhunks++;
+		hunks = xrealloc (hunks, nhunks * sizeof (*hunks));
+		h = &hunks[nhunks - 1];
+		*h = (typeof (*h)){};
+
+		/* Save the @@ line as the start of the raw hunk content */
+		if (raw_hunks) {
+			*raw_hunks = xrealloc (*raw_hunks,
+					       nhunks * sizeof (**raw_hunks));
+			(*raw_hunks)[nhunks - 1].s = xmalloc (got);
+			memcpy ((*raw_hunks)[nhunks - 1].s, line, got);
+			(*raw_hunks)[nhunks - 1].len = got;
+		}
+
+		/* Read body lines until the next @@ or EOF, classifying each
+		 * line as context or delta (+/-) and recording whether each
+		 * line is a delta for distance computation. */
+		while ((got = getline (&line, &linelen, f)) > 0) {
+			struct strarray *sa;
+
+			if (!strncmp (line, "@@ ", 3)) {
+				fseek (f, -got, SEEK_CUR);
+				break;
+			}
+
+			/* Append the raw line to the current hunk's buffer */
+			if (raw_hunks) {
+				struct line_info *r = &(*raw_hunks)[nhunks - 1];
+
+				r->s = xrealloc (r->s, r->len + got);
+				memcpy (r->s + r->len, line, got);
+				r->len += got;
+			}
+
+			is_delta = xrealloc (is_delta, nlines + 1);
+			if (line[0] == ' ') {
+				is_delta[nlines] = 0;
+				sa = &h->ctx;
+			} else {
+				is_delta[nlines] = 1;
+				sa = line[0] == '+' ? &h->add : &h->del;
+			}
+			strarray_push (sa, line + 1, got - 2);
+			nlines++;
+		}
+
+		/* Forward pass: compute the distance of each context line from
+		 * the nearest preceding delta line. Lines closest to deltas are
+		 * most valuable for disambiguation. */
+		h->ctx_dist = xmalloc (h->ctx.len * sizeof (*h->ctx_dist));
+		dist = UINT_MAX;
+		ctx_idx = 0;
+		for (size_t k = 0; k < nlines; k++) {
+			if (is_delta[k]) {
+				dist = 0;
+			} else {
+				if (dist < UINT_MAX)
+					dist++;
+				h->ctx_dist[ctx_idx++] = dist;
+			}
+		}
+
+		/* Backward pass: take the min of forward and backward distances
+		 * so each context line reflects its distance from the nearest
+		 * delta in either direction. */
+		dist = UINT_MAX;
+		ctx_idx = h->ctx.len;
+		for (size_t k = nlines; k > 0; k--) {
+			if (is_delta[k - 1]) {
+				dist = 0;
+			} else {
+				ctx_idx--;
+				if (dist < UINT_MAX)
+					dist++;
+				if (dist < h->ctx_dist[ctx_idx])
+					h->ctx_dist[ctx_idx] = dist;
+			}
+		}
+
+		free (is_delta);
+	}
+
+	free (line);
+	*out = hunks;
+	return nhunks;
+}
+
+static void
+free_hunk_lines (struct hunk_lines *hunks, size_t nhunks)
+{
+	for (size_t i = 0; i < nhunks; i++) {
+		strarray_free (&hunks[i].add);
+		strarray_free (&hunks[i].del);
+		strarray_free (&hunks[i].ctx);
+		free (hunks[i].ctx_dist);
+	}
+	free (hunks);
+}
+
+/* Score how well the context lines from a rejected hunk match a delta hunk.
+ * Context lines closer to +/- changes are weighted more heavily, mirroring how
+ * the patch utility prioritizes inner context for fuzzy matching. The score is
+ * line_length / distance_from_nearest_change for each matching line. */
+static int
+context_score (const struct hunk_lines *rej, const struct hunk_lines *delta)
+{
+	int score = 0;
+
+	for (size_t i = 0; i < rej->ctx.len; i++) {
+		for (size_t j = 0; j < delta->ctx.len; j++) {
+			if (line_info_eq (&rej->ctx.lines[i],
+					  &delta->ctx.lines[j])) {
+				unsigned int dist = rej->ctx_dist[i];
+
+				if (dist < delta->ctx_dist[j])
+					dist = delta->ctx_dist[j];
+				score += rej->ctx.lines[i].len /
+					 (dist ? dist : 1);
+				break;
+			}
+		}
+	}
+
+	return score;
+}
+
+/* Check if a rejected hunk matches a delta hunk at the given positions. Since
+ * the delta is the inverse of the rejection, the rejected hunk's "+" lines are
+ * compared against the delta's "-" lines and vice versa. On match, *pos_del and
+ * *pos_add are advanced past the matched lines. */
+static int
+rej_matches_delta_at (const struct hunk_lines *rej,
+		      const struct hunk_lines *delta,
+		      size_t *pos_del, size_t *pos_add)
+{
+	if (!rej->add.len && !rej->del.len)
+		return 0;
+
+	if (rej->add.len) {
+		if (*pos_del + rej->add.len > delta->del.len)
+			return 0;
+
+		for (size_t i = 0; i < rej->add.len; i++) {
+			if (!line_info_eq (&delta->del.lines[*pos_del + i],
+					   &rej->add.lines[i]))
+				return 0;
+		}
+	}
+
+	if (rej->del.len) {
+		if (*pos_add + rej->del.len > delta->add.len)
+			return 0;
+
+		for (size_t i = 0; i < rej->del.len; i++) {
+			if (!line_info_eq (&delta->add.lines[*pos_add + i],
+					   &rej->del.lines[i]))
+				return 0;
+		}
+	}
+
+	*pos_del += rej->add.len;
+	*pos_add += rej->del.len;
+	return 1;
+}
+
+/* Check if a rejected hunk's change lines appear anywhere in a delta hunk's
+ * change lines. Unlike rej_matches_delta_at(), this searches all positions. */
+static int
+rej_matches_delta (const struct hunk_lines *rej, const struct hunk_lines *delta)
+{
+	if (rej->add.len > delta->del.len || rej->del.len > delta->add.len)
+		return 0;
+
+	for (size_t pd = 0; pd <= delta->del.len - rej->add.len; pd++) {
+		for (size_t pa = 0; pa <= delta->add.len - rej->del.len; pa++) {
+			size_t tmp_pd = pd, tmp_pa = pa;
+
+			if (rej_matches_delta_at (rej, delta, &tmp_pd, &tmp_pa))
+				return 1;
+		}
+	}
+
+	return 0;
+}
+
+/* Filter delta diff hunks that are just the inverse of rejected hunks. When
+ * patch2 has a hunk that was rejected on patch1_orig, and patch1 makes the same
+ * change, the delta diff will show a bogus difference. This function removes
+ * those bogus hunks by comparing each delta hunk's change lines against the
+ * rejected hunks' change lines in reverse.
+ *
+ * Each rejected hunk is used at most once. When a rejected hunk matches
+ * multiple delta hunks, the one with the most matching context lines wins.
+ * A single delta hunk may span multiple rejected hunks that diff merged.
+ *
+ * Returns a new FILE* with the filtered output, or NULL if all hunks were
+ * filtered out. */
+static FILE *
+filter_inverted_rejects (FILE *delta, FILE *rej)
+{
+	struct hunk_lines *rej_hunks, *delta_hunks;
+	struct line_info *raw_hunks;
+	size_t nrej, ndelta;
+	long *rej_assigned;
+	FILE *out = NULL;
+
+	if (!(nrej = parse_hunks (rej, &rej_hunks, NULL)) ||
+	    !(ndelta = parse_hunks (delta, &delta_hunks, &raw_hunks)))
+		error (EXIT_FAILURE, 0,
+		       "filter_inverted_rejects: no hunks parsed");
+
+	rej_assigned = xmalloc (nrej * sizeof (*rej_assigned));
+
+	/* For each rejected hunk, find the delta hunk whose change lines match
+	 * (inverted) and which has the best context overlap. */
+	for (size_t r = 0; r < nrej; r++) {
+		int best_score = -1;
+
+		rej_assigned[r] = -1;
+		for (size_t d = 0; d < ndelta; d++) {
+			int score;
+
+			if (!rej_matches_delta (&rej_hunks[r], &delta_hunks[d]))
+				continue;
+
+			score = context_score (&rej_hunks[r], &delta_hunks[d]);
+			if (score > best_score) {
+				best_score = score;
+				rej_assigned[r] = d;
+			}
+		}
+	}
+
+	/* For each delta hunk, check if all of its change lines are fully
+	 * covered by the rejected hunks assigned to it (in order). */
+	for (size_t d = 0; d < ndelta; d++) {
+		size_t pos_del = 0, pos_add = 0;
+
+		for (size_t r = 0; r < nrej; r++) {
+			if (rej_assigned[r] == d &&
+			    !rej_matches_delta_at (&rej_hunks[r],
+						   &delta_hunks[d],
+						   &pos_del, &pos_add))
+				break;
+		}
+
+		/* Emit the delta hunk if it shouldn't be filtered */
+		if (pos_del != delta_hunks[d].del.len ||
+		    pos_add != delta_hunks[d].add.len) {
+			if (!out)
+				out = xtmpfile ();
+			fwrite (raw_hunks[d].s, raw_hunks[d].len, 1, out);
+		}
+		free (raw_hunks[d].s);
+	}
+
+	free (rej_assigned);
+	free (raw_hunks);
+	free_hunk_lines (delta_hunks, ndelta);
+	free_hunk_lines (rej_hunks, nrej);
+	return out;
+}
+
+/* Run diff and filter out bogus hunks containing unlines.
+ *
+ * Returns NULL if the resulting diff is empty. */
+static FILE *
+run_and_clean_diff (const char *options, const char *file1, const char *file2,
+		    const char *unline)
+{
+	pid_t child;
+	FILE *diff;
+
+	diff = run_diff (options, file1, file2, &child);
+	if (diff) {
+		FILE *sp;
+
+		sp = split_patch_hunks (diff, 0, NULL, NULL, unline);
+		fclose (diff);
+		diff = sp;
+	}
+	waitpid (child, NULL, 0);
+
+	return diff;
+}
+
+/* Write a lines_info struct to a new temp file derived from the given template
+ * path (replaces the last 6 chars with XXXXXX for mkstemp).
+ *
+ * Returns the allocated filename which must be freed by the caller. */
+static char *
+write_to_tmpfile (const char *tmpl, struct lines_info *info)
+{
+	char *file = xstrdup (tmpl);
+	int fd;
+
+	strcpy (file + strlen (file) - 6, "XXXXXX");
+	fd = mkstemp (file);
+	if (fd < 0)
+		error (EXIT_FAILURE, errno, "mkstemp failed");
+
+	write_file (info, fd);
+	close (fd);
+	return file;
+}
+
+static int
 output_delta (FILE *p1, FILE *p2, FILE *out)
 {
 	const char *tmpdir = getenv ("TMPDIR");
@@ -2183,11 +2548,12 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 	const char tail1[] = "/interdiff-1.XXXXXX";
 	const char tail2[] = "/interdiff-2.XXXXXX";
 	char *tmpp1, *tmpp2;
+	char *unline = NULL;
 	int tmpp1fd, tmpp2fd;
 	struct lines_info file = { NULL, 0, 0, NULL, NULL };
 	struct lines_info file2 = { NULL, 0, 0, NULL, NULL };
-	struct rej_file rej1, rej2;
-	int ret1 = 0, ret2 = 0;
+	struct rej_file rej;
+	int patch_ret = 0, ctx_ret = 0;
 	char *oldname = NULL, *newname = NULL;
 	pid_t child;
 	FILE *in;
@@ -2196,7 +2562,6 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 	long pristine1, pristine2;
 	long start1, start2;
 	char options[100];
-	int diff_is_empty = 1;
 
 	pristine1 = ftell (p1);
 	pristine2 = ftell (p2);
@@ -2269,44 +2634,117 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 	fseek (p2, start2, SEEK_SET);
 
 	if (fuzzy) {
-		FILE *patch_out, *sp;
-		unsigned long *hunk_offs = NULL;
+		unsigned long *hunk_offs = NULL, *ctx_hunk_offs = NULL;
+		char *patch1_new_file, *ctx_patch1_orig_file;
+		struct lines_info patch1_new_info = {};
+		FILE *sp, *delta_diff, *ctx_diff;
+		FILE *ctx_patch_out = NULL;
+		int delta_empty, ctx_empty;
 
-		/* Ensure the same unline is used for both files */
+		/* Ensure the same unline is used for both files.
+		 * file = patch2_orig, file2 = patch1_orig */
 		write_file (&file, tmpp2fd);
-		file2.unline = xstrdup (file.unline);
+		unline = file.unline;
+		file2.unline = unline;
 		write_file (&file2, tmpp1fd);
 
-		/* Split the patch hunks into smaller hunks, then apply that */
-		sp = split_patch_hunks (p2, pos2 - start2, tmpp1, &hunk_offs, NULL);
-		ret1 = apply_patch (sp, tmpp1, false, &rej1, &patch_out);
-		fclose (sp);
+		/*
+		 * DELTA DIFFING:
+		 * 1. Construct patch1_new from patch1 (reverted=1 -> new side)
+		 * 2. Split patch2 and apply to tmpp1 (patch1_orig)
+		 * 3. delta_diff = diff(patch1_new, tmpp1)
+		 * 4. Filter delta hunks that match rejected patch2 hunks
+		 *
+		 * CONTEXT DIFFING:
+		 * 1. Make a fresh copy of patch1_orig (tmpp1 is modified above)
+		 * 2. Apply delta_diff in reverse to tmpp2 (patch2_orig) to
+		 *    remove delta differences
+		 * 3. Relocate hunks using fuzz offsets
+		 * 4. ctx_diff = diff(patch1_orig, patch2_orig)
+		 */
 
-		/* Relocate hunks in tmpp1 in order to make them align with the
-		 * positions of the hunks in tmpp2. */
-		fuzzy_relocate_hunks (tmpp1, file.unline, patch_out, hunk_offs);
-		fclose (patch_out);
+		/* Create patch1_new (reverted=1 gives the new side of patch1) */
+		fseek (p1, start1, SEEK_SET);
+		create_orig (p1, &patch1_new_info, 1, NULL);
+		patch1_new_info.unline = unline;
+		patch1_new_file = write_to_tmpfile (tmpp1, &patch1_new_info);
+		free_lines (patch1_new_info.head);
+
+		/* Split patch2 and apply to tmpp1 (patch1_orig) */
+		sp = split_patch_hunks (p2, pos2 - start2, tmpp1, &hunk_offs, NULL);
+		patch_ret = apply_patch (sp, tmpp1, 0, &rej, NULL);
+		fclose (sp);
 		free (hunk_offs);
 
-		/* Revert the successful p2 deltas from tmpp1 so they don't
-		 * appear as minus lines in the final diff. */
-		fseek (p2, start2, SEEK_SET);
-		apply_patch (p2, tmpp1, true, NULL, NULL);
+		/* Delta diff: diff(patch1_new, patch1_orig + patch2) */
+		delta_diff = run_and_clean_diff (options, patch1_new_file,
+						 tmpp1, unline);
+		delta_empty = !delta_diff;
 
-		/* Split the patch hunks into smaller hunks, then apply that */
-		sp = split_patch_hunks (p1, pos1 - start1, tmpp2, NULL, NULL);
-		ret2 = apply_patch (sp, tmpp2, false, &rej2, NULL);
-		fclose (sp);
+		/* Filter bogus delta hunks that are just the inverse of rejected
+		 * hunks (both patches make the same change but patch2's was
+		 * rejected due to context mismatch) */
+		if (patch_ret && rej.fp) {
+			/* rej.fp ownership transfers to the list;
+			 * fuzzy_free_list() will fclose it. */
+			fuzzy_add_file (&fuzzy_delta_rej_files, oldname + 4,
+					newname + 4, rej.fp);
 
-		/* For tmpp2 relocations, only eat unline gaps between hunks
-		 * that amount to no more than max_context*2 lines. This was
-		 * also done to tmpp1 during its relocation pass. */
-		fuzzy_relocate_hunks (tmpp2, file.unline, NULL, NULL);
+			if (!delta_empty) {
+				FILE *filtered;
 
-		/* Revert the successful p1 deltas from tmpp2 so they don't
-		 * appear as plus lines in the final diff. */
-		fseek (p1, start1, SEEK_SET);
-		apply_patch (p1, tmpp2, true, NULL, NULL);
+				rewind (rej.fp);
+				filtered = filter_inverted_rejects (delta_diff,
+								    rej.fp);
+				fclose (delta_diff);
+				delta_diff = filtered;
+				delta_empty = !delta_diff;
+			}
+		}
+
+		/* Apply delta_diff in reverse to tmpp2 (patch2_orig) to
+		 * remove delta differences and isolate context diffs */
+		if (!delta_empty) {
+			FILE *sp2;
+
+			rewind (delta_diff);
+			sp2 = split_patch_hunks (delta_diff, 0, tmpp2,
+						 &ctx_hunk_offs, NULL);
+			if (sp2) {
+				ctx_ret = apply_patch (sp2, tmpp2, 1, NULL,
+						       &ctx_patch_out);
+				fclose (sp2);
+			}
+
+			if (ctx_patch_out && ctx_hunk_offs)
+				fuzzy_relocate_hunks (tmpp2, unline,
+						      ctx_patch_out,
+						      ctx_hunk_offs);
+			if (ctx_patch_out)
+				fclose (ctx_patch_out);
+			free (ctx_hunk_offs);
+		}
+
+		/* Fresh copy of patch1_orig for context comparison
+		 * since tmpp1 was modified by delta diffing above. */
+		ctx_patch1_orig_file = write_to_tmpfile (tmpp1, &file2);
+
+		ctx_diff = run_and_clean_diff (options, ctx_patch1_orig_file,
+					       tmpp2, unline);
+		ctx_empty = !ctx_diff;
+
+		unlink (ctx_patch1_orig_file);
+		free (ctx_patch1_orig_file);
+		unlink (patch1_new_file);
+		free (patch1_new_file);
+
+		if (!delta_empty)
+			fuzzy_add_file (&fuzzy_delta_files, oldname + 4,
+					newname + 4, delta_diff);
+
+		if (!ctx_empty)
+			fuzzy_add_file (&fuzzy_ctx_files, oldname + 4,
+					newname + 4, ctx_diff);
 	} else {
 		/* Write it out. */
 		merge_lines (&file, &file2);
@@ -2322,35 +2760,18 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 			       "Error applying patch2 to reconstructed file");
 	}
 
-	fseek (p1, pos1, SEEK_SET);
-
-	in = run_diff (options, tmpp1, tmpp2, &child);
-	diff_is_empty = !in;
-
-	/* Rebuild the diff hunks without unlines, since fuzzy diffing shows
-	 * context line differences that therefore may cause unlines to appear
-	 * in the diff output. We don't want any unlines in the final output. */
-	if (fuzzy && !diff_is_empty) {
-		in = split_patch_hunks (in, 0, NULL, NULL, file.unline);
-		diff_is_empty = !in;
-	}
-
-	if (!diff_is_empty || ret1 || ret2) {
-		/* Initialize the rej pointers for output_rej_hunks() */
-		struct rej_file *rej1_ptr = ret1 ? &rej1 : NULL;
-		struct rej_file *rej2_ptr = ret2 ? &rej2 : NULL;
+	if (!fuzzy && (in = run_diff (options, tmpp1, tmpp2, &child))) {
 		/* ANOTHER temporary file!  This is to catch the case
 		 * where we just don't have enough context to generate
 		 * a proper interdiff. */
 		FILE *tmpdiff = xtmpfile ();
+		int exit_err = 0;
 		char *line = NULL;
 		size_t linelen;
-		for (; !diff_is_empty;) {
+		for (;;) {
 			ssize_t got = getline (&line, &linelen, in);
 			if (got < 0)
 				break;
-			/* Output fuzzy diff reject hunks in order */
-			output_rej_hunks (line, &rej1_ptr, &rej2_ptr, tmpdiff);
 			fwrite (line, (size_t) got, 1, tmpdiff);
 			if (*line != ' ' && !strcmp (line + 1, file.unline)) {
 				/* Uh-oh.  We're trying to output a
@@ -2368,16 +2789,17 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 					 * original and copy the new
 					 * version. */
 					fclose (tmpdiff);
-					free (line);
-					goto evasive_action;
+					exit_err = 1;
+					break;
 				}
 				fwrite (line, (size_t) got, 1, tmpdiff);
 			}
 		}
 		free (line);
-
-		/* Output any remaining reject hunks */
-		output_rej_hunks (NULL, &rej1_ptr, &rej2_ptr, tmpdiff);
+		fclose (in);
+		waitpid (child, NULL, 0);
+		if (exit_err)
+			goto evasive_action;
 
 		/* First character */
 		if (human_readable) {
@@ -2405,23 +2827,31 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 		fclose (tmpdiff);
 	}
 
-	if (in) {
-		fclose (in);
-		waitpid (child, NULL, 0);
-	}
+	/* Restore file positions for the caller's iteration loop */
+	fseek (p1, pos1, SEEK_SET);
+	fseek (p2, pos2, SEEK_SET);
+
 	if (debug)
 		printf ("reconstructed orig1=%s orig2=%s\n", tmpp1, tmpp2);
 	else {
 		unlink (tmpp1);
 		unlink (tmpp2);
 		if (fuzzy) {
-			fuzzy_cleanup (tmpp1, ret1);
-			fuzzy_cleanup (tmpp2, ret2);
+			fuzzy_cleanup (tmpp1, patch_ret);
+			fuzzy_cleanup (tmpp2, ctx_ret);
 		}
 	}
 	free (oldname);
 	free (newname);
-	clear_lines_info (&file);
+	if (fuzzy) {
+		free_lines (file.head);
+		free_lines (file2.head);
+		free (unline);
+	} else {
+		clear_lines_info (&file);
+		/* In non-fuzzy mode, merge_lines() transfers file2's nodes
+		 * into file, so they're already freed above. */
+	}
 	return 0;
 
  evasive_action:
@@ -2431,8 +2861,8 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 		unlink (tmpp1);
 		unlink (tmpp2);
 		if (fuzzy) {
-			fuzzy_cleanup (tmpp1, ret1);
-			fuzzy_cleanup (tmpp2, ret2);
+			fuzzy_cleanup (tmpp1, patch_ret);
+			fuzzy_cleanup (tmpp2, 0);
 		}
 	}
 	if (human_readable)
@@ -3233,6 +3663,37 @@ interdiff (FILE *p1, FILE *p2, const char *patch1, const char *patch2)
 		no_patch (patch1);
 
 	copy_residue (p2, mode == mode_flip ? flip1 : stdout);
+
+	/* Output the fuzzy sections after all files have been processed */
+	if (fuzzy && (fuzzy_delta_files.head || fuzzy_ctx_files.head ||
+		      fuzzy_delta_rej_files.head)) {
+		int printed = 0;
+
+		if (fuzzy_delta_files.head) {
+			fputs (DELTA_DIFF_HEADER, stdout);
+			fuzzy_output_list (&fuzzy_delta_files, 0, stdout);
+			printed = 1;
+		}
+
+		if (fuzzy_delta_rej_files.head) {
+			if (printed)
+				fputc ('\n', stdout);
+			fputs (DELTA_REJ_HEADER, stdout);
+			fuzzy_output_list (&fuzzy_delta_rej_files, 1, stdout);
+			printed = 1;
+		}
+
+		if (fuzzy_ctx_files.head) {
+			if (printed)
+				fputc ('\n', stdout);
+			fputs (CONTEXT_DIFF_HEADER, stdout);
+			fuzzy_output_list (&fuzzy_ctx_files, 0, stdout);
+		}
+
+		fuzzy_free_list (&fuzzy_delta_files);
+		fuzzy_free_list (&fuzzy_ctx_files);
+		fuzzy_free_list (&fuzzy_delta_rej_files);
+	}
 
 	if (mode == mode_flip) {
 		/* Now we flipped the two patches, show them. */
