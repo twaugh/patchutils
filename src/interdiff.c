@@ -78,6 +78,16 @@
 	"*    CONTEXT DIFFERENCES - surrounding code differences between the patches    *\n" \
 	"================================================================================\n\n"
 
+#define ONLY_IN_PATCH1_HEADER \
+	"================================================================================\n" \
+	"*    ONLY IN PATCH1 - files not modified by patch2                             *\n" \
+	"================================================================================\n\n"
+
+#define ONLY_IN_PATCH2_HEADER \
+	"================================================================================\n" \
+	"*    ONLY IN PATCH2 - files not modified by patch1                             *\n" \
+	"================================================================================\n\n"
+
 /* Line type for coloring */
 enum line_type {
 	LINE_FILE,
@@ -204,6 +214,8 @@ struct fuzzy_file_list {
 static struct fuzzy_file_list fuzzy_delta_files = {};
 static struct fuzzy_file_list fuzzy_ctx_files = {};
 static struct fuzzy_file_list fuzzy_delta_rej_files = {};
+static FILE *fuzzy_only_in_patch1 = NULL;
+static FILE *fuzzy_only_in_patch2 = NULL;
 
 static struct patlist *pat_drop_context = NULL;
 
@@ -743,12 +755,12 @@ do_output_patch1_only (FILE *p1, FILE *out, int not_reverted)
 
 	if (not_reverted) {
 		/* Combinediff: copy patch */
-		if (human_readable && mode != mode_flip)
+		if (human_readable && !fuzzy && mode != mode_flip)
 			fprintf (out, "unchanged:\n");
 		fputs (oldname, out);
 		fputs (line, out);
 	} else if (!no_revert_omitted) {
-		if (human_readable)
+		if (human_readable && !fuzzy)
 			fprintf (out, "reverted:\n");
 		fprintf (out, "--- %s", line + 4);
 		fprintf (out, "+++ %s", oldname + 4);
@@ -1400,6 +1412,36 @@ fuzzy_output_list (struct fuzzy_file_list *list, int skip_headers, FILE *out)
 		print_color (out, LINE_FILE, "+++ %s\n", rec->newname);
 		trim_context (rec->hunks, NULL, out);
 	}
+}
+
+/* Colorize and output a raw diff (with --- / +++ / @@ headers) */
+static void
+colorize_diff (FILE *in, FILE *out)
+{
+	char *line = NULL;
+	size_t linelen;
+	ssize_t got;
+
+	rewind (in);
+	while ((got = getline (&line, &linelen, in)) > 0) {
+		enum line_type type;
+
+		if (!strncmp (line, "--- ", 4) || !strncmp (line, "+++ ", 4)) {
+			type = LINE_FILE;
+		} else if (!strncmp (line, "@@ ", 3)) {
+			type = LINE_HUNK;
+		} else if (line[0] == '-') {
+			type = LINE_REMOVED;
+		} else if (line[0] == '+') {
+			type = LINE_ADDED;
+		} else {
+			fwrite (line, got, 1, out);
+			continue;
+		}
+		print_color (out, type, "%.*s", (int) got - 1, line);
+		fputc ('\n', out);
+	}
+	free (line);
 }
 
 /* `xctx` must come with `num` initialized and `s` and `len` zeroed */
@@ -2881,6 +2923,7 @@ copy_residue (FILE *p2, FILE *out)
 	struct file_list *at;
 
 	for (at = files_in_patch2; at; at = at->next) {
+		FILE *p2out;
 
 		if (file_in_list (files_done, at->file) != -1)
 			continue;
@@ -2890,10 +2933,18 @@ copy_residue (FILE *p2, FILE *out)
 			continue;
 
 		fseek (p2, at->pos, SEEK_SET);
-		if (human_readable && mode != mode_flip)
-			fprintf (out, "only in patch2:\n");
 
-		output_patch1_only (p2, out, 1);
+		if (fuzzy) {
+			if (!fuzzy_only_in_patch2)
+				fuzzy_only_in_patch2 = xtmpfile ();
+			p2out = fuzzy_only_in_patch2;
+		} else {
+			if (human_readable && mode != mode_flip)
+				fprintf (out, "only in patch2:\n");
+			p2out = out;
+		}
+
+		output_patch1_only (p2, p2out, 1);
 	}
 
 	return 0;
@@ -3644,9 +3695,16 @@ interdiff (FILE *p1, FILE *p2, const char *patch1, const char *patch2)
 		fseek (p1, start_pos, SEEK_SET);
 		pos = file_in_list (files_in_patch2, p);
 		if (pos == -1) {
-			output_patch1_only (p1,
-					    mode == mode_flip ? flip2 : stdout,
-					    mode != mode_inter);
+			FILE *p1out;
+
+			if (fuzzy && mode == mode_inter) {
+				if (!fuzzy_only_in_patch1)
+					fuzzy_only_in_patch1 = xtmpfile ();
+				p1out = fuzzy_only_in_patch1;
+			} else {
+				p1out = mode == mode_flip ? flip2 : stdout;
+			}
+			output_patch1_only (p1, p1out, mode != mode_inter);
 		} else {
 			fseek (p2, pos, SEEK_SET);
 			if (mode == mode_flip)
@@ -3666,7 +3724,8 @@ interdiff (FILE *p1, FILE *p2, const char *patch1, const char *patch2)
 
 	/* Output the fuzzy sections after all files have been processed */
 	if (fuzzy && (fuzzy_delta_files.head || fuzzy_ctx_files.head ||
-		      fuzzy_delta_rej_files.head)) {
+		      fuzzy_delta_rej_files.head || fuzzy_only_in_patch1 ||
+		      fuzzy_only_in_patch2)) {
 		int printed = 0;
 
 		if (fuzzy_delta_files.head) {
@@ -3688,6 +3747,24 @@ interdiff (FILE *p1, FILE *p2, const char *patch1, const char *patch2)
 				fputc ('\n', stdout);
 			fputs (CONTEXT_DIFF_HEADER, stdout);
 			fuzzy_output_list (&fuzzy_ctx_files, 0, stdout);
+			printed = 1;
+		}
+
+		if (fuzzy_only_in_patch1) {
+			if (printed)
+				fputc ('\n', stdout);
+			fputs (ONLY_IN_PATCH1_HEADER, stdout);
+			colorize_diff (fuzzy_only_in_patch1, stdout);
+			fclose (fuzzy_only_in_patch1);
+			printed = 1;
+		}
+
+		if (fuzzy_only_in_patch2) {
+			if (printed)
+				fputc ('\n', stdout);
+			fputs (ONLY_IN_PATCH2_HEADER, stdout);
+			colorize_diff (fuzzy_only_in_patch2, stdout);
+			fclose (fuzzy_only_in_patch2);
 		}
 
 		fuzzy_free_list (&fuzzy_delta_files);
