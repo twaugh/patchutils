@@ -2539,6 +2539,125 @@ filter_inverted_rejects (FILE *delta, FILE *rej)
 	return out;
 }
 
+/* Filter out spurious edge lines from context diff hunks. Changes that are
+ * exclusively additions or exclusively deletions at the top or bottom edge of a
+ * hunk are artifacts of one patch capturing more context lines than the other.
+ * Hunks composed entirely of such edges are dropped. Hunks with real changes in
+ * the middle have their additions-only or deletions-only edges trimmed and the
+ * @@ header line counts adjusted accordingly.
+ *
+ * Closes the input file. Returns NULL if nothing remains. */
+static FILE *
+filter_edge_hunks (FILE *in)
+{
+	struct line_info atat, *lines = NULL;
+	char *fbuf, *end, *line;
+	size_t nlines = 0, fsz;
+	FILE *out = NULL;
+
+	/* Read entire input into a buffer */
+	fseek (in, 0, SEEK_END);
+	fsz = ftell (in);
+	fbuf = xmalloc (fsz);
+	rewind (in);
+	if (fread (fbuf, 1, fsz, in) != fsz)
+		error (EXIT_FAILURE, errno, "fread() fail");
+	fclose (in);
+
+	end = fbuf + fsz;
+	atat = (typeof (atat)){ fbuf }; /* The first line is the @@ line */
+	for (line = fbuf; (line = memchr (line, '\n', end - line));) {
+		/* ntop/nbot[0] = deleted, [1] = added edge lines */
+		int ntop[2] = {}, nbot[2] = {};
+		size_t first_ctx, last_ctx = 0, from = 0, to;
+
+		/* Set the previous line length, advancing `line` past '\n' */
+		if (atat.len)
+			lines[nlines - 1].len = ++line - lines[nlines - 1].s;
+		else
+			atat.len = ++line - atat.s;
+
+		/* Accumulate non-@@ lines into the current hunk. At EOF,
+		 * line == end so we fall through to process the last hunk. */
+		if (line < end && strncmp (line, "@@ ", 3)) {
+			lines = xrealloc (lines, (nlines + 1) * sizeof (*lines));
+			lines[nlines++].s = line;
+			continue;
+		}
+
+		first_ctx = to = nlines;
+
+		/* Process accumulated hunk on new @@ or final line (no-op when
+		 * nlines == 0 since all loop ranges are empty). Find first and
+		 * last context lines. */
+		for (size_t i = 0; i < nlines; i++) {
+			if (lines[i].s[0] == ' ') {
+				if (first_ctx == nlines)
+					first_ctx = i;
+				last_ctx = i;
+			}
+		}
+
+		/* Count top edge +/- lines (before first context) */
+		for (size_t i = 0; i < first_ctx; i++)
+			ntop[lines[i].s[0] == '+']++;
+
+		/* Count bottom edge +/- lines (after last context) */
+		for (size_t i = last_ctx + 1; i < nlines; i++)
+			nbot[lines[i].s[0] == '+']++;
+
+		/* Trim one-sided edges; reset counts for two-sided edges */
+		if (ntop[0] && ntop[1])
+			ntop[0] = ntop[1] = 0;
+		else if (ntop[0] || ntop[1])
+			from = first_ctx;
+		if (nbot[0] && nbot[1])
+			nbot[0] = nbot[1] = 0;
+		else if (nbot[0] || nbot[1])
+			to = last_ctx + 1;
+
+		/* Write hunk if remaining lines have changes */
+		for (size_t i = from; i < to; i++) {
+			if (lines[i].s[0] == ' ')
+				continue;
+
+			if (!out)
+				out = xtmpfile ();
+
+			if (from || to < nlines) {
+				/* Edges were trimmed; regenerate the @@ header
+				 * with adjusted line counts. sscanf is fine
+				 * instead of read_atatline because the input
+				 * comes directly from diff and is always
+				 * uniformly formatted. */
+				int ostart, ocount, nstart, ncount;
+				sscanf (atat.s, "@@ -%d,%d +%d,%d @@",
+					&ostart, &ocount, &nstart, &ncount);
+				fprintf (out, "@@ -%d,%d +%d,%d @@\n",
+					 ostart + ntop[0],
+					 ocount - ntop[0] - nbot[0],
+					 nstart + ntop[1],
+					 ncount - ntop[1] - nbot[1]);
+			} else {
+				fwrite (atat.s, atat.len, 1, out);
+			}
+			for (size_t j = from; j < to; j++)
+				fwrite (lines[j].s, lines[j].len, 1, out);
+			break;
+		}
+
+		/* Reset for the next hunk */
+		nlines = 0;
+		atat = (typeof (atat)){ line };
+	}
+	free (lines);
+	free (fbuf);
+
+	if (out)
+		rewind (out);
+	return out;
+}
+
 /* Run diff and filter out bogus hunks containing unlines.
  *
  * Returns NULL if the resulting diff is empty. */
@@ -2773,6 +2892,8 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 
 		ctx_diff = run_and_clean_diff (options, ctx_patch1_orig_file,
 					       tmpp2, unline);
+		if (ctx_diff)
+			ctx_diff = filter_edge_hunks (ctx_diff);
 		ctx_empty = !ctx_diff;
 
 		unlink (ctx_patch1_orig_file);
