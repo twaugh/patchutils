@@ -312,6 +312,7 @@ TESTS = tests/newline1/run-test \
 	tests/lsdiff-context-diff-empty-files/run-test \
 	tests/lsdiff-patch-scanner-errors/run-test \
 	tests/lsdiff-strip-vs-match-warning/run-test \
+	tests/lsdiff-binary-numbering/run-test \
 	tests/patchview1/run-test \
 	tests/patchview2/run-test \
 	tests/fuzz1/run-test \
@@ -414,6 +415,7 @@ TESTS = tests/newline1/run-test \
 	tests/patch-ignore-whitespace/run-test \
 	tests/whitespace-w/run-test \
 	tests/filterdiff-inplace1/run-test \
+	tests/filterdiff-binary-filtering/run-test \
 	tests/rediff-inplace1/run-test \
 	tests/rediff-empty-hunk/run-test \
 	tests/git-rename-issue22/run-test \

@@ -1,0 +1,22 @@
+#!/bin/sh
+
+# GitHub issue #157: Binary files should be numbered sequentially
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << 'EOF' > diff
+diff --git a/file1.bin b/file1.bin
+new file mode 100644
+Binary files /dev/null and b/file1.bin differ
+diff --git a/file2.bin b/file2.bin
+new file mode 100644
+Binary files /dev/null and b/file2.bin differ
+EOF
+
+${LSDIFF} -N diff 2>errors >output || exit 1
+[ -s errors ] && exit 1
+
+cat << 'EOF' | cmp - output || exit 1
+File #1  	a/file1.bin
+File #2  	a/file2.bin
+EOF

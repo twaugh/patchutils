@@ -1324,6 +1324,9 @@ static int filterdiff (FILE *f, const char *patchname)
 					/* Extract filenames from git headers */
 					if (extract_git_filenames (header, num_headers,
 								 &git_old_name, &git_new_name, git_prefix_mode) == 0) {
+						/* Increment file count for this git diff without hunks */
+						filecount++;
+
 						/* Use the best name for filtering */
 						char *names[2] = { git_old_name, git_new_name };
 						p = best_name (2, names);
@@ -1334,7 +1337,11 @@ static int filterdiff (FILE *f, const char *patchname)
 						if (match && pat_include != NULL)
 							match = patlist_match(pat_include, p_stripped);
 
-												/* Print filename if in list mode and matches */
+						/* Apply file number filter */
+						if (match)
+							match = file_matches();
+
+						/* Print filename if in list mode and matches */
 						if (match && !show_status && mode == mode_list)
 							display_filename (start_linenum, status, p, patchname);
 
@@ -1400,6 +1407,9 @@ static int filterdiff (FILE *f, const char *patchname)
 					goto flush_continue;
 				}
 
+				/* Increment file count for this git diff without hunks */
+				filecount++;
+
 				/* Use the best name for filtering */
 				char *names[2] = { git_old_name, git_new_name };
 				p = best_name (2, names);
@@ -1410,7 +1420,11 @@ static int filterdiff (FILE *f, const char *patchname)
 				if (match && pat_include != NULL)
 					match = patlist_match(pat_include, p_stripped);
 
-								/* Process the git diff (it will handle filename display) */
+				/* Apply file number filter */
+				if (match)
+					match = file_matches();
+
+				/* Process the git diff (it will handle filename display) */
 				result = do_git_diff_no_hunks (f, header, num_headers,
 							     match, &line, &linelen, &linenum,
 							     start_linenum, status, p, patchname,

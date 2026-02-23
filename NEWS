@@ -1,6 +1,45 @@
 Patchutils news
 ---------------
 
+0.4.5 (stable)
+
+	Fixed grepdiff -s/--status to display correct file status indicators.
+	Previously, grepdiff -s incorrectly showed '!' (modification) for all
+	matching files regardless of whether they were additions, deletions,
+	or modifications. Now correctly shows '+' for file additions, '-' for
+	file removals, and '!' for file modifications. Added comprehensive
+	test coverage for grepdiff -s with both unified and context diff
+	formats. Documented and enabled --empty-files-as-absent option for
+	grepdiff (long form only, as -E is used for --extended-regexp).
+
+	Improved error handling for command pipelines. Fixed pipe handling
+	to properly propagate errors when commands in a pipeline fail, and
+	corrected stdout/stdin piping behavior (stderr is no longer redirected
+	to pipes). Addresses GitHub issue #140.
+
+	Replaced old Git/SVN patchview scripts with unified patchview-wrapper.
+	The gitdiff, gitdiffview, gitshow, gitshowview, svndiff, and svndiffview
+	commands are now symlinks to a single patchview-wrapper script with
+	improved pipeline handling and debug support. Symlinks are now
+	automatically generated during installation rather than tracked in
+	source control.
+
+	Documentation improvements. Enhanced grepdiff documentation with better
+	organization and comprehensive examples showing different output modes.
+	Clarified bootstrap requirements in README.md. Restored move-to-front
+	script to package.
+
+	Build system and CI improvements. Updated GitHub Actions CI to run on
+	0.4.x branch. Conditionally enabled building from Git repository.
+	Updated spec file and .gitignore files.
+
+	Fixed binary file handling in lsdiff and filterdiff. Binary files now
+	receive sequential file numbers instead of duplicate numbers when using
+	lsdiff -N. Fixed filterdiff -F (file number filter) to properly filter
+	binary file messages - previously binary file "Binary files ... differ"
+	messages were not being filtered and would appear in output regardless
+	of the requested file number. Addresses GitHub issue #157.
+
 0.4.4 (stable)
 
 	Enhanced Git diff format support in filterdiff/lsdiff/grepdiff.
