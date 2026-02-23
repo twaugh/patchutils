@@ -1496,21 +1496,20 @@ ctx_lookahead (const char *hunk, size_t hlen, struct xtra_context *xctx)
 
 		/* Get the next line now to find the length of the line */
 		next_line = memchr (line, '\n', hunk + hlen - line);
-		if (*line == '+')
-			continue;
+		if (*line != '+') {
+			linelen = next_line + 1 - line;
 
-		linelen = next_line + 1 - line;
+			/* Copy out the line and ensure the first character is a
+			 * space, since it may be a minus. */
+			xctx->s = xrealloc (xctx->s, xctx->len + linelen);
+			memcpy (xctx->s + xctx->len, line, linelen);
+			xctx->s[xctx->len] = ' ';
+			xctx->len += linelen;
 
-		/* Copy out the line and ensure the first character is a space,
-		 * since it may be a minus. */
-		xctx->s = xrealloc (xctx->s, xctx->len + linelen);
-		memcpy (xctx->s + xctx->len, line, linelen);
-		xctx->s[xctx->len] = ' ';
-		xctx->len += linelen;
-
-		/* Quit when we've got the desired number of context lines */
-		if (++num == xctx->num)
-			break;
+			/* Quit when we've got the desired amount of context */
+			if (++num == xctx->num)
+				break;
+		}
 
 		/* Stop when this is the end of the hunk, recording the actual
 		 * number of extra context lines found. */
