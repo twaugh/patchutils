@@ -1,0 +1,293 @@
+#!/bin/sh
+
+# This is an interdiff(1) testcase.
+# Test: Fuzzy diffing (using --fuzzy) with a real Linux kernel backport compared
+# against its upstream version. Stresses having multiple relocations and most of
+# the fuzzy diffing machinery as a whole.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << 'EOF' > patch1
+From 132eaaa4a021d14a93fcec81921723d4d034b693 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marcin=20Wcis=C5=82o?= <marcin.wcislo@conclusive.pl>
+Date: Sat Nov 15 01:52:19 2025 +0100
+Subject: [PATCH] wifi: cfg80211: check A-MSDU format more carefully
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+jira VULN-5183
+cve CVE-2024-35937
+commit-author Johannes Berg <johannes.berg@intel.com>
+commit 9ad7974856926129f190ffbe3beea78460b3b7cc
+upstream-diff |
+  1. All changes to the `ieee80211_is_valid_amsdu' function were discarded
+     because it's missing from `ciqlts9_2'.
+  2. Changes to `ieee80211_amsdu_to_8023s' were adapted to account for the
+     missing 986e43b19ae9176093da35e0a844e65c8bf9ede7 from `ciqlts9_2'
+     history: the `copy_len > remaining' condition was changed to
+     `sizeof(eth) > remaining', as `sizeof(eth)' is the only possible
+     value `copy_len' could have assumed in `ciqlts9_2' if it was
+     introduced without backporting 986e43b (pointless).
+
+If it looks like there's another subframe in the A-MSDU
+but the header isn't fully there, we can end up reading
+data out of bounds, only to discard later. Make this a
+bit more careful and check if the subframe header can
+even be present.
+
+	Reported-by: syzbot+d050d437fe47d479d210@syzkaller.appspotmail.com
+Link: https://msgid.link/20240226203405.a731e2c95e38.I82ce7d8c0cc8970ce29d0a39fdc07f1ffc425be4@changeid
+	Signed-off-by: Johannes Berg <johannes.berg@intel.com>
+(cherry picked from commit 9ad7974856926129f190ffbe3beea78460b3b7cc)
+	Signed-off-by: Marcin Wcisło <marcin.wcislo@conclusive.pl>
+---
+ net/wireless/util.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/net/wireless/util.c b/net/wireless/util.c
+index 39680e7bad45a..582b9dbde01fe 100644
+--- a/net/wireless/util.c
++++ b/net/wireless/util.c
+@@ -757,24 +757,27 @@ void ieee80211_amsdu_to_8023s(struct sk_buff *skb, struct sk_buff_head *list,
+ 	struct sk_buff *frame = NULL;
+ 	u16 ethertype;
+ 	u8 *payload;
+-	int offset = 0, remaining;
++	int offset = 0;
+ 	struct ethhdr eth;
+ 	bool reuse_frag = skb->head_frag && !skb_has_frag_list(skb);
+ 	bool reuse_skb = false;
+ 	bool last = false;
+ 
+ 	while (!last) {
++		int remaining = skb->len - offset;
+ 		unsigned int subframe_len;
+ 		int len;
+ 		u8 padding;
+ 
++		if (sizeof(eth) > remaining)
++			goto purge;
++
+ 		skb_copy_bits(skb, offset, &eth, sizeof(eth));
+ 		len = ntohs(eth.h_proto);
+ 		subframe_len = sizeof(struct ethhdr) + len;
+ 		padding = (4 - subframe_len) & 0x3;
+ 
+ 		/* the last MSDU has no padding */
+-		remaining = skb->len - offset;
+ 		if (subframe_len > remaining)
+ 			goto purge;
+ 		/* mitigate A-MSDU aggregation injection attacks */
+EOF
+
+cat << 'EOF' > patch2
+From 9ad7974856926129f190ffbe3beea78460b3b7cc Mon Sep 17 00:00:00 2001
+From: Johannes Berg <johannes.berg@intel.com>
+Date: Mon, 26 Feb 2024 20:34:06 +0100
+Subject: [PATCH] wifi: cfg80211: check A-MSDU format more carefully
+
+If it looks like there's another subframe in the A-MSDU
+but the header isn't fully there, we can end up reading
+data out of bounds, only to discard later. Make this a
+bit more careful and check if the subframe header can
+even be present.
+
+Reported-by: syzbot+d050d437fe47d479d210@syzkaller.appspotmail.com
+Link: https://msgid.link/20240226203405.a731e2c95e38.I82ce7d8c0cc8970ce29d0a39fdc07f1ffc425be4@changeid
+Signed-off-by: Johannes Berg <johannes.berg@intel.com>
+---
+ net/wireless/util.c | 14 ++++++++++----
+ 1 file changed, 10 insertions(+), 4 deletions(-)
+
+diff --git a/net/wireless/util.c b/net/wireless/util.c
+index 379f742fd7415..2bde8a3546313 100644
+--- a/net/wireless/util.c
++++ b/net/wireless/util.c
+@@ -791,15 +791,19 @@ ieee80211_amsdu_subframe_length(void *field, u8 mesh_flags, u8 hdr_type)
+ 
+ bool ieee80211_is_valid_amsdu(struct sk_buff *skb, u8 mesh_hdr)
+ {
+-	int offset = 0, remaining, subframe_len, padding;
++	int offset = 0, subframe_len, padding;
+ 
+ 	for (offset = 0; offset < skb->len; offset += subframe_len + padding) {
++		int remaining = skb->len - offset;
+ 		struct {
+ 		    __be16 len;
+ 		    u8 mesh_flags;
+ 		} hdr;
+ 		u16 len;
+ 
++		if (sizeof(hdr) > remaining)
++			return false;
++
+ 		if (skb_copy_bits(skb, offset + 2 * ETH_ALEN, &hdr, sizeof(hdr)) < 0)
+ 			return false;
+ 
+@@ -807,7 +811,6 @@ bool ieee80211_is_valid_amsdu(struct sk_buff *skb, u8 mesh_hdr)
+ 						      mesh_hdr);
+ 		subframe_len = sizeof(struct ethhdr) + len;
+ 		padding = (4 - subframe_len) & 0x3;
+-		remaining = skb->len - offset;
+ 
+ 		if (subframe_len > remaining)
+ 			return false;
+@@ -825,7 +828,7 @@ void ieee80211_amsdu_to_8023s(struct sk_buff *skb, struct sk_buff_head *list,
+ {
+ 	unsigned int hlen = ALIGN(extra_headroom, 4);
+ 	struct sk_buff *frame = NULL;
+-	int offset = 0, remaining;
++	int offset = 0;
+ 	struct {
+ 		struct ethhdr eth;
+ 		uint8_t flags;
+@@ -839,10 +842,14 @@ void ieee80211_amsdu_to_8023s(struct sk_buff *skb, struct sk_buff_head *list,
+ 		copy_len = sizeof(hdr);
+ 
+ 	while (!last) {
++		int remaining = skb->len - offset;
+ 		unsigned int subframe_len;
+ 		int len, mesh_len = 0;
+ 		u8 padding;
+ 
++		if (copy_len > remaining)
++			goto purge;
++
+ 		skb_copy_bits(skb, offset, &hdr, copy_len);
+ 		if (iftype == NL80211_IFTYPE_MESH_POINT)
+ 			mesh_len = __ieee80211_get_mesh_hdrlen(hdr.flags);
+@@ -852,7 +859,6 @@ void ieee80211_amsdu_to_8023s(struct sk_buff *skb, struct sk_buff_head *list,
+ 		padding = (4 - subframe_len) & 0x3;
+ 
+ 		/* the last MSDU has no padding */
+-		remaining = skb->len - offset;
+ 		if (subframe_len > remaining)
+ 			goto purge;
+ 		/* mitigate A-MSDU aggregation injection attacks */
+-- 
+2.52.0
+
+EOF
+
+cat << 'EOF' > expected
+================================================================================
+*    DELTA DIFFERENCES - code changes that differ between the patches          *
+================================================================================
+
+--- b/net/wireless/util.c
++++ b/net/wireless/util.c
+@@ -769,9 +769,6 @@
+ 		int len;
+ 		u8 padding;
+ 
+-		if (sizeof(eth) > remaining)
+-			goto purge;
+-
+ 		skb_copy_bits(skb, offset, &eth, sizeof(eth));
+ 		len = ntohs(eth.h_proto);
+ 		subframe_len = sizeof(struct ethhdr) + len;
+
+################################################################################
+!    REJECTED PATCH2 HUNKS - could not be compared; manual review needed       !
+################################################################################
+
+--- b/net/wireless/util.c
++++ b/net/wireless/util.c
+@@ -791,7 +791,7 @@
+ 
+ bool ieee80211_is_valid_amsdu(struct sk_buff *skb, u8 mesh_hdr)
+ {
+-	int offset = 0, remaining, subframe_len, padding;
++	int offset = 0, subframe_len, padding;
+ 
+ 	for (offset = 0; offset < skb->len; offset += subframe_len + padding) {
+ 		struct {
+@@ -794,6 +794,7 @@
+ 	int offset = 0, remaining, subframe_len, padding;
+ 
+ 	for (offset = 0; offset < skb->len; offset += subframe_len + padding) {
++		int remaining = skb->len - offset;
+ 		struct {
+ 		    __be16 len;
+ 		    u8 mesh_flags;
+@@ -797,6 +798,9 @@
+ 		} hdr;
+ 		u16 len;
+ 
++		if (sizeof(hdr) > remaining)
++			return false;
++
+ 		if (skb_copy_bits(skb, offset + 2 * ETH_ALEN, &hdr, sizeof(hdr)) < 0)
+ 			return false;
+ 
+@@ -807,7 +811,6 @@
+ 						      mesh_hdr);
+ 		subframe_len = sizeof(struct ethhdr) + len;
+ 		padding = (4 - subframe_len) & 0x3;
+-		remaining = skb->len - offset;
+ 
+ 		if (subframe_len > remaining)
+ 			return false;
+@@ -825,7 +828,7 @@
+ {
+ 	unsigned int hlen = ALIGN(extra_headroom, 4);
+ 	struct sk_buff *frame = NULL;
+-	int offset = 0, remaining;
++	int offset = 0;
+ 	struct {
+ 		struct ethhdr eth;
+ 		uint8_t flags;
+@@ -843,6 +847,9 @@
+ 		int len, mesh_len = 0;
+ 		u8 padding;
+ 
++		if (copy_len > remaining)
++			goto purge;
++
+ 		skb_copy_bits(skb, offset, &hdr, copy_len);
+ 		if (iftype == NL80211_IFTYPE_MESH_POINT)
+ 			mesh_len = __ieee80211_get_mesh_hdrlen(hdr.flags);
+
+================================================================================
+*    CONTEXT DIFFERENCES - surrounding code differences between the patches    *
+================================================================================
+
+--- b/net/wireless/util.c
++++ b/net/wireless/util.c
+@@ -754,8 +756,5 @@
+ 	struct sk_buff *frame = NULL;
+-	u16 ethertype;
+-	u8 *payload;
+ 	int offset = 0, remaining;
+-	struct ethhdr eth;
+-	bool reuse_frag = skb->head_frag && !skb_has_frag_list(skb);
+-	bool reuse_skb = false;
+-	bool last = false;
++	struct {
++		struct ethhdr eth;
++		uint8_t flags;
+@@ -762,12 +762,12 @@
+ 
+ 	while (!last) {
+ 		unsigned int subframe_len;
+-		int len;
++		int len, mesh_len = 0;
+ 		u8 padding;
+ 
+-		skb_copy_bits(skb, offset, &eth, sizeof(eth));
+-		len = ntohs(eth.h_proto);
+-		subframe_len = sizeof(struct ethhdr) + len;
++		skb_copy_bits(skb, offset, &hdr, copy_len);
++		if (iftype == NL80211_IFTYPE_MESH_POINT)
++			mesh_len = __ieee80211_get_mesh_hdrlen(hdr.flags);
+ 		padding = (4 - subframe_len) & 0x3;
+ 
+ 		/* the last MSDU has no padding */
+EOF
+
+${INTERDIFF} --fuzzy patch1 patch2 2>errors >output
+[ -s errors ] && exit 1
+
+cmp output expected || exit 1
