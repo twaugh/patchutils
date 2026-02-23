@@ -33,6 +33,13 @@ Patchutils news
 	0.4.x branch. Conditionally enabled building from Git repository.
 	Updated spec file and .gitignore files.
 
+	Fixed binary file handling in lsdiff and filterdiff. Binary files now
+	receive sequential file numbers instead of duplicate numbers when using
+	lsdiff -N. Fixed filterdiff -F (file number filter) to properly filter
+	binary file messages - previously binary file "Binary files ... differ"
+	messages were not being filtered and would appear in output regardless
+	of the requested file number. Addresses GitHub issue #157.
+
 0.4.4 (stable)
 
 	Enhanced Git diff format support in filterdiff/lsdiff/grepdiff.
