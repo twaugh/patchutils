@@ -1324,6 +1324,9 @@ static int filterdiff (FILE *f, const char *patchname)
 					/* Extract filenames from git headers */
 					if (extract_git_filenames (header, num_headers,
 								 &git_old_name, &git_new_name, git_prefix_mode) == 0) {
+						/* Increment file count for this git diff without hunks */
+						filecount++;
+
 						/* Use the best name for filtering */
 						char *names[2] = { git_old_name, git_new_name };
 						p = best_name (2, names);
@@ -1399,6 +1402,9 @@ static int filterdiff (FILE *f, const char *patchname)
 					/* Fallback to traditional method if git extraction fails */
 					goto flush_continue;
 				}
+
+				/* Increment file count for this git diff without hunks */
+				filecount++;
 
 				/* Use the best name for filtering */
 				char *names[2] = { git_old_name, git_new_name };
