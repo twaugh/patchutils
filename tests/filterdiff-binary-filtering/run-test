@@ -1,0 +1,36 @@
+#!/bin/sh
+
+# GitHub issue #157: Binary files should be filtered by file number
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << 'EOF' > diff
+diff --git a/file1.txt b/file1.txt
+new file mode 100644
+--- /dev/null
++++ b/file1.txt
+@@ -0,0 +1 @@
++a
+diff --git a/file1.bin b/file1.bin
+new file mode 100644
+Binary files /dev/null and b/file1.bin differ
+diff --git a/file2.txt b/file2.txt
+new file mode 100644
+--- /dev/null
++++ b/file2.txt
+@@ -0,0 +1 @@
++b
+diff --git a/file2.bin b/file2.bin
+new file mode 100644
+Binary files /dev/null and b/file2.bin differ
+EOF
+
+# Test -F2: should only show file #2 (file1.bin), NOT file2.bin
+${FILTERDIFF} -F2 diff 2>errors >output || exit 1
+[ -s errors ] && exit 1
+
+cat << 'EOF' | cmp - output || exit 1
+diff --git a/file1.bin b/file1.bin
+new file mode 100644
+Binary files /dev/null and b/file1.bin differ
+EOF
