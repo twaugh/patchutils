@@ -624,7 +624,7 @@ create_orig (FILE *f, struct lines_info *file,
 				break;
 			}
 
-			last_was_add = (line[0] == '+');
+			last_was_add = (first_char == '+');
 		}
 
 		if (!newline) {
