@@ -48,7 +48,7 @@ index abc123..def456 100644
 +new line
 EOF
 
-${LSDIFF} -s all-types-mixed.patch 2>errors1 >result1 || exit 1
+${LSDIFF} --git-extended-diffs=include -s all-types-mixed.patch 2>errors1 >result1 || exit 1
 [ -s errors1 ] && exit 1
 
 cat << EOF | cmp - result1 || exit 1
@@ -68,7 +68,7 @@ index 0000000..abc123
 Binary files /dev/null and b/new-binary.bin differ
 EOF
 
-${LSDIFF} -s binary-new-file.patch 2>errors2 >result2 || exit 1
+${LSDIFF} --git-extended-diffs=include -s binary-new-file.patch 2>errors2 >result2 || exit 1
 [ -s errors2 ] && exit 1
 
 cat << EOF | cmp - result2 || exit 1
@@ -83,7 +83,7 @@ index abc123..0000000
 Binary files a/old-binary.bin and /dev/null differ
 EOF
 
-${LSDIFF} -s binary-deleted-file.patch 2>errors3 >result3 || exit 1
+${LSDIFF} --git-extended-diffs=include -s binary-deleted-file.patch 2>errors3 >result3 || exit 1
 [ -s errors3 ] && exit 1
 
 cat << EOF | cmp - result3 || exit 1
@@ -101,7 +101,7 @@ delta 456
 zcmV-;0E~(b0jh^H8Gi-<0001b0000000000000000000000000000000000
 EOF
 
-${LSDIFF} -s binary-modified.patch 2>errors4 >result4 || exit 1
+${LSDIFF} --git-extended-diffs=include -s binary-modified.patch 2>errors4 >result4 || exit 1
 [ -s errors4 ] && exit 1
 
 cat << EOF | cmp - result4 || exit 1
@@ -120,7 +120,7 @@ index 0000000..abc123
 +echo "hello"
 EOF
 
-${LSDIFF} -s new-file-with-mode.patch 2>errors5 >result5 || exit 1
+${LSDIFF} --git-extended-diffs=include -s new-file-with-mode.patch 2>errors5 >result5 || exit 1
 [ -s errors5 ] && exit 1
 
 cat << EOF | cmp - result5 || exit 1
@@ -155,7 +155,7 @@ index abc123..def456 100644
 +}
 EOF
 
-${LSDIFF} -s rename-low-similarity.patch 2>errors6 >result6 || exit 1
+${LSDIFF} --git-extended-diffs=include -s rename-low-similarity.patch 2>errors6 >result6 || exit 1
 [ -s errors6 ] && exit 1
 
 cat << EOF | cmp - result6 || exit 1
@@ -171,7 +171,7 @@ copy to instance.h
 index abc123..abc123 100644
 EOF
 
-${LSDIFF} -s copy-identical.patch 2>errors7 >result7 || exit 1
+${LSDIFF} --git-extended-diffs=include -s copy-identical.patch 2>errors7 >result7 || exit 1
 [ -s errors7 ] && exit 1
 
 cat << EOF | cmp - result7 || exit 1
@@ -199,7 +199,7 @@ index 789abc..def789 100644
 +new
 EOF
 
-${LSDIFF} -s multiple-modes.patch 2>errors8 >result8 || exit 1
+${LSDIFF} --git-extended-diffs=include -s multiple-modes.patch 2>errors8 >result8 || exit 1
 [ -s errors8 ] && exit 1
 
 cat << EOF | cmp - result8 || exit 1
@@ -209,7 +209,7 @@ cat << EOF | cmp - result8 || exit 1
 EOF
 
 # Test 9: Test with filterdiff --list mode (should use same code paths)
-${FILTERDIFF} --list -s all-types-mixed.patch 2>errors9 >result9 || exit 1
+${FILTERDIFF} --git-extended-diffs=include --list -s all-types-mixed.patch 2>errors9 >result9 || exit 1
 [ -s errors9 ] && exit 1
 
 # Should be identical to lsdiff -s output

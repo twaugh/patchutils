@@ -65,7 +65,7 @@ index 111222..333444 100644
 EOF
 
 # Test 1: lsdiff should list all files correctly
-${LSDIFF} complex-git.patch 2>errors1 >result1 || exit 1
+${LSDIFF} --git-extended-diffs=include --git-extended-diffs=include complex-git.patch 2>errors1 >result1 || exit 1
 [ -s errors1 ] && exit 1
 
 cat << EOF | cmp - result1 || exit 1
@@ -79,7 +79,7 @@ a/regular-change.h
 EOF
 
 # Test 2: lsdiff with --git-prefixes=strip
-${LSDIFF} --git-prefixes=strip complex-git.patch 2>errors2 >result2 || exit 1
+${LSDIFF} --git-extended-diffs=include --git-extended-diffs=include --git-prefixes=strip complex-git.patch 2>errors2 >result2 || exit 1
 [ -s errors2 ] && exit 1
 
 cat << EOF | cmp - result2 || exit 1
@@ -93,7 +93,7 @@ regular-change.h
 EOF
 
 # Test 3: Filter only new files
-${FILTERDIFF} -i "*/*.txt" complex-git.patch 2>errors3 >result3 || exit 1
+${FILTERDIFF} --git-extended-diffs=include -i "*/*.txt" complex-git.patch 2>errors3 >result3 || exit 1
 [ -s errors3 ] && exit 1
 
 # Should include new-file.txt and new-name.txt (renamed file)
@@ -102,7 +102,7 @@ grep -q "new-name.txt" result3 || exit 1
 grep -q "binary-data.bin" result3 && exit 1  # Should not include binary
 
 # Test 4: Filter binary files specifically
-${FILTERDIFF} -i "*/*.bin" complex-git.patch 2>errors4 >result4 || exit 1
+${FILTERDIFF} --git-extended-diffs=include -i "*/*.bin" complex-git.patch 2>errors4 >result4 || exit 1
 [ -s errors4 ] && exit 1
 
 cat << EOF | cmp - result4 || exit 1
@@ -113,14 +113,14 @@ Binary files /dev/null and b/binary-data.bin differ
 EOF
 
 # Test 5: Exclude deleted files
-${FILTERDIFF} -x "*/*.old" complex-git.patch 2>errors5 >result5 || exit 1
+${FILTERDIFF} --git-extended-diffs=include -x "*/*.old" complex-git.patch 2>errors5 >result5 || exit 1
 [ -s errors5 ] && exit 1
 
 # Should not contain deleted-file.old
 grep -q "deleted-file.old" result5 && exit 1
 
 # Test 6: Test grepdiff on content changes only
-${GREPDIFF} "NEW_VERSION" complex-git.patch 2>errors6 >result6 || exit 1
+${GREPDIFF} --git-extended-diffs=include "NEW_VERSION" complex-git.patch 2>errors6 >result6 || exit 1
 [ -s errors6 ] && exit 1
 
 # Should only match regular-change.h
@@ -128,7 +128,7 @@ grep -q "regular-change.h" result6 || exit 1
 grep -q "new-file.txt" result6 && exit 1  # Should not match files without the pattern
 
 # Test 7: Test with -p strip on complex paths
-${FILTERDIFF} --git-prefixes=strip -p0 --strip=0 complex-git.patch 2>errors7 >result7 || exit 1
+${FILTERDIFF} --git-extended-diffs=include --git-prefixes=strip -p0 --strip=0 complex-git.patch 2>errors7 >result7 || exit 1
 [ -s errors7 ] && exit 1
 
 # Should preserve all content

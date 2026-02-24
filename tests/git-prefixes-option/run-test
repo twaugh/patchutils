@@ -33,7 +33,7 @@ index abcdefg..1234567 100644
 EOF
 
 # Test default behavior (keep prefixes)
-${LSDIFF} mixed-git.patch 2>errors1 >result1 || exit 1
+${LSDIFF} --git-extended-diffs=include --git-extended-diffs=include mixed-git.patch 2>errors1 >result1 || exit 1
 [ -s errors1 ] && exit 1
 
 # Expected output explanation:
@@ -49,7 +49,7 @@ a/regular-file.txt
 EOF
 
 # Test --git-prefixes=keep (explicit)
-${LSDIFF} --git-prefixes=keep mixed-git.patch 2>errors2 >result2 || exit 1
+${LSDIFF} --git-extended-diffs=include --git-extended-diffs=include --git-prefixes=keep mixed-git.patch 2>errors2 >result2 || exit 1
 [ -s errors2 ] && exit 1
 
 cat << EOF | cmp - result2 || exit 1
@@ -60,7 +60,7 @@ a/regular-file.txt
 EOF
 
 # Test --git-prefixes=strip
-${LSDIFF} --git-prefixes=strip mixed-git.patch 2>errors3 >result3 || exit 1
+${LSDIFF} --git-extended-diffs=include --git-extended-diffs=include --git-prefixes=strip mixed-git.patch 2>errors3 >result3 || exit 1
 [ -s errors3 ] && exit 1
 
 # Expected output explanation:
@@ -76,7 +76,7 @@ regular-file.txt
 EOF
 
 # Test with filterdiff --git-prefixes=strip
-${FILTERDIFF} --git-prefixes=strip -i "*.txt" mixed-git.patch 2>errors4 >result4 || exit 1
+${FILTERDIFF} --git-extended-diffs=include --git-prefixes=strip -i "*.txt" mixed-git.patch 2>errors4 >result4 || exit 1
 [ -s errors4 ] && exit 1
 
 cat << EOF | cmp - result4 || exit 1
@@ -90,7 +90,7 @@ index abcdefg..1234567 100644
 EOF
 
 # Test with grepdiff --git-prefixes=strip
-${GREPDIFF} --git-prefixes=strip --output-matching=file "content" mixed-git.patch 2>errors5 >result5 || exit 1
+${GREPDIFF} --git-extended-diffs=include --git-extended-diffs=include --git-prefixes=strip --output-matching=file "content" mixed-git.patch 2>errors5 >result5 || exit 1
 [ -s errors5 ] && exit 1
 
 cat << EOF | cmp - result5 || exit 1
@@ -104,7 +104,7 @@ index abcdefg..1234567 100644
 EOF
 
 # Test invalid argument
-${LSDIFF} --git-prefixes=invalid mixed-git.patch 2>errors6 >result6
+${LSDIFF} --git-extended-diffs=include --git-extended-diffs=include --git-prefixes=invalid mixed-git.patch 2>errors6 >result6
 [ $? -eq 1 ] || exit 1
 grep -q "invalid argument to --git-prefixes" errors6 || exit 1
 

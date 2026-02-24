@@ -11,7 +11,7 @@ new file mode 100644
 index 0000000..abcdef1
 EOF
 
-${LSDIFF} -s new-file-no-hunks.patch 2>errors1 >result1 || exit 1
+${LSDIFF} --git-extended-diffs=include -s new-file-no-hunks.patch 2>errors1 >result1 || exit 1
 [ -s errors1 ] && exit 1
 
 cat << EOF | cmp - result1 || exit 1
@@ -25,7 +25,7 @@ deleted file mode 100644
 index abcdef1..0000000
 EOF
 
-${LSDIFF} -s deleted-file-no-hunks.patch 2>errors2 >result2 || exit 1
+${LSDIFF} --git-extended-diffs=include -s deleted-file-no-hunks.patch 2>errors2 >result2 || exit 1
 [ -s errors2 ] && exit 1
 
 cat << EOF | cmp - result2 || exit 1
@@ -45,7 +45,7 @@ index 0000000..1234567
 +line 3
 EOF
 
-${LSDIFF} -s new-file-with-hunks.patch 2>errors3 >result3 || exit 1
+${LSDIFF} --git-extended-diffs=include -s new-file-with-hunks.patch 2>errors3 >result3 || exit 1
 [ -s errors3 ] && exit 1
 
 cat << EOF | cmp - result3 || exit 1
@@ -65,7 +65,7 @@ index 1234567..0000000
 -line 3
 EOF
 
-${LSDIFF} -s deleted-file-with-hunks.patch 2>errors4 >result4 || exit 1
+${LSDIFF} --git-extended-diffs=include -s deleted-file-with-hunks.patch 2>errors4 >result4 || exit 1
 [ -s errors4 ] && exit 1
 
 cat << EOF | cmp - result4 || exit 1
@@ -78,7 +78,7 @@ diff --git a/modified-file.txt b/modified-file.txt
 index abcdef1..1234567 100644
 EOF
 
-${LSDIFF} -s modified-file-no-hunks.patch 2>errors5 >result5 || exit 1
+${LSDIFF} --git-extended-diffs=include -s modified-file-no-hunks.patch 2>errors5 >result5 || exit 1
 [ -s errors5 ] && exit 1
 
 # Should produce no output (empty file)
@@ -97,7 +97,7 @@ index abcdef1..1234567 100644
  line 3
 EOF
 
-${LSDIFF} -s modified-file-with-hunks.patch 2>errors6 >result6 || exit 1
+${LSDIFF} --git-extended-diffs=include -s modified-file-with-hunks.patch 2>errors6 >result6 || exit 1
 [ -s errors6 ] && exit 1
 
 cat << EOF | cmp - result6 || exit 1
@@ -135,7 +135,7 @@ deleted file mode 100644
 index e69de29..0000000
 EOF
 
-${LSDIFF} -s mixed-git.patch 2>errors7 >result7 || exit 1
+${LSDIFF} --git-extended-diffs=include -s mixed-git.patch 2>errors7 >result7 || exit 1
 [ -s errors7 ] && exit 1
 
 cat << EOF | cmp - result7 || exit 1
@@ -147,7 +147,7 @@ cat << EOF | cmp - result7 || exit 1
 EOF
 
 # Test 8: Test with filterdiff in list mode (should use same code paths)
-${FILTERDIFF} --list -s mixed-git.patch 2>errors8 >result8 || exit 1
+${FILTERDIFF} --git-extended-diffs=include --list -s mixed-git.patch 2>errors8 >result8 || exit 1
 [ -s errors8 ] && exit 1
 
 # Should be identical to lsdiff -s output

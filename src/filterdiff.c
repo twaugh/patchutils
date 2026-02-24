@@ -112,6 +112,33 @@ static unsigned long filecount=0;
 
 static enum git_prefix_mode git_prefix_mode = GIT_PREFIX_KEEP;
 
+enum git_extended_diffs_mode {
+	GIT_EXTENDED_DIFFS_EXCLUDE = 0,  /* Skip extended diffs (0.4.3 behavior) */
+	GIT_EXTENDED_DIFFS_INCLUDE = 1   /* Process extended diffs (Git workflow) */
+};
+
+static enum git_extended_diffs_mode git_extended_diffs_mode = GIT_EXTENDED_DIFFS_EXCLUDE;
+
+/* Helper function to check if a git diff type should be excluded based on mode */
+static int
+should_skip_git_extended_diff (enum git_diff_type git_type)
+{
+	if (git_extended_diffs_mode == GIT_EXTENDED_DIFFS_INCLUDE)
+		return 0;  /* Don't skip anything if include mode */
+
+	/* In exclude mode, skip all diffs without content hunks.
+	 * This includes renames, copies, mode-only changes, binary files,
+	 * and new/deleted files without content (e.g., binary files).
+	 * This restores 0.4.3 behavior where only files with actual
+	 * patch hunks were shown. */
+	switch (git_type) {
+	case GIT_DIFF_NORMAL:
+		return 0;  /* Don't skip - has hunks */
+	default:
+		return 1;  /* Skip all extended/special types */
+	}
+}
+
 /* Helper function to check if current patch is a Git patch */
 static int
 is_git_patch (char **headers, unsigned int num_headers)
@@ -1314,7 +1341,11 @@ static int filterdiff (FILE *f, const char *patchname)
 				/* Process as git diff without hunks and then exit */
 				enum git_diff_type git_type = detect_git_diff_type (header, num_headers);
 
-								if (git_type != GIT_DIFF_NORMAL) {
+
+				/* Skip extended diffs if in exclude mode */
+				if (should_skip_git_extended_diff (git_type))
+					goto eof;
+				if (git_type != GIT_DIFF_NORMAL) {
 					char *git_old_name = NULL, *git_new_name = NULL;
 					const char *p_stripped;
 					int match;
@@ -1391,7 +1422,11 @@ static int filterdiff (FILE *f, const char *patchname)
 			/* Check if this is a git diff without hunks or with content like Binary files */
 			enum git_diff_type git_type = detect_git_diff_type (header, num_headers);
 
-						if (git_type != GIT_DIFF_NORMAL) {
+
+			/* Skip extended diffs if in exclude mode */
+			if (should_skip_git_extended_diff (git_type))
+				goto flush_continue;
+			if (git_type != GIT_DIFF_NORMAL) {
 				/* This is a git diff without hunks - handle it */
 				char *git_old_name = NULL, *git_new_name = NULL;
 				const char *p_stripped;
@@ -1633,6 +1668,9 @@ const char * syntax_str =
 "  --git-prefixes=strip|keep\n"
 "            how to handle a/ and b/ prefixes in Git diffs for both filename\n"
 "            matching (-i/-x) and output (default: keep)\n"
+"  --git-extended-diffs=exclude|include\n"
+"            process Git diffs without hunks: renames, copies, mode-only\n"
+"            changes, binary files; default is exclude\n"
 "  --addprefix=PREFIX\n"
 "            prefix pathnames with PREFIX\n"
 "  --addoldprefix=PREFIX\n"
@@ -1893,6 +1931,7 @@ int main (int argc, char *argv[])
 			{"file", 1, 0, 'f'},
 			{"in-place", 0, 0, 1000 + 'w'},
 			{"git-prefixes", 1, 0, 1000 + 'G'},
+			{"git-extended-diffs", 1, 0, 1000 + 'D'},
 			{0, 0, 0, 0}
 		};
 		char *end;
@@ -2083,6 +2122,15 @@ int main (int argc, char *argv[])
 				git_prefix_mode = GIT_PREFIX_KEEP;
 			} else {
 				error(EXIT_FAILURE, 0, "invalid argument to --git-prefixes: %s (expected 'strip' or 'keep')", optarg);
+			}
+			break;
+		case 1000 + 'D':
+			if (!strcmp(optarg, "exclude")) {
+				git_extended_diffs_mode = GIT_EXTENDED_DIFFS_EXCLUDE;
+			} else if (!strcmp(optarg, "include")) {
+				git_extended_diffs_mode = GIT_EXTENDED_DIFFS_INCLUDE;
+			} else {
+				error(EXIT_FAILURE, 0, "invalid argument to --git-extended-diffs: %s (expected 'exclude' or 'include')", optarg);
 			}
 			break;
 		default:

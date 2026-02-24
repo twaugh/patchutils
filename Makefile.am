@@ -315,6 +315,7 @@ TESTS = tests/newline1/run-test \
 	tests/git-rename-issue22/run-test \
 	tests/git-binary-issue57/run-test \
 	tests/git-binary-formats/run-test \
+	tests/git-extended-diffs-exclude/run-test \
 	tests/git-mode-issue59/run-test \
 	tests/git-exclude-issue27/run-test \
 	tests/git-prefixes-option/run-test \
