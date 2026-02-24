@@ -2846,6 +2846,13 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 	fseek (p1, start1, SEEK_SET);
 	fseek (p2, start2, SEEK_SET);
 
+	/* Skip fuzzy processing for file creations/deletions. One
+	 * side is /dev/null, so there's no content to diff. */
+	if (fuzzy &&
+	    (!strcmp (oldname + 4, "/dev/null") ||
+	     !strcmp (newname + 4, "/dev/null")))
+		goto fuzzy_skip;
+
 	if (fuzzy) {
 		unsigned long *hunk_offs = NULL, *ctx_hunk_offs = NULL;
 		char *patch1_new_file, *ctx_patch1_orig_file;
@@ -3056,6 +3063,7 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 			fuzzy_cleanup (tmpp2, ctx_ret);
 		}
 	}
+ fuzzy_skip:
 	free (oldname);
 	free (newname);
 	if (fuzzy) {
