@@ -1,0 +1,55 @@
+#!/bin/sh
+
+# This is an interdiff(1) testcase.
+# Test: Fuzzy diffing with the hunk splitter stressed by having a +/- line as
+# either the first or last line in a hunk, while triggering a split by
+# separating two deltas by some context lines. This also tests patches with an
+# unequal number of pre-context and post-context lines.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << 'EOF' > patch1
+--- file
++++ file
+@@ -5,2 +5,2 @@
+-line 5
+ if
++1
+EOF
+
+cat << 'EOF' > patch2
+--- file
++++ file
+@@ -50,5 +50,5 @@
+ hi
+ line 4
+-line 5
+ if
++1
+ 2
+EOF
+
+cat << 'EOF' > expected
+################################################################################
+!    REJECTED PATCH2 HUNKS - could not be compared; manual review needed       !
+################################################################################
+
+--- file
++++ file
+@@ -50,5 +50,4 @@
+ hi
+ line 4
+-line 5
+ if
+ 2
+@@ -53,2 +52,3 @@
+ if
++1
+ 2
+EOF
+
+${INTERDIFF} --fuzzy=1 patch1 patch2 2>errors >output
+[ -s errors ] && exit 1
+
+cmp output expected || exit 1

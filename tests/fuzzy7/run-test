@@ -1,0 +1,918 @@
+#!/bin/sh
+
+# This is an interdiff(1) testcase.
+# Test: Fuzzy diffing with a real Linux kernel backport compared against its
+# upstream version. Stresses having multiple relocations and most of the fuzzy
+# diffing machinery as a whole.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << 'EOF' > patch1
+From ed0708f971a26619964eea4e9eccb73847caa0c7 Mon Sep 17 00:00:00 2001
+From: Shreeya Patel <spatel@ciq.com>
+Date: Wed, 3 Sep 2025 12:36:41 +0000
+Subject: [PATCH] net: mana: Handle Reset Request from MANA NIC
+
+jira LE-3923
+commit-author Haiyang Zhang <haiyangz@microsoft.com>
+commit fbe346ce9d626680a4dd0f079e17c7b5dd32ffad
+upstream-diff There were conflicts seen when applying this
+patch due to the following missing commits :-
+ca8ac489ca33 ("net: mana: Handle unsupported HWC commands")
+505cc26bcae0 ("net: mana: Add support for auxiliary device servicing
+events")
+
+Upon receiving the Reset Request, pause the connection and clean up
+queues, wait for the specified period, then resume the NIC.
+In the cleanup phase, the HWC is no longer responding, so set hwc_timeout
+to zero to skip waiting on the response.
+
+	Signed-off-by: Haiyang Zhang <haiyangz@microsoft.com>
+Link: https://patch.msgid.link/1751055983-29760-1-git-send-email-haiyangz@linux.microsoft.com
+	Signed-off-by: Jakub Kicinski <kuba@kernel.org>
+(cherry picked from commit fbe346ce9d626680a4dd0f079e17c7b5dd32ffad)
+	Signed-off-by: Shreeya Patel <spatel@ciq.com>
+---
+ .../net/ethernet/microsoft/mana/gdma_main.c   | 127 ++++++++++++++----
+ .../net/ethernet/microsoft/mana/hw_channel.c  |   4 +-
+ drivers/net/ethernet/microsoft/mana/mana_en.c |  37 +++--
+ include/net/mana/gdma.h                       |  10 ++
+ 4 files changed, 143 insertions(+), 35 deletions(-)
+
+diff --git a/drivers/net/ethernet/microsoft/mana/gdma_main.c b/drivers/net/ethernet/microsoft/mana/gdma_main.c
+index 9d19df7cd82b3..cf3b920476cf6 100644
+--- a/drivers/net/ethernet/microsoft/mana/gdma_main.c
++++ b/drivers/net/ethernet/microsoft/mana/gdma_main.c
+@@ -8,6 +8,7 @@
+ #include <linux/version.h>
+ 
+ #include <net/mana/mana.h>
++#include <net/mana/hw_channel.h>
+ 
+ #include <linux/cpu.h>
+ struct dentry *mana_debugfs_root;
+@@ -64,6 +65,24 @@ static void mana_gd_init_registers(struct pci_dev *pdev)
+ 		mana_gd_init_vf_regs(pdev);
+ }
+ 
++/* Suppress logging when we set timeout to zeo */
++bool mana_need_log(struct gdma_context *gc, int err)
++{
++	struct hw_channel_context *hwc;
++
++	if (err != -ETIMEDOUT)
++		return true;
++
++	if (!gc)
++		return true;
++
++	hwc = gc->hwc.driver_data;
++	if (hwc && hwc->hwc_timeout == 0)
++		return false;
++
++	return true;
++}
++
+ static int mana_gd_query_max_resources(struct pci_dev *pdev)
+ {
+ 	struct gdma_context *gc = pci_get_drvdata(pdev);
+@@ -267,8 +286,9 @@ static int mana_gd_disable_queue(struct gdma_queue *queue)
+ 
+ 	err = mana_gd_send_request(gc, sizeof(req), &req, sizeof(resp), &resp);
+ 	if (err || resp.hdr.status) {
+-		dev_err(gc->dev, "Failed to disable queue: %d, 0x%x\n", err,
+-			resp.hdr.status);
++		if (mana_need_log(gc, err))
++			dev_err(gc->dev, "Failed to disable queue: %d, 0x%x\n", err,
++				resp.hdr.status);
+ 		return err ? err : -EPROTO;
+ 	}
+ 
+@@ -353,25 +373,12 @@ void mana_gd_ring_cq(struct gdma_queue *cq, u8 arm_bit)
+ 
+ #define MANA_SERVICE_PERIOD 10
+ 
+-struct mana_serv_work {
+-	struct work_struct serv_work;
+-	struct pci_dev *pdev;
+-};
+-
+-static void mana_serv_func(struct work_struct *w)
++static void mana_serv_fpga(struct pci_dev *pdev)
+ {
+-	struct mana_serv_work *mns_wk;
+ 	struct pci_bus *bus, *parent;
+-	struct pci_dev *pdev;
+-
+-	mns_wk = container_of(w, struct mana_serv_work, serv_work);
+-	pdev = mns_wk->pdev;
+ 
+ 	pci_lock_rescan_remove();
+ 
+-	if (!pdev)
+-		goto out;
+-
+ 	bus = pdev->bus;
+ 	if (!bus) {
+ 		dev_err(&pdev->dev, "MANA service: no bus\n");
+@@ -392,7 +399,74 @@ static void mana_serv_func(struct work_struct *w)
+ 
+ out:
+ 	pci_unlock_rescan_remove();
++}
++
++static void mana_serv_reset(struct pci_dev *pdev)
++{
++	struct gdma_context *gc = pci_get_drvdata(pdev);
++	struct hw_channel_context *hwc;
++
++	if (!gc) {
++		dev_err(&pdev->dev, "MANA service: no GC\n");
++		return;
++	}
++
++	hwc = gc->hwc.driver_data;
++	if (!hwc) {
++		dev_err(&pdev->dev, "MANA service: no HWC\n");
++		goto out;
++	}
++
++	/* HWC is not responding in this case, so don't wait */
++	hwc->hwc_timeout = 0;
++
++	dev_info(&pdev->dev, "MANA reset cycle start\n");
+ 
++	mana_gd_suspend(pdev, PMSG_SUSPEND);
++
++	msleep(MANA_SERVICE_PERIOD * 1000);
++
++	mana_gd_resume(pdev);
++
++	dev_info(&pdev->dev, "MANA reset cycle completed\n");
++
++out:
++	gc->in_service = false;
++}
++
++struct mana_serv_work {
++	struct work_struct serv_work;
++	struct pci_dev *pdev;
++	enum gdma_eqe_type type;
++};
++
++static void mana_serv_func(struct work_struct *w)
++{
++	struct mana_serv_work *mns_wk;
++	struct pci_dev *pdev;
++
++	mns_wk = container_of(w, struct mana_serv_work, serv_work);
++	pdev = mns_wk->pdev;
++
++	if (!pdev)
++		goto out;
++
++	switch (mns_wk->type) {
++	case GDMA_EQE_HWC_FPGA_RECONFIG:
++		mana_serv_fpga(pdev);
++		break;
++
++	case GDMA_EQE_HWC_RESET_REQUEST:
++		mana_serv_reset(pdev);
++		break;
++
++	default:
++		dev_err(&pdev->dev, "MANA service: unknown type %d\n",
++			mns_wk->type);
++		break;
++	}
++
++out:
+ 	pci_dev_put(pdev);
+ 	kfree(mns_wk);
+ 	module_put(THIS_MODULE);
+@@ -448,6 +522,7 @@ static void mana_gd_process_eqe(struct gdma_queue *eq)
+ 		break;
+ 
+ 	case GDMA_EQE_HWC_FPGA_RECONFIG:
++	case GDMA_EQE_HWC_RESET_REQUEST:
+ 		dev_info(gc->dev, "Recv MANA service type:%d\n", type);
+ 
+ 		if (gc->in_service) {
+@@ -469,6 +544,7 @@ static void mana_gd_process_eqe(struct gdma_queue *eq)
+ 		dev_info(gc->dev, "Start MANA service type:%d\n", type);
+ 		gc->in_service = true;
+ 		mns_wk->pdev = to_pci_dev(gc->dev);
++		mns_wk->type = type;
+ 		pci_dev_get(mns_wk->pdev);
+ 		INIT_WORK(&mns_wk->serv_work, mana_serv_func);
+ 		schedule_work(&mns_wk->serv_work);
+@@ -615,7 +691,8 @@ int mana_gd_test_eq(struct gdma_context *gc, struct gdma_queue *eq)
+ 
+ 	err = mana_gd_send_request(gc, sizeof(req), &req, sizeof(resp), &resp);
+ 	if (err) {
+-		dev_err(dev, "test_eq failed: %d\n", err);
++		if (mana_need_log(gc, err))
++			dev_err(dev, "test_eq failed: %d\n", err);
+ 		goto out;
+ 	}
+ 
+@@ -650,7 +727,7 @@ static void mana_gd_destroy_eq(struct gdma_context *gc, bool flush_evenets,
+ 
+ 	if (flush_evenets) {
+ 		err = mana_gd_test_eq(gc, queue);
+-		if (err)
++		if (err && mana_need_log(gc, err))
+ 			dev_warn(gc->dev, "Failed to flush EQ: %d\n", err);
+ 	}
+ 
+@@ -796,8 +873,9 @@ int mana_gd_destroy_dma_region(struct gdma_context *gc, u64 dma_region_handle)
+ 
+ 	err = mana_gd_send_request(gc, sizeof(req), &req, sizeof(resp), &resp);
+ 	if (err || resp.hdr.status) {
+-		dev_err(gc->dev, "Failed to destroy DMA region: %d, 0x%x\n",
+-			err, resp.hdr.status);
++		if (mana_need_log(gc, err))
++			dev_err(gc->dev, "Failed to destroy DMA region: %d, 0x%x\n",
++				err, resp.hdr.status);
+ 		return -EPROTO;
+ 	}
+ 
+@@ -1096,8 +1174,9 @@ int mana_gd_deregister_device(struct gdma_dev *gd)
+ 
+ 	err = mana_gd_send_request(gc, sizeof(req), &req, sizeof(resp), &resp);
+ 	if (err || resp.hdr.status) {
+-		dev_err(gc->dev, "Failed to deregister device: %d, 0x%x\n",
+-			err, resp.hdr.status);
++		if (mana_need_log(gc, err))
++			dev_err(gc->dev, "Failed to deregister device: %d, 0x%x\n",
++				err, resp.hdr.status);
+ 		if (!err)
+ 			err = -EPROTO;
+ 	}
+@@ -1697,7 +1776,7 @@ static void mana_gd_remove(struct pci_dev *pdev)
+ }
+ 
+ /* The 'state' parameter is not used. */
+-static int mana_gd_suspend(struct pci_dev *pdev, pm_message_t state)
++int mana_gd_suspend(struct pci_dev *pdev, pm_message_t state)
+ {
+ 	struct gdma_context *gc = pci_get_drvdata(pdev);
+ 
+@@ -1712,7 +1791,7 @@ static int mana_gd_suspend(struct pci_dev *pdev, pm_message_t state)
+  * fail -- if this happens, it's safer to just report an error than try to undo
+  * what has been done.
+  */
+-static int mana_gd_resume(struct pci_dev *pdev)
++int mana_gd_resume(struct pci_dev *pdev)
+ {
+ 	struct gdma_context *gc = pci_get_drvdata(pdev);
+ 	int err;
+diff --git a/drivers/net/ethernet/microsoft/mana/hw_channel.c b/drivers/net/ethernet/microsoft/mana/hw_channel.c
+index 4291a2fc2710e..aed60be5ee389 100644
+--- a/drivers/net/ethernet/microsoft/mana/hw_channel.c
++++ b/drivers/net/ethernet/microsoft/mana/hw_channel.c
+@@ -854,7 +854,9 @@ int mana_hwc_send_request(struct hw_channel_context *hwc, u32 req_len,
+ 
+ 	if (!wait_for_completion_timeout(&ctx->comp_event,
+ 					 (msecs_to_jiffies(hwc->hwc_timeout)))) {
+-		dev_err(hwc->dev, "HWC: Request timed out!\n");
++		if (hwc->hwc_timeout != 0)
++			dev_err(hwc->dev, "HWC: Request timed out!\n");
++
+ 		err = -ETIMEDOUT;
+ 		goto out;
+ 	}
+diff --git a/drivers/net/ethernet/microsoft/mana/mana_en.c b/drivers/net/ethernet/microsoft/mana/mana_en.c
+index cbecacf503422..acf1342536463 100644
+--- a/drivers/net/ethernet/microsoft/mana/mana_en.c
++++ b/drivers/net/ethernet/microsoft/mana/mana_en.c
+@@ -45,6 +45,15 @@ static const struct file_operations mana_dbg_q_fops = {
+ 	.read   = mana_dbg_q_read,
+ };
+ 
++static bool mana_en_need_log(struct mana_port_context *apc, int err)
++{
++	if (apc && apc->ac && apc->ac->gdma_dev &&
++	    apc->ac->gdma_dev->gdma_context)
++		return mana_need_log(apc->ac->gdma_dev->gdma_context, err);
++	else
++		return true;
++}
++
+ /* Microsoft Azure Network Adapter (MANA) functions */
+ 
+ static int mana_open(struct net_device *ndev)
+@@ -768,7 +777,8 @@ static int mana_send_request(struct mana_context *ac, void *in_buf,
+ 	err = mana_gd_send_request(gc, in_len, in_buf, out_len,
+ 				   out_buf);
+ 	if (err || resp->status) {
+-		if (req->req.msg_type != MANA_QUERY_PHY_STAT)
++		if (req->req.msg_type != MANA_QUERY_PHY_STAT &&
++		    mana_need_log(gc, err))
+ 			dev_err(dev, "Failed to send mana message: %d, 0x%x\n",
+ 				err, resp->status);
+ 		return err ? err : -EPROTO;
+@@ -845,8 +855,10 @@ static void mana_pf_deregister_hw_vport(struct mana_port_context *apc)
+ 	err = mana_send_request(apc->ac, &req, sizeof(req), &resp,
+ 				sizeof(resp));
+ 	if (err) {
+-		netdev_err(apc->ndev, "Failed to unregister hw vPort: %d\n",
+-			   err);
++		if (mana_en_need_log(apc, err))
++			netdev_err(apc->ndev, "Failed to unregister hw vPort: %d\n",
++				   err);
++
+ 		return;
+ 	}
+ 
+@@ -901,8 +913,10 @@ static void mana_pf_deregister_filter(struct mana_port_context *apc)
+ 	err = mana_send_request(apc->ac, &req, sizeof(req), &resp,
+ 				sizeof(resp));
+ 	if (err) {
+-		netdev_err(apc->ndev, "Failed to unregister filter: %d\n",
+-			   err);
++		if (mana_en_need_log(apc, err))
++			netdev_err(apc->ndev, "Failed to unregister filter: %d\n",
++				   err);
++
+ 		return;
+ 	}
+ 
+@@ -1132,7 +1146,9 @@ static int mana_cfg_vport_steering(struct mana_port_context *apc,
+ 	err = mana_send_request(apc->ac, req, req_buf_size, &resp,
+ 				sizeof(resp));
+ 	if (err) {
+-		netdev_err(ndev, "Failed to configure vPort RX: %d\n", err);
++		if (mana_en_need_log(apc, err))
++			netdev_err(ndev, "Failed to configure vPort RX: %d\n", err);
++
+ 		goto out;
+ 	}
+ 
+@@ -1227,7 +1243,9 @@ void mana_destroy_wq_obj(struct mana_port_context *apc, u32 wq_type,
+ 	err = mana_send_request(apc->ac, &req, sizeof(req), &resp,
+ 				sizeof(resp));
+ 	if (err) {
+-		netdev_err(ndev, "Failed to destroy WQ object: %d\n", err);
++		if (mana_en_need_log(apc, err))
++			netdev_err(ndev, "Failed to destroy WQ object: %d\n", err);
++
+ 		return;
+ 	}
+ 
+@@ -2872,11 +2890,10 @@ static int mana_dealloc_queues(struct net_device *ndev)
+ 
+ 	apc->rss_state = TRI_STATE_FALSE;
+ 	err = mana_config_rss(apc, TRI_STATE_FALSE, false, false);
+-	if (err) {
++	if (err && mana_en_need_log(apc, err))
+ 		netdev_err(ndev, "Failed to disable vPort: %d\n", err);
+-		return err;
+-	}
+ 
++	/* Even in err case, still need to cleanup the vPort */
+ 	mana_destroy_vport(apc);
+ 
+ 	return 0;
+diff --git a/include/net/mana/gdma.h b/include/net/mana/gdma.h
+index b602b2e55939c..af5596bf46878 100644
+--- a/include/net/mana/gdma.h
++++ b/include/net/mana/gdma.h
+@@ -60,6 +60,7 @@ enum gdma_eqe_type {
+ 	GDMA_EQE_HWC_INIT_DONE		= 131,
+ 	GDMA_EQE_HWC_FPGA_RECONFIG	= 132,
+ 	GDMA_EQE_HWC_SOC_RECONFIG_DATA	= 133,
++	GDMA_EQE_HWC_RESET_REQUEST	= 135,
+ 	GDMA_EQE_RNIC_QP_FATAL		= 176,
+ };
+ 
+@@ -559,6 +560,9 @@ enum {
+ /* Driver can handle holes (zeros) in the device list */
+ #define GDMA_DRV_CAP_FLAG_1_DEV_LIST_HOLES_SUP BIT(11)
+ 
++/* Driver can self reset on EQE notification */
++#define GDMA_DRV_CAP_FLAG_1_SELF_RESET_ON_EQE BIT(14)
++
+ /* Driver can self reset on FPGA Reconfig EQE notification */
+ #define GDMA_DRV_CAP_FLAG_1_HANDLE_RECONFIG_EQE BIT(17)
+ 
+@@ -568,6 +572,7 @@ enum {
+ 	 GDMA_DRV_CAP_FLAG_1_HWC_TIMEOUT_RECONFIG | \
+ 	 GDMA_DRV_CAP_FLAG_1_VARIABLE_INDIRECTION_TABLE_SUPPORT | \
+ 	 GDMA_DRV_CAP_FLAG_1_DEV_LIST_HOLES_SUP | \
++	 GDMA_DRV_CAP_FLAG_1_SELF_RESET_ON_EQE | \
+ 	 GDMA_DRV_CAP_FLAG_1_HANDLE_RECONFIG_EQE)
+ 
+ #define GDMA_DRV_CAP_FLAGS2 0
+@@ -892,4 +897,9 @@ int mana_gd_destroy_dma_region(struct gdma_context *gc, u64 dma_region_handle);
+ void mana_register_debugfs(void);
+ void mana_unregister_debugfs(void);
+ 
++int mana_gd_suspend(struct pci_dev *pdev, pm_message_t state);
++int mana_gd_resume(struct pci_dev *pdev);
++
++bool mana_need_log(struct gdma_context *gc, int err);
++
+ #endif /* _GDMA_H */
+-- 
+2.51.2
+
+EOF
+
+cat << 'EOF' > patch2
+From fbe346ce9d626680a4dd0f079e17c7b5dd32ffad Mon Sep 17 00:00:00 2001
+From: Haiyang Zhang <haiyangz@microsoft.com>
+Date: Fri, 27 Jun 2025 13:26:23 -0700
+Subject: [PATCH] net: mana: Handle Reset Request from MANA NIC
+
+Upon receiving the Reset Request, pause the connection and clean up
+queues, wait for the specified period, then resume the NIC.
+In the cleanup phase, the HWC is no longer responding, so set hwc_timeout
+to zero to skip waiting on the response.
+
+Signed-off-by: Haiyang Zhang <haiyangz@microsoft.com>
+Link: https://patch.msgid.link/1751055983-29760-1-git-send-email-haiyangz@linux.microsoft.com
+Signed-off-by: Jakub Kicinski <kuba@kernel.org>
+---
+ .../net/ethernet/microsoft/mana/gdma_main.c   | 127 ++++++++++++++----
+ .../net/ethernet/microsoft/mana/hw_channel.c  |   4 +-
+ drivers/net/ethernet/microsoft/mana/mana_en.c |  37 +++--
+ include/net/mana/gdma.h                       |  10 ++
+ 4 files changed, 143 insertions(+), 35 deletions(-)
+
+diff --git a/drivers/net/ethernet/microsoft/mana/gdma_main.c b/drivers/net/ethernet/microsoft/mana/gdma_main.c
+index 55dd7dee718cc..a468cd8e5f361 100644
+--- a/drivers/net/ethernet/microsoft/mana/gdma_main.c
++++ b/drivers/net/ethernet/microsoft/mana/gdma_main.c
+@@ -10,6 +10,7 @@
+ #include <linux/irqdomain.h>
+ 
+ #include <net/mana/mana.h>
++#include <net/mana/hw_channel.h>
+ 
+ struct dentry *mana_debugfs_root;
+ 
+@@ -68,6 +69,24 @@ static void mana_gd_init_registers(struct pci_dev *pdev)
+ 		mana_gd_init_vf_regs(pdev);
+ }
+ 
++/* Suppress logging when we set timeout to zero */
++bool mana_need_log(struct gdma_context *gc, int err)
++{
++	struct hw_channel_context *hwc;
++
++	if (err != -ETIMEDOUT)
++		return true;
++
++	if (!gc)
++		return true;
++
++	hwc = gc->hwc.driver_data;
++	if (hwc && hwc->hwc_timeout == 0)
++		return false;
++
++	return true;
++}
++
+ static int mana_gd_query_max_resources(struct pci_dev *pdev)
+ {
+ 	struct gdma_context *gc = pci_get_drvdata(pdev);
+@@ -278,8 +297,9 @@ static int mana_gd_disable_queue(struct gdma_queue *queue)
+ 
+ 	err = mana_gd_send_request(gc, sizeof(req), &req, sizeof(resp), &resp);
+ 	if (err || resp.hdr.status) {
+-		dev_err(gc->dev, "Failed to disable queue: %d, 0x%x\n", err,
+-			resp.hdr.status);
++		if (mana_need_log(gc, err))
++			dev_err(gc->dev, "Failed to disable queue: %d, 0x%x\n", err,
++				resp.hdr.status);
+ 		return err ? err : -EPROTO;
+ 	}
+ 
+@@ -366,25 +386,12 @@ EXPORT_SYMBOL_NS(mana_gd_ring_cq, "NET_MANA");
+ 
+ #define MANA_SERVICE_PERIOD 10
+ 
+-struct mana_serv_work {
+-	struct work_struct serv_work;
+-	struct pci_dev *pdev;
+-};
+-
+-static void mana_serv_func(struct work_struct *w)
++static void mana_serv_fpga(struct pci_dev *pdev)
+ {
+-	struct mana_serv_work *mns_wk;
+ 	struct pci_bus *bus, *parent;
+-	struct pci_dev *pdev;
+-
+-	mns_wk = container_of(w, struct mana_serv_work, serv_work);
+-	pdev = mns_wk->pdev;
+ 
+ 	pci_lock_rescan_remove();
+ 
+-	if (!pdev)
+-		goto out;
+-
+ 	bus = pdev->bus;
+ 	if (!bus) {
+ 		dev_err(&pdev->dev, "MANA service: no bus\n");
+@@ -405,7 +412,74 @@ static void mana_serv_func(struct work_struct *w)
+ 
+ out:
+ 	pci_unlock_rescan_remove();
++}
++
++static void mana_serv_reset(struct pci_dev *pdev)
++{
++	struct gdma_context *gc = pci_get_drvdata(pdev);
++	struct hw_channel_context *hwc;
++
++	if (!gc) {
++		dev_err(&pdev->dev, "MANA service: no GC\n");
++		return;
++	}
++
++	hwc = gc->hwc.driver_data;
++	if (!hwc) {
++		dev_err(&pdev->dev, "MANA service: no HWC\n");
++		goto out;
++	}
++
++	/* HWC is not responding in this case, so don't wait */
++	hwc->hwc_timeout = 0;
++
++	dev_info(&pdev->dev, "MANA reset cycle start\n");
+ 
++	mana_gd_suspend(pdev, PMSG_SUSPEND);
++
++	msleep(MANA_SERVICE_PERIOD * 1000);
++
++	mana_gd_resume(pdev);
++
++	dev_info(&pdev->dev, "MANA reset cycle completed\n");
++
++out:
++	gc->in_service = false;
++}
++
++struct mana_serv_work {
++	struct work_struct serv_work;
++	struct pci_dev *pdev;
++	enum gdma_eqe_type type;
++};
++
++static void mana_serv_func(struct work_struct *w)
++{
++	struct mana_serv_work *mns_wk;
++	struct pci_dev *pdev;
++
++	mns_wk = container_of(w, struct mana_serv_work, serv_work);
++	pdev = mns_wk->pdev;
++
++	if (!pdev)
++		goto out;
++
++	switch (mns_wk->type) {
++	case GDMA_EQE_HWC_FPGA_RECONFIG:
++		mana_serv_fpga(pdev);
++		break;
++
++	case GDMA_EQE_HWC_RESET_REQUEST:
++		mana_serv_reset(pdev);
++		break;
++
++	default:
++		dev_err(&pdev->dev, "MANA service: unknown type %d\n",
++			mns_wk->type);
++		break;
++	}
++
++out:
+ 	pci_dev_put(pdev);
+ 	kfree(mns_wk);
+ 	module_put(THIS_MODULE);
+@@ -462,6 +536,7 @@ static void mana_gd_process_eqe(struct gdma_queue *eq)
+ 		break;
+ 
+ 	case GDMA_EQE_HWC_FPGA_RECONFIG:
++	case GDMA_EQE_HWC_RESET_REQUEST:
+ 		dev_info(gc->dev, "Recv MANA service type:%d\n", type);
+ 
+ 		if (gc->in_service) {
+@@ -483,6 +558,7 @@ static void mana_gd_process_eqe(struct gdma_queue *eq)
+ 		dev_info(gc->dev, "Start MANA service type:%d\n", type);
+ 		gc->in_service = true;
+ 		mns_wk->pdev = to_pci_dev(gc->dev);
++		mns_wk->type = type;
+ 		pci_dev_get(mns_wk->pdev);
+ 		INIT_WORK(&mns_wk->serv_work, mana_serv_func);
+ 		schedule_work(&mns_wk->serv_work);
+@@ -634,7 +710,8 @@ int mana_gd_test_eq(struct gdma_context *gc, struct gdma_queue *eq)
+ 
+ 	err = mana_gd_send_request(gc, sizeof(req), &req, sizeof(resp), &resp);
+ 	if (err) {
+-		dev_err(dev, "test_eq failed: %d\n", err);
++		if (mana_need_log(gc, err))
++			dev_err(dev, "test_eq failed: %d\n", err);
+ 		goto out;
+ 	}
+ 
+@@ -669,7 +746,7 @@ static void mana_gd_destroy_eq(struct gdma_context *gc, bool flush_evenets,
+ 
+ 	if (flush_evenets) {
+ 		err = mana_gd_test_eq(gc, queue);
+-		if (err)
++		if (err && mana_need_log(gc, err))
+ 			dev_warn(gc->dev, "Failed to flush EQ: %d\n", err);
+ 	}
+ 
+@@ -815,8 +892,9 @@ int mana_gd_destroy_dma_region(struct gdma_context *gc, u64 dma_region_handle)
+ 
+ 	err = mana_gd_send_request(gc, sizeof(req), &req, sizeof(resp), &resp);
+ 	if (err || resp.hdr.status) {
+-		dev_err(gc->dev, "Failed to destroy DMA region: %d, 0x%x\n",
+-			err, resp.hdr.status);
++		if (mana_need_log(gc, err))
++			dev_err(gc->dev, "Failed to destroy DMA region: %d, 0x%x\n",
++				err, resp.hdr.status);
+ 		return -EPROTO;
+ 	}
+ 
+@@ -1116,8 +1194,9 @@ int mana_gd_deregister_device(struct gdma_dev *gd)
+ 
+ 	err = mana_gd_send_request(gc, sizeof(req), &req, sizeof(resp), &resp);
+ 	if (err || resp.hdr.status) {
+-		dev_err(gc->dev, "Failed to deregister device: %d, 0x%x\n",
+-			err, resp.hdr.status);
++		if (mana_need_log(gc, err))
++			dev_err(gc->dev, "Failed to deregister device: %d, 0x%x\n",
++				err, resp.hdr.status);
+ 		if (!err)
+ 			err = -EPROTO;
+ 	}
+@@ -1915,7 +1994,7 @@ static void mana_gd_remove(struct pci_dev *pdev)
+ }
+ 
+ /* The 'state' parameter is not used. */
+-static int mana_gd_suspend(struct pci_dev *pdev, pm_message_t state)
++int mana_gd_suspend(struct pci_dev *pdev, pm_message_t state)
+ {
+ 	struct gdma_context *gc = pci_get_drvdata(pdev);
+ 
+@@ -1931,7 +2010,7 @@ static int mana_gd_suspend(struct pci_dev *pdev, pm_message_t state)
+  * fail -- if this happens, it's safer to just report an error than try to undo
+  * what has been done.
+  */
+-static int mana_gd_resume(struct pci_dev *pdev)
++int mana_gd_resume(struct pci_dev *pdev)
+ {
+ 	struct gdma_context *gc = pci_get_drvdata(pdev);
+ 	int err;
+diff --git a/drivers/net/ethernet/microsoft/mana/hw_channel.c b/drivers/net/ethernet/microsoft/mana/hw_channel.c
+index 650d22654d499..ef072e24c46d0 100644
+--- a/drivers/net/ethernet/microsoft/mana/hw_channel.c
++++ b/drivers/net/ethernet/microsoft/mana/hw_channel.c
+@@ -880,7 +880,9 @@ int mana_hwc_send_request(struct hw_channel_context *hwc, u32 req_len,
+ 
+ 	if (!wait_for_completion_timeout(&ctx->comp_event,
+ 					 (msecs_to_jiffies(hwc->hwc_timeout)))) {
+-		dev_err(hwc->dev, "HWC: Request timed out!\n");
++		if (hwc->hwc_timeout != 0)
++			dev_err(hwc->dev, "HWC: Request timed out!\n");
++
+ 		err = -ETIMEDOUT;
+ 		goto out;
+ 	}
+diff --git a/drivers/net/ethernet/microsoft/mana/mana_en.c b/drivers/net/ethernet/microsoft/mana/mana_en.c
+index 016fd808ccad4..a7973651ae51b 100644
+--- a/drivers/net/ethernet/microsoft/mana/mana_en.c
++++ b/drivers/net/ethernet/microsoft/mana/mana_en.c
+@@ -47,6 +47,15 @@ static const struct file_operations mana_dbg_q_fops = {
+ 	.read   = mana_dbg_q_read,
+ };
+ 
++static bool mana_en_need_log(struct mana_port_context *apc, int err)
++{
++	if (apc && apc->ac && apc->ac->gdma_dev &&
++	    apc->ac->gdma_dev->gdma_context)
++		return mana_need_log(apc->ac->gdma_dev->gdma_context, err);
++	else
++		return true;
++}
++
+ /* Microsoft Azure Network Adapter (MANA) functions */
+ 
+ static int mana_open(struct net_device *ndev)
+@@ -854,7 +863,8 @@ static int mana_send_request(struct mana_context *ac, void *in_buf,
+ 		if (err == -EOPNOTSUPP)
+ 			return err;
+ 
+-		if (req->req.msg_type != MANA_QUERY_PHY_STAT)
++		if (req->req.msg_type != MANA_QUERY_PHY_STAT &&
++		    mana_need_log(gc, err))
+ 			dev_err(dev, "Failed to send mana message: %d, 0x%x\n",
+ 				err, resp->status);
+ 		return err ? err : -EPROTO;
+@@ -931,8 +941,10 @@ static void mana_pf_deregister_hw_vport(struct mana_port_context *apc)
+ 	err = mana_send_request(apc->ac, &req, sizeof(req), &resp,
+ 				sizeof(resp));
+ 	if (err) {
+-		netdev_err(apc->ndev, "Failed to unregister hw vPort: %d\n",
+-			   err);
++		if (mana_en_need_log(apc, err))
++			netdev_err(apc->ndev, "Failed to unregister hw vPort: %d\n",
++				   err);
++
+ 		return;
+ 	}
+ 
+@@ -987,8 +999,10 @@ static void mana_pf_deregister_filter(struct mana_port_context *apc)
+ 	err = mana_send_request(apc->ac, &req, sizeof(req), &resp,
+ 				sizeof(resp));
+ 	if (err) {
+-		netdev_err(apc->ndev, "Failed to unregister filter: %d\n",
+-			   err);
++		if (mana_en_need_log(apc, err))
++			netdev_err(apc->ndev, "Failed to unregister filter: %d\n",
++				   err);
++
+ 		return;
+ 	}
+ 
+@@ -1218,7 +1232,9 @@ static int mana_cfg_vport_steering(struct mana_port_context *apc,
+ 	err = mana_send_request(apc->ac, req, req_buf_size, &resp,
+ 				sizeof(resp));
+ 	if (err) {
+-		netdev_err(ndev, "Failed to configure vPort RX: %d\n", err);
++		if (mana_en_need_log(apc, err))
++			netdev_err(ndev, "Failed to configure vPort RX: %d\n", err);
++
+ 		goto out;
+ 	}
+ 
+@@ -1402,7 +1418,9 @@ void mana_destroy_wq_obj(struct mana_port_context *apc, u32 wq_type,
+ 	err = mana_send_request(apc->ac, &req, sizeof(req), &resp,
+ 				sizeof(resp));
+ 	if (err) {
+-		netdev_err(ndev, "Failed to destroy WQ object: %d\n", err);
++		if (mana_en_need_log(apc, err))
++			netdev_err(ndev, "Failed to destroy WQ object: %d\n", err);
++
+ 		return;
+ 	}
+ 
+@@ -3067,11 +3085,10 @@ static int mana_dealloc_queues(struct net_device *ndev)
+ 
+ 	apc->rss_state = TRI_STATE_FALSE;
+ 	err = mana_config_rss(apc, TRI_STATE_FALSE, false, false);
+-	if (err) {
++	if (err && mana_en_need_log(apc, err))
+ 		netdev_err(ndev, "Failed to disable vPort: %d\n", err);
+-		return err;
+-	}
+ 
++	/* Even in err case, still need to cleanup the vPort */
+ 	mana_destroy_vport(apc);
+ 
+ 	return 0;
+diff --git a/include/net/mana/gdma.h b/include/net/mana/gdma.h
+index 92ab85061df00..57df78cfbf82c 100644
+--- a/include/net/mana/gdma.h
++++ b/include/net/mana/gdma.h
+@@ -62,6 +62,7 @@ enum gdma_eqe_type {
+ 	GDMA_EQE_HWC_FPGA_RECONFIG	= 132,
+ 	GDMA_EQE_HWC_SOC_RECONFIG_DATA	= 133,
+ 	GDMA_EQE_HWC_SOC_SERVICE	= 134,
++	GDMA_EQE_HWC_RESET_REQUEST	= 135,
+ 	GDMA_EQE_RNIC_QP_FATAL		= 176,
+ };
+ 
+@@ -584,6 +585,9 @@ enum {
+ /* Driver supports dynamic MSI-X vector allocation */
+ #define GDMA_DRV_CAP_FLAG_1_DYNAMIC_IRQ_ALLOC_SUPPORT BIT(13)
+ 
++/* Driver can self reset on EQE notification */
++#define GDMA_DRV_CAP_FLAG_1_SELF_RESET_ON_EQE BIT(14)
++
+ /* Driver can self reset on FPGA Reconfig EQE notification */
+ #define GDMA_DRV_CAP_FLAG_1_HANDLE_RECONFIG_EQE BIT(17)
+ 
+@@ -594,6 +598,7 @@ enum {
+ 	 GDMA_DRV_CAP_FLAG_1_VARIABLE_INDIRECTION_TABLE_SUPPORT | \
+ 	 GDMA_DRV_CAP_FLAG_1_DEV_LIST_HOLES_SUP | \
+ 	 GDMA_DRV_CAP_FLAG_1_DYNAMIC_IRQ_ALLOC_SUPPORT | \
++	 GDMA_DRV_CAP_FLAG_1_SELF_RESET_ON_EQE | \
+ 	 GDMA_DRV_CAP_FLAG_1_HANDLE_RECONFIG_EQE)
+ 
+ #define GDMA_DRV_CAP_FLAGS2 0
+@@ -921,4 +926,9 @@ void mana_unregister_debugfs(void);
+ 
+ int mana_rdma_service_event(struct gdma_context *gc, enum gdma_service_type event);
+ 
++int mana_gd_suspend(struct pci_dev *pdev, pm_message_t state);
++int mana_gd_resume(struct pci_dev *pdev);
++
++bool mana_need_log(struct gdma_context *gc, int err);
++
+ #endif /* _GDMA_H */
+-- 
+2.51.2
+
+EOF
+
+cat << 'EOF' > expected
+================================================================================
+*    DELTA DIFFERENCES - code changes that differ between the patches          *
+================================================================================
+
+--- b/drivers/net/ethernet/microsoft/mana/gdma_main.c
++++ b/drivers/net/ethernet/microsoft/mana/gdma_main.c
+@@ -65,7 +65,7 @@
+ 		mana_gd_init_vf_regs(pdev);
+ }
+ 
+-/* Suppress logging when we set timeout to zeo */
++/* Suppress logging when we set timeout to zero */
+ bool mana_need_log(struct gdma_context *gc, int err)
+ {
+ 	struct hw_channel_context *hwc;
+
+################################################################################
+!    REJECTED PATCH2 HUNKS - could not be compared; manual review needed       !
+################################################################################
+
+--- b/drivers/net/ethernet/microsoft/mana/mana_en.c
++++ b/drivers/net/ethernet/microsoft/mana/mana_en.c
+@@ -863,7 +872,8 @@
+ 		if (err == -EOPNOTSUPP)
+ 			return err;
+ 
+-		if (req->req.msg_type != MANA_QUERY_PHY_STAT)
++		if (req->req.msg_type != MANA_QUERY_PHY_STAT &&
++		    mana_need_log(gc, err))
+ 			dev_err(dev, "Failed to send mana message: %d, 0x%x\n",
+ 				err, resp->status);
+ 		return err ? err : -EPROTO;
+--- b/include/net/mana/gdma.h
++++ b/include/net/mana/gdma.h
+@@ -62,6 +62,7 @@
+ 	GDMA_EQE_HWC_FPGA_RECONFIG	= 132,
+ 	GDMA_EQE_HWC_SOC_RECONFIG_DATA	= 133,
+ 	GDMA_EQE_HWC_SOC_SERVICE	= 134,
++	GDMA_EQE_HWC_RESET_REQUEST	= 135,
+ 	GDMA_EQE_RNIC_QP_FATAL		= 176,
+ };
+ 
+@@ -597,6 +601,7 @@
+ 	 GDMA_DRV_CAP_FLAG_1_VARIABLE_INDIRECTION_TABLE_SUPPORT | \
+ 	 GDMA_DRV_CAP_FLAG_1_DEV_LIST_HOLES_SUP | \
+ 	 GDMA_DRV_CAP_FLAG_1_DYNAMIC_IRQ_ALLOC_SUPPORT | \
++	 GDMA_DRV_CAP_FLAG_1_SELF_RESET_ON_EQE | \
+ 	 GDMA_DRV_CAP_FLAG_1_HANDLE_RECONFIG_EQE)
+ 
+ #define GDMA_DRV_CAP_FLAGS2 0
+
+================================================================================
+*    CONTEXT DIFFERENCES - surrounding code differences between the patches    *
+================================================================================
+
+--- b/drivers/net/ethernet/microsoft/mana/gdma_main.c
++++ b/drivers/net/ethernet/microsoft/mana/gdma_main.c
+@@ -5,6 +5,5 @@
+-#include <linux/version.h>
++#include <linux/irqdomain.h>
+ 
+ #include <net/mana/mana.h>
+ 
+-#include <linux/cpu.h>
+ struct dentry *mana_debugfs_root;
+--- b/include/net/mana/gdma.h
++++ b/include/net/mana/gdma.h
+@@ -58,5 +57,6 @@
+ 	GDMA_EQE_HWC_FPGA_RECONFIG	= 132,
+ 	GDMA_EQE_HWC_SOC_RECONFIG_DATA	= 133,
++	GDMA_EQE_HWC_SOC_SERVICE	= 134,
+ 	GDMA_EQE_RNIC_QP_FATAL		= 176,
+ };
+ 
+@@ -566,5 +590,6 @@
+ 	 GDMA_DRV_CAP_FLAG_1_VARIABLE_INDIRECTION_TABLE_SUPPORT | \
+ 	 GDMA_DRV_CAP_FLAG_1_DEV_LIST_HOLES_SUP | \
++	 GDMA_DRV_CAP_FLAG_1_DYNAMIC_IRQ_ALLOC_SUPPORT | \
+ 	 GDMA_DRV_CAP_FLAG_1_HANDLE_RECONFIG_EQE)
+ 
+ #define GDMA_DRV_CAP_FLAGS2 0
+@@ -889,4 +915,4 @@
+-void mana_register_debugfs(void);
+-void mana_unregister_debugfs(void);
++
++int mana_rdma_service_event(struct gdma_context *gc, enum gdma_service_type event);
+ 
+ #endif /* _GDMA_H */
+EOF
+
+${INTERDIFF} --fuzzy patch1 patch2 2>errors >output
+[ -s errors ] && exit 1
+
+cmp output expected || exit 1

@@ -1,0 +1,29 @@
+#!/bin/sh
+# Test '\ No newline at end of file' marker handling in fuzzy mode
+. ${top_srcdir-.}/tests/common.sh
+
+cat << 'EOF' > patch1
+diff --git a/net/smc/Kconfig b/net/smc/Kconfig
+index 325addf83cc69..277ef504bc26e 100644
+--- a/net/smc/Kconfig
++++ b/net/smc/Kconfig
+@@ -22,10 +22,10 @@ config SMC_DIAG
+ 
+ config SMC_HS_CTRL_BPF
+ 	bool "Generic eBPF hook for SMC handshake flow"
+-	depends on SMC && BPF_SYSCALL
++	depends on SMC && BPF_JIT && BPF_SYSCALL
+ 	default y
+ 	help
+ 	  SMC_HS_CTRL_BPF enables support to register generic eBPF hook for SMC
+ 	  handshake flow, which offer much greater flexibility in modifying the behavior
+ 	  of the SMC protocol stack compared to a complete kernel-based approach. Select
+-	  this option if you want filtring the handshake process via eBPF programs.
+\ No newline at end of file
++	  this option if you want filtring the handshake process via eBPF programs.
+EOF
+
+${INTERDIFF} --fuzzy patch1 patch1 2>errors >output
+[ -s errors ] && exit 1
+[ -s output ] && exit 1
+exit 0
