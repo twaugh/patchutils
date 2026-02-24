@@ -91,6 +91,27 @@ Run a single test:
 make check TESTS=tests/addhunk1/run-test
 ```
 
+### Stress-testing fuzzy mode
+
+The `tests/stress-test-fuzzy.sh` script mass-tests `interdiff --fuzzy`
+by comparing every commit in a git range against itself. Since both
+inputs are identical, any output from interdiff indicates a bug. This
+is effective against any git repository, but large repositories like
+the Linux kernel are particularly useful because they exercise a wide
+variety of patch shapes: hunks at line 1 with no pre-context, files
+ending without a newline, file creations and deletions, mode-only
+changes, multi-thousand-line diffs, whitespace-damaged patches, hunks
+with duplicate context lines, and so on.
+
+```bash
+INTERDIFF=./src/interdiff ./tests/stress-test-fuzzy.sh /path/to/linux v2.6.12-rc2..v6.19
+```
+
+Only commits that produce non-empty output, a non-zero exit code, or a
+timeout are printed. The `JOBS`, `TIMEOUT`, and `INTERDIFF` environment
+variables can be used to tune parallelism, per-commit timeout (default
+30s), and the interdiff binary path respectively.
+
 ## Requirements
 
 - A C compiler (GCC recommended)
