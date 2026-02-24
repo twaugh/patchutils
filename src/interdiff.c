@@ -1494,10 +1494,26 @@ index_patch_generic (FILE *patch_file, struct file_list **file_list, int need_sk
 	if (line)
 		free (line);
 
+	/* Return success if the file is empty, has indexed files, or
+	 * has no --- lines at all (merge commits, mode-only changes,
+	 * notes-only commits, binary-only patches, etc.). */
 	if (file_is_empty || *file_list)
 		return 0;
-	else
-		return 1;
+
+	/* Check if the patch has any file-header --- lines (as
+	 * opposed to commit-message separators or b4 tracking).
+	 * If not, it simply has no diffable content. */
+	line = NULL;
+	linelen = 0;
+	rewind (patch_file);
+	while (getline (&line, &linelen, patch_file) != -1)
+		if (!strncmp (line, "--- a/", 6) ||
+		    !strncmp (line, "--- /dev/null", 13)) {
+			free (line);
+			return 1;
+		}
+	free (line);
+	return 0;
 }
 
 static int
@@ -2156,8 +2172,21 @@ interdiff (FILE *p1, FILE *p2, const char *patch1, const char *patch2)
                 free (p);
 	}
 
-	if (!file_is_empty && !patch_found)
-		no_patch (patch1);
+	if (!file_is_empty && !patch_found) {
+		/* Don't warn for patches with no file-header --- lines
+		 * (merge commits, mode-only, binary-only, etc.). */
+		int has_diff_content = 0;
+
+		rewind (p1);
+		while (getline (&line, &linelen, p1) != -1)
+			if (!strncmp (line, "--- a/", 6) ||
+			    !strncmp (line, "--- /dev/null", 13)) {
+				has_diff_content = 1;
+				break;
+			}
+		if (has_diff_content)
+			no_patch (patch1);
+	}
 
 	copy_residue (p2, mode == mode_flip ? flip1 : stdout);
 
