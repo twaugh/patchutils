@@ -2136,11 +2136,15 @@ interdiff (FILE *p1, FILE *p2, const char *patch1, const char *patch2)
 
 		names[0] = filename_from_header (line + 4);
 
-		if (getline (&line, &linelen, p1) == -1)
+		if (getline (&line, &linelen, p1) == -1) {
+			free (names[0]);
 			break;
+		}
 
-		if (strncmp (line, "+++ ", 4))
+		if (strncmp (line, "+++ ", 4)) {
+			free (names[0]);
 			continue;
+		}
 
 		names[1] = filename_from_header (line + 4);
 
