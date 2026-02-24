@@ -1735,6 +1735,22 @@ split_patch_hunks (FILE *patch, size_t len, char *file,
 			if (!hlen_rem)
 				goto split_hunk_incl_latest;
 
+			/* Skip '\ No newline at end of file' markers for
+			 * counting purposes but include them in the output
+			 * by extending the previous line's length to cover
+			 * the marker. */
+			if (*line == '\\') {
+				if (lines) {
+					char *eol = memchr (line, '\n',
+							    hunk + hlen -
+							    line);
+					lines[num_lines - 1].len =
+						(eol ? eol + 1 : hunk + hlen)
+						- lines[num_lines - 1].s;
+				}
+				continue;
+			}
+
 			/* Record the current line, setting `len` to zero */
 			lines = xrealloc (lines, ++num_lines * sizeof (*lines));
 			lines[num_lines - 1] = (typeof (*lines)){ line };
