@@ -1071,6 +1071,20 @@ open_rej_file (const char *file, struct rej_file *rej)
 	fseek (rej->fp, atat_pos, SEEK_SET);
 }
 
+/* Either pass in the user-supplied max fuzz, or fuzz all but one pre-context
+ * and one post-context line by default. */
+static int
+get_fuzz (void)
+{
+	if (max_fuzz_user >= 0)
+		return max_fuzz_user;
+
+	if (max_context)
+		return max_context - 1;
+
+	return 0;
+}
+
 static int
 apply_patch (FILE *patch, const char *file, int reverted, struct rej_file *rej,
 	     FILE **out)
@@ -1107,18 +1121,10 @@ apply_patch (FILE *patch, const char *file, int reverted, struct rej_file *rej,
 	argv[argc++] = reverted ? (has_ignore_all_space ? "-NRlp0" : "-NRp0")
 				: (has_ignore_all_space ? "-Nlp0" : "-Np0");
 	if (fuzzy) {
-		int fuzz = 0;
-
 		/* Don't generate .orig files when we expect rejected hunks */
 		argv[argc++] = "--no-backup-if-mismatch";
 
-		/* Either pass in the user-supplied max fuzz, or fuzz all but
-		 * one pre-context and one post-context line by default. */
-		if (max_fuzz_user >= 0)
-			fuzz = max_fuzz_user;
-		else if (max_context)
-			fuzz = max_context - 1;
-		xasprintf (&fuzz_arg, "--fuzz=%d", fuzz);
+		xasprintf (&fuzz_arg, "--fuzz=%d", get_fuzz ());
 		argv[argc++] = fuzz_arg;
 	}
 	/* Fuzzy mode needs hunk offset messages. Only silence output when
