@@ -1624,7 +1624,6 @@ split_patch_hunks (FILE *patch, size_t len, char *file,
 		 * ndelta[0] = deleted lines, ndelta[1] = added lines */
 		unsigned long nctx[2] = {}, ndelta[2] = {};
 		unsigned long ostart, nstart, orig_nstart, start_line_idx = 0;
-		unsigned long nctx_target = 0; /* Init for spurious GCC warn */
 		struct xtra_context xctx_pre = {};
 		struct line_info *lines = NULL;
 		unsigned long num_lines = 0;
@@ -1645,21 +1644,6 @@ split_patch_hunks (FILE *patch, size_t len, char *file,
 			hlen = ++next_hunk - hunk;
 		else
 			hlen = strlen (hunk);
-
-		/* Count the number of pre-context and post-context lines in
-		 * this hunk. The greater of the two will be the number of pre-
-		 * context and post-context lines targeted per split hunk. */
-		if (!unline) {
-			unsigned long orig_hunk_nctx[2] = {};
-
-			for (line = hunk;
-			     (line = memchr (line, '\n', hunk + hlen - line)) &&
-			     line[1] == ' '; line++, orig_hunk_nctx[0]++);
-			for (line = hunk + hlen - 1;
-			     (line = memrchr (hunk, '\n', line - hunk)) &&
-			     line[1] == ' '; line--, orig_hunk_nctx[1]++);
-			nctx_target = MAX (orig_hunk_nctx[0], orig_hunk_nctx[1]);
-		}
 
 		/* Split this hunk into multiple smaller hunks, if possible.
 		 * This is done by looking for deltas (+/- lines) that aren't
@@ -1803,15 +1787,53 @@ split_hunk:
 				/* Add the start offset to the old/new lines */
 				ostart += start_off;
 				nstart += start_off;
-			} else if (nctx[1] < nctx_target && hlen_rem) {
-				/* If the number of post-context lines is still
-				 * below the target number afterwards, then it
-				 * means we hit the end of the original hunk
-				 * itself. It's technically fine because it
-				 * means the original hunk came with an unequal
-				 * number of pre- and post-context lines. */
-				xctx_post.num = nctx_target - nctx[1];
+			} else if (hlen_rem && nctx[1] < nctx[0] + xctx_pre.num) {
+				/* Ensure post-context is at least as large as
+				 * pre-context to avoid a negative suffix_fuzz
+				 * in the patch utility, which would restrict
+				 * matching to end-of-file. */
+				xctx_post.num = nctx[0] + xctx_pre.num - nctx[1];
 				ctx_lookahead (line, hlen_rem, &xctx_post);
+			}
+
+			/* Cap post-context at the pre-context count so the fuzz
+			 * budget is evenly split. The patch utility distributes
+			 * fuzz as prefix_fuzz = fuzz + prefix - context, so when
+			 * suffix > prefix, all the fuzz goes to the suffix and
+			 * prefix mismatches can't be fuzzed at all. */
+			if (!unline) {
+				unsigned long prefix = nctx[0] + xctx_pre.num;
+				unsigned long suffix = nctx[1] + xctx_post.num;
+				int fuzz = get_fuzz ();
+
+				if (suffix > prefix) {
+					unsigned long trim = suffix - prefix;
+
+					/* Keep at least 1 context line so
+					 * the patch utility can anchor the
+					 * hunk to the correct position. */
+					if (trim >= nctx[1])
+						trim = nctx[1] ? nctx[1] - 1
+							       : 0;
+					end_line -= trim;
+					nctx[1] -= trim;
+				} else if (prefix > suffix + fuzz &&
+					   nctx[0]) {
+					/* Trim excess pre-context when the
+					 * suffix_fuzz would go negative in
+					 * the patch utility. This handles
+					 * the last sub-hunk at end-of-file
+					 * where ctx_lookahead cannot help. */
+					unsigned long trim =
+						prefix - suffix - fuzz;
+					if (trim > nctx[0])
+						trim = nctx[0];
+					start_line += trim;
+					start_line_idx += trim;
+					ostart += trim;
+					nstart += trim;
+					nctx[0] -= trim;
+				}
 			}
 
 			/* Calculate the old and new line counts */
@@ -1863,21 +1885,32 @@ split_hunk:
 				/* Find extra pre-context if extra post-context
 				 * was used for this split hunk, since it means
 				 * that there isn't enough normal post-context
-				 * to be the next split hunk's pre-context. */
-				start_line_idx -= 1 + nctx[1];
-				xctx_pre = (typeof (xctx_pre)){ xctx_post.num };
-				if (xctx_pre.num)
-					ctx_lookbehind (lines, start_line_idx,
-							&xctx_pre);
+				 * to be the next split hunk's pre-context.
+				 * Clamp both nctx[0] and xctx_pre so the next
+				 * hunk's prefix never causes a negative
+				 * suffix_fuzz in the patch utility. */
+				nctx[0] = MIN (nctx[1], max_context);
 
-				/* Subtract the extra post-context lines of this
-				 * hunk, the normal post-context lines of this
-				 * hunk, and the extra pre-context lines for the
-				 * _next_ hunk to get the _next_ hunk's starting
-				 * line numbers. */
-				ostart -= xctx_pre.num + xctx_post.num + nctx[1];
-				nstart -= xctx_pre.num + xctx_post.num + nctx[1];
-				nctx[0] = nctx[1];
+				/* If the overlap would push ostart below 1,
+				 * skip it — there are no lines before the
+				 * start of the file to overlap with. */
+				if (xctx_post.num + nctx[0] >= ostart) {
+					nctx[0] = 0;
+					start_line_idx -= 1;
+				} else {
+					start_line_idx -= 1 + nctx[0];
+					xctx_pre = (typeof (xctx_pre))
+						{ MIN (xctx_post.num,
+						       get_fuzz ()) };
+					if (xctx_pre.num)
+						ctx_lookbehind (lines,
+							start_line_idx,
+							&xctx_pre);
+					ostart -= xctx_pre.num +
+						  xctx_post.num + nctx[0];
+					nstart -= xctx_pre.num +
+						  xctx_post.num + nctx[0];
+				}
 				nctx[1] = 0;
 				ndelta[1] = *line == '+';
 				ndelta[0] = !ndelta[1];
