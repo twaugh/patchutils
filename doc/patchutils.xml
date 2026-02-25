@@ -962,14 +962,7 @@ patch.file]]></screen></para>
 
 <screen><![CDATA[filterdiff -v --format=unified context.diff]]></screen></para>
         <para>Git format diffs are fully supported, including binary files,
-	  file renames, and permission mode changes. For example, to extract
-	  only the renames from a git diff:
-
-<screen><![CDATA[# With --git-prefixes=strip (matches bare filename)
-filterdiff --git-prefixes=strip -i '*/newname' git-patch-with-renames.patch
-
-# With --git-prefixes=keep (default, matches with b/ prefix)
-filterdiff -i 'b/*/newname' git-patch-with-renames.patch]]></screen></para>
+	  file renames, and permission mode changes.</para>
       </refsect1>
       <refsect1>
         <title>See also</title>
@@ -1086,6 +1079,8 @@ filterdiff -i 'b/*/newname' git-patch-with-renames.patch]]></screen></para>
           <arg choice="opt">--strip=<replaceable>n</replaceable></arg>
           <arg choice="opt">--git-prefixes=<replaceable>strip|keep</replaceable></arg>
           <arg choice="opt">--addprefix=<replaceable>PREFIX</replaceable></arg>
+          <arg choice="opt">--addoldprefix=<replaceable>PREFIX</replaceable></arg>
+          <arg choice="opt">--addnewprefix=<replaceable>PREFIX</replaceable></arg>
           <group choice="opt">
             <arg>-s</arg>
             <arg>--status</arg>
@@ -1099,8 +1094,16 @@ filterdiff -i 'b/*/newname' git-patch-with-renames.patch]]></screen></para>
             <arg>--include=<replaceable>PATTERN</replaceable></arg>
           </group>
           <group choice="opt">
+            <arg>-I <replaceable>FILE</replaceable></arg>
+            <arg>--include-from-file=<replaceable>FILE</replaceable></arg>
+          </group>
+          <group choice="opt">
             <arg>-x <replaceable>PATTERN</replaceable></arg>
             <arg>--exclude=<replaceable>PATTERN</replaceable></arg>
+          </group>
+          <group choice="opt">
+            <arg>-X <replaceable>FILE</replaceable></arg>
+            <arg>--exclude-from-file=<replaceable>FILE</replaceable></arg>
           </group>
           <group>
             <arg>-z</arg>
@@ -1270,6 +1273,22 @@ filterdiff -i 'b/*/newname' git-patch-with-renames.patch]]></screen></para>
             </listitem>
           </varlistentry>
           <varlistentry>
+            <term><option>--addoldprefix</option>=<replaceable>PREFIX</replaceable></term>
+            <listitem>
+              <para>Prefix pathnames for old files with
+	        <replaceable>PREFIX</replaceable> before displaying
+	        them.</para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><option>--addnewprefix</option>=<replaceable>PREFIX</replaceable></term>
+            <listitem>
+              <para>Prefix pathnames for new files with
+	        <replaceable>PREFIX</replaceable> before displaying
+	        them.</para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
             <term><option>-s</option>, <option>--status</option></term>
             <listitem>
               <para>Show file additions, modifications and removals.
@@ -1299,11 +1318,27 @@ filterdiff -i 'b/*/newname' git-patch-with-renames.patch]]></screen></para>
             </listitem>
           </varlistentry>
           <varlistentry>
+            <term><option>-I</option><replaceable>FILE</replaceable>,
+	    <option>--include-from-file=<replaceable>FILE</replaceable></option></term>
+            <listitem>
+              <para>Include only files matching any pattern listed in
+	        <replaceable>FILE</replaceable>, one pattern per line.</para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
             <term><option>-x</option><replaceable>PATTERN</replaceable>,
 	    <option>--exclude=<replaceable>PATTERN</replaceable></option></term>
             <listitem>
               <para>Exclude files matching
 	        <replaceable>PATTERN</replaceable>.</para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><option>-X</option><replaceable>FILE</replaceable>,
+	    <option>--exclude-from-file=<replaceable>FILE</replaceable></option></term>
+            <listitem>
+              <para>Exclude files matching any pattern listed in
+	        <replaceable>FILE</replaceable>, one pattern per line.</para>
             </listitem>
           </varlistentry>
           <varlistentry>
@@ -2022,6 +2057,7 @@ This is the same as gitdiff but uses git show instead of git diff.
             <arg>-s</arg>
             <arg>--status</arg>
           </group>
+          <arg choice="opt">--empty-files-as-absent</arg>
           <group choice="opt">
             <arg>-i <replaceable>PATTERN</replaceable></arg>
             <arg>--include=<replaceable>PATTERN</replaceable></arg>
@@ -2196,6 +2232,12 @@ This is the same as gitdiff but uses git show instead of git diff.
 	       A file addition is indicated by a <quote>+</quote>, a
 	       removal by a <quote>-</quote>, and a modification by a
 	       <quote>!</quote>.</para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><option>--empty-files-as-absent</option></term>
+            <listitem>
+              <para>Treat empty files as absent when matching patterns.</para>
             </listitem>
           </varlistentry>
           <varlistentry>
