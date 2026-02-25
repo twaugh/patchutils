@@ -412,6 +412,8 @@ TESTS = tests/newline1/run-test \
 	tests/whitespace-regression/run-test \
 	tests/interdiff-whitespace-w/run-test \
 	tests/interdiff-color-context/run-test \
+	tests/interdiff-patch2-headers/run-test \
+	tests/interdiff-mode-only/run-test \
 	tests/patch-ignore-whitespace/run-test \
 	tests/whitespace-w/run-test \
 	tests/filterdiff-inplace1/run-test \

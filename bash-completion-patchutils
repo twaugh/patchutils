@@ -452,3 +452,5 @@ complete -F _gitdiff gitdiff
 complete -F _svndiff svndiff
 complete -F _gitdiffview gitdiffview
 complete -F _svndiffview svndiffview
+complete -F _gitdiff gitshow
+complete -F _gitdiff gitshowview
