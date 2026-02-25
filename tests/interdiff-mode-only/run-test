@@ -1,0 +1,35 @@
+#!/bin/sh
+
+# Test interdiff with mode-only patches
+# This tests that interdiff doesn't incorrectly warn "doesn't contain a patch"
+# for patches that only contain mode changes, binary diffs, or merge metadata
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Create first patch - mode-only change (no actual diff content)
+cat << EOF > patch1
+diff --git a/script.sh b/script.sh
+old mode 100644
+new mode 100755
+EOF
+
+# Create second patch - same mode-only change
+cat << EOF > patch2
+diff --git a/script.sh b/script.sh
+old mode 100644
+new mode 100755
+EOF
+
+# Run interdiff - should succeed without the false "doesn't contain a patch" error
+${INTERDIFF} patch1 patch2 2>errors >actual || exit 1
+
+# The key test: should NOT have "doesn't contain a patch" error
+if grep -q "doesn't contain a patch" errors; then
+    echo "FAIL: Got spurious 'doesn't contain a patch' error"
+    cat errors
+    exit 1
+fi
+
+# For mode-only patches, interdiff should produce minimal or no output
+# Just verify it ran without error
+exit 0

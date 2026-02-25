@@ -1136,7 +1136,8 @@ trim_context (FILE *f /* positioned at start of @@ line */,
 				fwrite (line, (size_t) got, 1, out);
 				continue;
 			}
-			print_color (out, type, "%s", line);
+			print_color (out, type, "%.*s", (int) got - 1, line);
+			fputc ('\n', out);
 		}
 	}
 
@@ -1442,28 +1443,35 @@ index_patch_generic (FILE *patch_file, struct file_list **file_list, int need_sk
 
 		/* For patch2, we need to handle the @@ line and skip content */
 		if (need_skip_content) {
-			if (getline (&line, &linelen, patch_file) == -1) {
+			int found = 0;
+
+			while (!found &&
+			       getline (&line, &linelen, patch_file) > 0) {
+				if (strncmp (line, "@@ ", 3))
+					continue;
+
+				p = strchr (line + 3, '+');
+				if (!p)
+					continue;
+
+				p = strchr (p, ',');
+				if (p) {
+					/* Like '@@ -1,3 +1,3 @@' */
+					p++;
+					skip = strtoul (p, &end, 10);
+					if (p == end)
+						continue;
+				} else
+					/* Like '@@ -1 +1 @@' */
+					skip = 1;
+				found = 1;
+			}
+
+			if (!found) {
 				free (names[0]);
 				free (names[1]);
 				break;
 			}
-
-			if (strncmp (line, "@@ ", 3))
-				goto try_next;
-
-			p = strchr (line + 3, '+');
-			if (!p)
-				goto try_next;
-			p = strchr (p, ',');
-			if (p) {
-				/* Like '@@ -1,3 +1,3 @@' */
-				p++;
-				skip = strtoul (p, &end, 10);
-				if (p == end)
-					goto try_next;
-			} else
-				/* Like '@@ -1 +1 @@' */
-				skip = 1;
 
 			add_to_list (file_list, best_name (2, names), pos);
 
@@ -1480,7 +1488,6 @@ index_patch_generic (FILE *patch_file, struct file_list **file_list, int need_sk
 			add_to_list (file_list, best_name (2, names), pos);
 		}
 
-	try_next:
 		free (names[0]);
 		free (names[1]);
 	}
@@ -1488,10 +1495,26 @@ index_patch_generic (FILE *patch_file, struct file_list **file_list, int need_sk
 	if (line)
 		free (line);
 
+	/* Return success if the file is empty, has indexed files, or
+	 * has no --- lines at all (merge commits, mode-only changes,
+	 * notes-only commits, binary-only patches, etc.). */
 	if (file_is_empty || *file_list)
 		return 0;
-	else
-		return 1;
+
+	/* Check if the patch has any file-header --- lines (as
+	 * opposed to commit-message separators or b4 tracking).
+	 * If not, it simply has no diffable content. */
+	line = NULL;
+	linelen = 0;
+	rewind (patch_file);
+	while (getline (&line, &linelen, patch_file) != -1)
+		if (!strncmp (line, "--- a/", 6) ||
+		    !strncmp (line, "--- /dev/null", 13)) {
+			free (line);
+			return 1;
+		}
+	free (line);
+	return 0;
 }
 
 static int
@@ -2113,11 +2136,15 @@ interdiff (FILE *p1, FILE *p2, const char *patch1, const char *patch2)
 
 		names[0] = filename_from_header (line + 4);
 
-		if (getline (&line, &linelen, p1) == -1)
+		if (getline (&line, &linelen, p1) == -1) {
+			free (names[0]);
 			break;
+		}
 
-		if (strncmp (line, "+++ ", 4))
+		if (strncmp (line, "+++ ", 4)) {
+			free (names[0]);
 			continue;
+		}
 
 		names[1] = filename_from_header (line + 4);
 
@@ -2150,8 +2177,21 @@ interdiff (FILE *p1, FILE *p2, const char *patch1, const char *patch2)
                 free (p);
 	}
 
-	if (!file_is_empty && !patch_found)
-		no_patch (patch1);
+	if (!file_is_empty && !patch_found) {
+		/* Don't warn for patches with no file-header --- lines
+		 * (merge commits, mode-only, binary-only, etc.). */
+		int has_diff_content = 0;
+
+		rewind (p1);
+		while (getline (&line, &linelen, p1) != -1)
+			if (!strncmp (line, "--- a/", 6) ||
+			    !strncmp (line, "--- /dev/null", 13)) {
+				has_diff_content = 1;
+				break;
+			}
+		if (has_diff_content)
+			no_patch (patch1);
+	}
 
 	copy_residue (p2, mode == mode_flip ? flip1 : stdout);
 
