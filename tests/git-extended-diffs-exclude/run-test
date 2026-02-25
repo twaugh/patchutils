@@ -102,4 +102,67 @@ File #5  	a/5-normal.txt
 File #6  	a/6-another.txt
 EOF
 
+# Test 7: Coverage for GIT_DIFF_NORMAL case in should_skip_git_extended_diff()
+# Normal git diffs should NOT be skipped in exclude mode
+cat << EOF > normal-only.patch
+diff --git a/file.txt b/file.txt
+--- a/file.txt
++++ b/file.txt
+@@ -1,3 +1,3 @@
+ line 1
+-old line
++new line
+ line 3
+EOF
+
+${FILTERDIFF} --git-extended-diffs=exclude normal-only.patch 2>errors7 >result7 || exit 1
+[ -s errors7 ] && exit 1
+
+cat << EOF | cmp - result7 || exit 1
+diff --git a/file.txt b/file.txt
+--- a/file.txt
++++ b/file.txt
+@@ -1,3 +1,3 @@
+ line 1
+-old line
++new line
+ line 3
+EOF
+
+# Test 8: Coverage for goto eof path when extended diff at EOF
+# Patch ending with extended diff should skip to eof in exclude mode
+cat << EOF > eof.patch
+diff --git a/normal.txt b/normal.txt
+--- a/normal.txt
++++ b/normal.txt
+@@ -1 +1 @@
+-old
++new
+diff --git a/rename.txt b/rename-new.txt
+similarity index 100%
+rename from rename.txt
+rename to rename-new.txt
+EOF
+
+${FILTERDIFF} --git-extended-diffs=exclude eof.patch 2>errors8 >result8 || exit 1
+[ -s errors8 ] && exit 1
+
+# Should only show normal diff, not the rename at EOF
+cat << EOF | cmp - result8 || exit 1
+diff --git a/normal.txt b/normal.txt
+--- a/normal.txt
++++ b/normal.txt
+@@ -1 +1 @@
+-old
++new
+EOF
+
+# Test 9: Coverage for invalid argument error path
+# Invalid argument to --git-extended-diffs should error
+${FILTERDIFF} --git-extended-diffs=invalid mixed-git.patch 2>errors9 >result9 && exit 1
+
+# Check error message
+grep -q "invalid argument to --git-extended-diffs" errors9 || exit 1
+grep -q "expected 'exclude' or 'include'" errors9 || exit 1
+
 exit 0
