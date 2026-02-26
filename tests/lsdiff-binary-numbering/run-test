@@ -13,7 +13,8 @@ new file mode 100644
 Binary files /dev/null and b/file2.bin differ
 EOF
 
-${LSDIFF} -N diff 2>errors >output || exit 1
+# Note: using --git-extended-diffs=include to test binary file numbering
+${LSDIFF} --git-extended-diffs=include -N diff 2>errors >output || exit 1
 [ -s errors ] && exit 1
 
 cat << 'EOF' | cmp - output || exit 1

@@ -44,7 +44,7 @@ index 222..0000000
 EOF
 
 echo "=== Test 1: lsdiff with deleted file ==="
-${LSDIFF} --git-prefixes=strip -s git-deleted.patch 2>errors1 >result1 || exit 1
+${LSDIFF} --git-extended-diffs=include --git-extended-diffs=include --git-prefixes=strip -s git-deleted.patch 2>errors1 >result1 || exit 1
 [ -s errors1 ] && exit 1
 
 # Should show file with '-' status
@@ -53,7 +53,7 @@ cat << EOF | cmp - result1 || exit 1
 EOF
 
 echo "=== Test 2: filterdiff include deleted file ==="
-${FILTERDIFF} --git-prefixes=strip -i "deleted*" git-deleted.patch 2>errors2 >result2 || exit 1
+${FILTERDIFF} --git-extended-diffs=include --git-prefixes=strip -i "deleted*" git-deleted.patch 2>errors2 >result2 || exit 1
 [ -s errors2 ] && exit 1
 
 # Should include the full diff
@@ -70,14 +70,14 @@ index abc123..0000000
 EOF
 
 echo "=== Test 3: filterdiff exclude deleted file ==="
-${FILTERDIFF} --git-prefixes=strip -x "deleted*" git-deleted.patch 2>errors3 >result3 || exit 1
+${FILTERDIFF} --git-extended-diffs=include --git-prefixes=strip -x "deleted*" git-deleted.patch 2>errors3 >result3 || exit 1
 [ -s errors3 ] && exit 1
 
 # Should be empty
 [ -s result3 ] && exit 1
 
 echo "=== Test 4: lsdiff with deleted file (no hunks) ==="
-${LSDIFF} --git-prefixes=strip -s git-deleted-no-hunks.patch 2>errors4 >result4 || exit 1
+${LSDIFF} --git-extended-diffs=include --git-extended-diffs=include --git-prefixes=strip -s git-deleted-no-hunks.patch 2>errors4 >result4 || exit 1
 [ -s errors4 ] && exit 1
 
 cat << EOF | cmp - result4 || exit 1
@@ -85,7 +85,7 @@ cat << EOF | cmp - result4 || exit 1
 EOF
 
 echo "=== Test 5: filterdiff with deleted file (no hunks) ==="
-${FILTERDIFF} --git-prefixes=strip -i "*.c" git-deleted-no-hunks.patch 2>errors5 >result5 || exit 1
+${FILTERDIFF} --git-extended-diffs=include --git-prefixes=strip -i "*.c" git-deleted-no-hunks.patch 2>errors5 >result5 || exit 1
 [ -s errors5 ] && exit 1
 
 cat << 'EOF' | cmp - result5 || exit 1
@@ -96,7 +96,7 @@ Binary files a/removed.c and /dev/null differ
 EOF
 
 echo "=== Test 6: lsdiff with multiple deleted files ==="
-${LSDIFF} --git-prefixes=strip -s git-multiple-deleted.patch 2>errors6 >result6 || exit 1
+${LSDIFF} --git-extended-diffs=include --git-extended-diffs=include --git-prefixes=strip -s git-multiple-deleted.patch 2>errors6 >result6 || exit 1
 [ -s errors6 ] && exit 1
 
 cat << EOF | cmp - result6 || exit 1
@@ -105,7 +105,7 @@ cat << EOF | cmp - result6 || exit 1
 EOF
 
 echo "=== Test 7: filterdiff with pattern matching multiple deleted files ==="
-${FILTERDIFF} --git-prefixes=strip -i "file1*" git-multiple-deleted.patch 2>errors7 >result7 || exit 1
+${FILTERDIFF} --git-extended-diffs=include --git-prefixes=strip -i "file1*" git-multiple-deleted.patch 2>errors7 >result7 || exit 1
 [ -s errors7 ] && exit 1
 
 cat << 'EOF' | cmp - result7 || exit 1
@@ -119,7 +119,7 @@ index 111..0000000
 EOF
 
 echo "=== Test 8: Test git-prefixes with deleted files ==="
-${LSDIFF} --git-prefixes=strip -s git-deleted.patch 2>errors8 >result8 || exit 1
+${LSDIFF} --git-extended-diffs=include --git-extended-diffs=include --git-prefixes=strip -s git-deleted.patch 2>errors8 >result8 || exit 1
 [ -s errors8 ] && exit 1
 
 cat << EOF | cmp - result8 || exit 1
