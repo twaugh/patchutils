@@ -253,7 +253,7 @@ FILE *xopen_seekable (const char *name, const char *mode)
 /* unzip if needed */
 FILE *xopen_unzip (const char *name, const char *mode)
 {
-	char *p, *zprog = NULL;
+	const char *p, *zprog = NULL;
 	FILE *fi, *fo;
 	const size_t buflen = 64 * 1024;
 	char *buffer;
@@ -602,7 +602,7 @@ char patch_determine_file_status(const struct patch_headers *headers, int empty_
 
 		/* Parse hunk headers from the patch to determine if files are empty */
 		for (unsigned int i = 0; i < headers->num_headers; i++) {
-			const char *line = headers->header_lines[i];
+			char *line = headers->header_lines[i];
 
 			/* Look for unified diff hunk headers: @@ -offset,count +offset,count @@ */
 			if (strncmp(line, "@@ ", 3) == 0) {

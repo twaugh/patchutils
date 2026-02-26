@@ -161,7 +161,7 @@ const char *stripped (const char *name, int num_components)
 
 unsigned long calculate_num_lines (const char *atatline, char which)
 {
-        char *p = strchr (atatline, which);
+        const char *p = strchr (atatline, which);
         if (!p)
                 return 1;
         while (*p && *p != ',' && *p != ' ') p++;
@@ -189,7 +189,7 @@ int read_atatline (const char *atatline,
 {
 	char *endptr;
 	unsigned long res;
-	char *p;
+	const char *p;
 
 	if (orig_offset) {
 		p = strchr (atatline, '-');
