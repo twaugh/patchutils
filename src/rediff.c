@@ -265,7 +265,7 @@ static void copy_to (struct hunk *from, struct hunk *upto,
 }
 
 /* Deal with an added hunk. */
-static long added_hunk (const char *meta, long offset, FILE *modify, FILE *t,
+static long added_hunk (char *meta, long offset, FILE *modify, FILE *t,
 			unsigned long morig_count, unsigned long mnew_count)
 {
 	long this_offset = 0;

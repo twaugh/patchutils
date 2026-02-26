@@ -250,7 +250,7 @@ FILE *xopen_seekable (const char *name, const char *mode)
 /* unzip if needed */
 FILE *xopen_unzip (const char *name, const char *mode)
 {
-	char *p, *zprog = NULL;
+	const char *p, *zprog = NULL;
 	FILE *fi, *fo;
 	const size_t buflen = 64 * 1024;
 	char *buffer;
