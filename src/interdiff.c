@@ -2208,6 +2208,17 @@ fuzzy_relocate_hunks (const char *file, const char *unline, FILE *patch_out,
 	free (relocs);
 }
 
+/* Unlink the .orig backup file that the patch utility may leave behind */
+static void
+unlink_orig (const char *file)
+{
+	char *orig;
+
+	xasprintf (&orig, "%s.orig", file);
+	unlink (orig);
+	free (orig);
+}
+
 static void
 fuzzy_cleanup (const char *file, int rej)
 {
@@ -2913,6 +2924,9 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 		if (fuzzy) {
 			fuzzy_cleanup (tmpp1, patch_ret);
 			fuzzy_cleanup (tmpp2, ctx_ret);
+		} else {
+			unlink_orig (tmpp1);
+			unlink_orig (tmpp2);
 		}
 	}
 	free (oldname);
@@ -2937,6 +2951,9 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 		if (fuzzy) {
 			fuzzy_cleanup (tmpp1, patch_ret);
 			fuzzy_cleanup (tmpp2, 0);
+		} else {
+			unlink_orig (tmpp1);
+			unlink_orig (tmpp2);
 		}
 	}
 	if (human_readable)
@@ -3615,6 +3632,8 @@ flipdiff (FILE *p1, FILE *p2, FILE *flip1, FILE *flip2)
 		unlink (tmpp1);
 		unlink (tmpp2);
 		unlink (tmpp3);
+		unlink_orig (tmpp1);
+		unlink_orig (tmpp3);
 	}
 
 	return 0;
