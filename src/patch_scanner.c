@@ -1123,7 +1123,7 @@ static int scanner_emit_hunk_header(patch_scanner_t *scanner, const char *line)
 {
     char *endptr;
     unsigned long res;
-    char *p;
+    const char *p;
     const char *context_start;
 
     /* Parse @@ -<orig_offset>[,<orig_count>] +<new_offset>[,<new_count>] @@[<context>] */
