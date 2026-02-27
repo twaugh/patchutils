@@ -41,6 +41,7 @@ int strip_output_components = 0; /* --strip */
 int verbose = 0;               /* -v, --verbose */
 int unzip = 0;                 /* -z, --decompress */
 enum git_prefix_mode git_prefix_mode = GIT_PREFIX_KEEP; /* --git-prefixes */
+enum git_extended_diffs_mode git_extended_diffs_mode = GIT_EXTENDED_DIFFS_INCLUDE; /* --git-extended-diffs */
 
 /* Path prefix options */
 char *add_prefix = NULL;         /* --addprefix */
@@ -174,6 +175,15 @@ int parse_common_option(int c, char *optarg)
 	case 1000 + 'N':
 		add_new_prefix = optarg;
 		return 1;
+	case 1000 + 'D':
+		if (!strcmp(optarg, "exclude")) {
+			git_extended_diffs_mode = GIT_EXTENDED_DIFFS_EXCLUDE;
+		} else if (!strcmp(optarg, "include")) {
+			git_extended_diffs_mode = GIT_EXTENDED_DIFFS_INCLUDE;
+		} else {
+			error(EXIT_FAILURE, 0, "invalid argument to --git-extended-diffs: %s (expected 'exclude' or 'include')", optarg);
+		}
+		return 1;
 	}
 
 	return 0; /* Not handled */
@@ -190,6 +200,7 @@ void init_common_options(void)
 	verbose = 0;
 	unzip = 0;
 	git_prefix_mode = GIT_PREFIX_KEEP;
+	git_extended_diffs_mode = GIT_EXTENDED_DIFFS_INCLUDE;
 	add_prefix = NULL;
 	add_old_prefix = NULL;
 	add_new_prefix = NULL;
@@ -233,6 +244,7 @@ void add_common_long_options(struct option *options, int *next_index)
 	options[idx++] = (struct option){"verbose", 0, 0, 'v'};
 	options[idx++] = (struct option){"decompress", 0, 0, 'z'};
 	options[idx++] = (struct option){"git-prefixes", 1, 0, 1000 + 'G'};
+	options[idx++] = (struct option){"git-extended-diffs", 1, 0, 1000 + 'D'};
 	options[idx++] = (struct option){"strip", 1, 0, 1000 + 'S'};
 	options[idx++] = (struct option){"addprefix", 1, 0, 1000 + 'A'};
 	options[idx++] = (struct option){"addoldprefix", 1, 0, 1000 + 'O'};

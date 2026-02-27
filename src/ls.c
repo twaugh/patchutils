@@ -95,6 +95,9 @@ static void syntax(int err)
     fprintf(f, "  --addoldprefix=PREFIX        add PREFIX to old filenames\n");
     fprintf(f, "  --addnewprefix=PREFIX        add PREFIX to new filenames\n");
     fprintf(f, "  --git-prefixes=strip|keep    handle a/ and b/ prefixes in Git diffs (default: keep)\n");
+    fprintf(f, "  --git-extended-diffs=exclude|include\n");
+    fprintf(f, "            process Git diffs without hunks: renames, copies, mode-only\n");
+    fprintf(f, "            changes, binary files; default is include\n");
     fprintf(f, "  -i PAT, --include=PAT        include only files matching PAT\n");
     fprintf(f, "  -x PAT, --exclude=PAT        exclude files matching PAT\n");
     fprintf(f, "  -I FILE, --include-from-file=FILE  include only files matching patterns in FILE\n");
@@ -159,6 +162,15 @@ static void process_patch_file(FILE *fp, const char *filename)
 
     while ((result = patch_scanner_next(scanner, &content)) == PATCH_SCAN_OK) {
         if (content->type == PATCH_CONTENT_HEADERS) {
+            /* Check if we should skip git extended diffs in exclude mode */
+            if (git_extended_diffs_mode == GIT_EXTENDED_DIFFS_EXCLUDE) {
+                enum git_diff_type git_type = content->data.headers->git_type;
+                /* In exclude mode, skip all extended/special types (only keep GIT_DIFF_NORMAL) */
+                if (git_type != GIT_DIFF_NORMAL) {
+                    continue;
+                }
+            }
+
             filecount++;
 
             /* If we have a pending file, display it now */

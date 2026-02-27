@@ -32,6 +32,13 @@ extern int verbose;               /* -v, --verbose */
 extern int unzip;                 /* -z, --decompress */
 extern enum git_prefix_mode git_prefix_mode; /* --git-prefixes */
 
+/* Git extended diffs mode */
+enum git_extended_diffs_mode {
+	GIT_EXTENDED_DIFFS_EXCLUDE = 0,  /* Skip extended diffs */
+	GIT_EXTENDED_DIFFS_INCLUDE = 1   /* Process extended diffs (default) */
+};
+extern enum git_extended_diffs_mode git_extended_diffs_mode; /* --git-extended-diffs */
+
 /* Path prefix options */
 extern char *add_prefix;         /* --addprefix */
 extern char *add_old_prefix;     /* --addoldprefix */
@@ -62,7 +69,7 @@ void init_common_options(void);
 void cleanup_common_options(void);
 
 /* Common option parsing helpers */
-#define MAX_COMMON_OPTIONS 16
+#define MAX_COMMON_OPTIONS 20
 #define MAX_TOOL_OPTIONS 16  /* Generous space for tool-specific options */
 #define MAX_TOTAL_OPTIONS (MAX_COMMON_OPTIONS + MAX_TOOL_OPTIONS)
 
