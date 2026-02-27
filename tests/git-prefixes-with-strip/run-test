@@ -27,7 +27,7 @@ EOF
 # Test 1: --git-prefixes=keep (default) with -p and --strip
 # With keep: a/level1/level2/file1.txt -> -p1 -> level1/level2/file1.txt for matching
 # Then --strip=2 affects output: removes first 2 components from diff headers
-${FILTERDIFF} --git-prefixes=keep -p1 --strip=2 -i "level1/level2/file1.txt" git-test.patch 2>errors1 >result1 || exit 1
+${FILTERDIFF} --git-extended-diffs=include --git-prefixes=keep -p1 --strip=2 -i "level1/level2/file1.txt" git-test.patch 2>errors1 >result1 || exit 1
 [ -s errors1 ] && exit 1
 
 cat << EOF | cmp - result1 || exit 1
@@ -43,7 +43,7 @@ EOF
 # Test 2: --git-prefixes=strip with -p and --strip
 # With strip: a/level1/level2/file1.txt -> strip a/ -> level1/level2/file1.txt -> -p1 -> level2/file1.txt for matching
 # Then --strip=2 affects output
-${FILTERDIFF} --git-prefixes=strip -p1 --strip=2 -i "level2/file1.txt" git-test.patch 2>errors2 >result2 || exit 1
+${FILTERDIFF} --git-extended-diffs=include --git-prefixes=strip -p1 --strip=2 -i "level2/file1.txt" git-test.patch 2>errors2 >result2 || exit 1
 [ -s errors2 ] && exit 1
 
 cat << EOF | cmp - result2 || exit 1
@@ -59,7 +59,7 @@ EOF
 # Test 3: --git-prefixes=strip with -p0 and --strip=1
 # With strip: a/level1/level2/file1.txt -> strip a/ -> level1/level2/file1.txt -> -p0 -> level1/level2/file1.txt for matching
 # Then --strip=1 affects output
-${FILTERDIFF} --git-prefixes=strip -p0 --strip=1 -i "level1/level2/file1.txt" git-test.patch 2>errors3 >result3 || exit 1
+${FILTERDIFF} --git-extended-diffs=include --git-prefixes=strip -p0 --strip=1 -i "level1/level2/file1.txt" git-test.patch 2>errors3 >result3 || exit 1
 [ -s errors3 ] && exit 1
 
 cat << EOF | cmp - result3 || exit 1
@@ -74,7 +74,7 @@ EOF
 
 # Test 4: Verify exclusion works correctly with --git-prefixes=strip
 # Exclude "path/file2.c" after stripping a/ and applying -p1
-${FILTERDIFF} --git-prefixes=strip -p1 --strip=1 -x "path/file2.c" git-test.patch 2>errors4 >result4 || exit 1
+${FILTERDIFF} --git-extended-diffs=include --git-prefixes=strip -p1 --strip=1 -x "path/file2.c" git-test.patch 2>errors4 >result4 || exit 1
 [ -s errors4 ] && exit 1
 
 cat << EOF | cmp - result4 || exit 1

@@ -1,0 +1,172 @@
+#!/bin/sh
+
+# Test for --git-extended-diffs=exclude option
+# Verifies that exclude mode matches 0.4.3 behavior by skipping
+# git diffs without content hunks (renames, copies, mode-only, binary files)
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > mixed-git.patch
+diff --git a/1-rename.txt b/1-rename-new.txt
+similarity index 100%
+rename from 1-rename.txt
+rename to 1-rename-new.txt
+diff --git a/2-copy.c b/2-copy-new.c
+similarity index 95%
+copy from 2-copy.c
+copy to 2-copy-new.c
+diff --git a/3-mode-only.sh b/3-mode-only.sh
+old mode 100755
+new mode 100644
+diff --git a/4-binary.bin b/4-binary.bin
+new file mode 100644
+index 0000000..998a95d
+Binary files /dev/null and b/4-binary.bin differ
+diff --git a/5-normal.txt b/5-normal.txt
+--- a/5-normal.txt
++++ b/5-normal.txt
+@@ -1 +1 @@
+-old
++new
+diff --git a/6-another.txt b/6-another.txt
+--- a/6-another.txt
++++ b/6-another.txt
+@@ -1 +1 @@
+-old
++new
+EOF
+
+# Test 1: Default should be include (show all files including extended diffs)
+${LSDIFF} mixed-git.patch 2>errors1 >result1 || exit 1
+[ -s errors1 ] && exit 1
+
+cat << EOF | cmp - result1 || exit 1
+a/1-rename.txt
+a/2-copy.c
+a/3-mode-only.sh
+a/4-binary.bin
+a/5-normal.txt
+a/6-another.txt
+EOF
+
+# Test 2: Explicit --git-extended-diffs=exclude
+${LSDIFF} --git-extended-diffs=exclude mixed-git.patch 2>errors2 >result2 || exit 1
+[ -s errors2 ] && exit 1
+
+cat << EOF | cmp - result2 || exit 1
+a/5-normal.txt
+a/6-another.txt
+EOF
+
+# Test 3: File numbering with exclude mode
+${LSDIFF} -N --git-extended-diffs=exclude mixed-git.patch 2>errors3 >result3 || exit 1
+[ -s errors3 ] && exit 1
+
+cat << EOF | cmp - result3 || exit 1
+File #1  	a/5-normal.txt
+File #2  	a/6-another.txt
+EOF
+
+# Test 4: filterdiff with exclude mode
+${FILTERDIFF} --git-extended-diffs=exclude -i "*normal*" mixed-git.patch 2>errors4 >result4 || exit 1
+[ -s errors4 ] && exit 1
+
+cat << EOF | cmp - result4 || exit 1
+diff --git a/5-normal.txt b/5-normal.txt
+--- a/5-normal.txt
++++ b/5-normal.txt
+@@ -1 +1 @@
+-old
++new
+EOF
+
+# Test 5: File number filtering works with exclude mode
+${FILTERDIFF} --git-extended-diffs=exclude -F 2 mixed-git.patch 2>errors5 >result5 || exit 1
+[ -s errors5 ] && exit 1
+
+cat << EOF | cmp - result5 || exit 1
+diff --git a/6-another.txt b/6-another.txt
+--- a/6-another.txt
++++ b/6-another.txt
+@@ -1 +1 @@
+-old
++new
+EOF
+
+# Test 6: Compare with include mode (should show all files)
+${LSDIFF} -N --git-extended-diffs=include mixed-git.patch 2>errors6 >result6 || exit 1
+[ -s errors6 ] && exit 1
+
+cat << EOF | cmp - result6 || exit 1
+File #1  	a/1-rename.txt
+File #2  	a/2-copy.c
+File #3  	a/3-mode-only.sh
+File #4  	a/4-binary.bin
+File #5  	a/5-normal.txt
+File #6  	a/6-another.txt
+EOF
+
+# Test 7: Coverage for GIT_DIFF_NORMAL case in should_skip_git_extended_diff()
+# Normal git diffs should NOT be skipped in exclude mode
+cat << EOF > normal-only.patch
+diff --git a/file.txt b/file.txt
+--- a/file.txt
++++ b/file.txt
+@@ -1,3 +1,3 @@
+ line 1
+-old line
++new line
+ line 3
+EOF
+
+${FILTERDIFF} --git-extended-diffs=exclude normal-only.patch 2>errors7 >result7 || exit 1
+[ -s errors7 ] && exit 1
+
+cat << EOF | cmp - result7 || exit 1
+diff --git a/file.txt b/file.txt
+--- a/file.txt
++++ b/file.txt
+@@ -1,3 +1,3 @@
+ line 1
+-old line
++new line
+ line 3
+EOF
+
+# Test 8: Coverage for goto eof path when extended diff at EOF
+# Patch ending with extended diff should skip to eof in exclude mode
+cat << EOF > eof.patch
+diff --git a/normal.txt b/normal.txt
+--- a/normal.txt
++++ b/normal.txt
+@@ -1 +1 @@
+-old
++new
+diff --git a/rename.txt b/rename-new.txt
+similarity index 100%
+rename from rename.txt
+rename to rename-new.txt
+EOF
+
+${FILTERDIFF} --git-extended-diffs=exclude eof.patch 2>errors8 >result8 || exit 1
+[ -s errors8 ] && exit 1
+
+# Should only show normal diff, not the rename at EOF
+cat << EOF | cmp - result8 || exit 1
+diff --git a/normal.txt b/normal.txt
+--- a/normal.txt
++++ b/normal.txt
+@@ -1 +1 @@
+-old
++new
+EOF
+
+# Test 9: Coverage for invalid argument error path
+# Invalid argument to --git-extended-diffs should error
+${FILTERDIFF} --git-extended-diffs=invalid mixed-git.patch 2>errors9 >result9 && exit 1
+
+# Check error message
+grep -q "invalid argument to --git-extended-diffs" errors9 || exit 1
+grep -q "expected 'exclude' or 'include'" errors9 || exit 1
+
+exit 0

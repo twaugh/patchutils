@@ -592,6 +592,7 @@
           </group>
           <arg choice="opt">--strip=<replaceable>n</replaceable></arg>
           <arg choice="opt">--git-prefixes=<replaceable>strip|keep</replaceable></arg>
+          <arg choice="opt">--git-extended-diffs=<replaceable>exclude|include</replaceable></arg>
           <arg choice="opt">--addprefix=<replaceable>PREFIX</replaceable></arg>
           <arg choice="opt">--addoldprefix=<replaceable>PREFIX</replaceable></arg>
           <arg choice="opt">--addnewprefix=<replaceable>PREFIX</replaceable></arg>
@@ -797,6 +798,18 @@
 			if they had <literal>a/</literal> and <literal>b/</literal> prefixes for consistency
 			with other Git operations. The default will change to <literal>strip</literal>
 			in version 0.5.0.</para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><option>--git-extended-diffs</option>=<replaceable>exclude|include</replaceable></term>
+            <listitem>
+              <para>Controls whether to process Git diffs without traditional content hunks.
+	        This includes renames, copies, mode-only changes, and binary files.
+	        With <literal>exclude</literal>, these diffs are skipped (this was
+	        the default in versions prior to 0.5.0). With <literal>include</literal>
+	        (the default), these diffs are processed normally. This option affects
+	        file numbering with <option>-N</option> and file filtering with
+	        <option>-F</option>.</para>
             </listitem>
           </varlistentry>
           <varlistentry>
@@ -1078,6 +1091,7 @@ patch.file]]></screen></para>
           </group>
           <arg choice="opt">--strip=<replaceable>n</replaceable></arg>
           <arg choice="opt">--git-prefixes=<replaceable>strip|keep</replaceable></arg>
+          <arg choice="opt">--git-extended-diffs=<replaceable>exclude|include</replaceable></arg>
           <arg choice="opt">--addprefix=<replaceable>PREFIX</replaceable></arg>
           <arg choice="opt">--addoldprefix=<replaceable>PREFIX</replaceable></arg>
           <arg choice="opt">--addnewprefix=<replaceable>PREFIX</replaceable></arg>
@@ -1262,6 +1276,18 @@ patch.file]]></screen></para>
 			if they had <literal>a/</literal> and <literal>b/</literal> prefixes for consistency
 	        with other Git operations. The default will change to <literal>strip</literal>
 			in version 0.5.0.</para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><option>--git-extended-diffs</option>=<replaceable>exclude|include</replaceable></term>
+            <listitem>
+              <para>Controls whether to process Git diffs without traditional content hunks.
+	        This includes renames, copies, mode-only changes, and binary files.
+	        With <literal>exclude</literal>, these diffs are skipped (this was
+	        the default in versions prior to 0.5.0). With <literal>include</literal>
+	        (the default), these diffs are processed normally. This option affects
+	        file numbering with <option>-N</option> and file filtering with
+	        <option>-F</option>.</para>
             </listitem>
           </varlistentry>
           <varlistentry>
@@ -1457,6 +1483,7 @@ done)]]></screen></para>
           </group>
           <arg choice="opt">--strip=<replaceable>n</replaceable></arg>
           <arg choice="opt">--git-prefixes=<replaceable>strip|keep</replaceable></arg>
+          <arg choice="opt">--git-extended-diffs=<replaceable>exclude|include</replaceable></arg>
           <arg choice="opt">--addprefix=<replaceable>PREFIX</replaceable></arg>
           <group choice="opt">
             <arg>-s</arg>
@@ -1664,6 +1691,18 @@ This is the same as gitdiff but uses git show instead of git diff.
 			if they had <literal>a/</literal> and <literal>b/</literal> prefixes for consistency
 	        with other Git operations. The default will change to <literal>strip</literal>
 			in version 0.5.0.</para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><option>--git-extended-diffs</option>=<replaceable>exclude|include</replaceable></term>
+            <listitem>
+              <para>Controls whether to process Git diffs without traditional content hunks.
+	        This includes renames, copies, mode-only changes, and binary files.
+	        With <literal>exclude</literal>, these diffs are skipped (this was
+	        the default in versions prior to 0.5.0). With <literal>include</literal>
+	        (the default), these diffs are processed normally. This option affects
+	        file numbering with <option>-N</option> and file filtering with
+	        <option>-F</option>.</para>
             </listitem>
           </varlistentry>
           <varlistentry>
@@ -2050,6 +2089,7 @@ This is the same as gitdiff but uses git show instead of git diff.
           </group>
           <arg choice="opt">--strip=<replaceable>n</replaceable></arg>
           <arg choice="opt">--git-prefixes=<replaceable>strip|keep</replaceable></arg>
+          <arg choice="opt">--git-extended-diffs=<replaceable>exclude|include</replaceable></arg>
           <arg choice="opt">--addprefix=<replaceable>PREFIX</replaceable></arg>
           <arg choice="opt">--addoldprefix=<replaceable>PREFIX</replaceable></arg>
           <arg choice="opt">--addnewprefix=<replaceable>PREFIX</replaceable></arg>
@@ -2197,6 +2237,18 @@ This is the same as gitdiff but uses git show instead of git diff.
 			if they had <literal>a/</literal> and <literal>b/</literal> prefixes for consistency
 	        with other Git operations. The default will change to <literal>strip</literal>
 			in version 0.5.0.</para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><option>--git-extended-diffs</option>=<replaceable>exclude|include</replaceable></term>
+            <listitem>
+              <para>Controls whether to process Git diffs without traditional content hunks.
+	        This includes renames, copies, mode-only changes, and binary files.
+	        With <literal>exclude</literal>, these diffs are skipped (this was
+	        the default in versions prior to 0.5.0). With <literal>include</literal>
+	        (the default), these diffs are processed normally. This option affects
+	        file numbering with <option>-N</option> and file filtering with
+	        <option>-F</option>.</para>
             </listitem>
           </varlistentry>
           <varlistentry>

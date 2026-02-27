@@ -3,6 +3,17 @@ Patchutils news
 
 0.4.5 (stable)
 
+	Reverted incompatible behavior change from version 0.4.4. In 0.4.4,
+	Git diffs without content hunks (renames, copies, mode-only changes,
+	binary files) were included in output and file numbering, breaking
+	compatibility with 0.4.3 and earlier versions. This caused file numbers
+	to change for scripts using -N/-F options. The 0.4.3 behavior has been
+	restored as the default: these diffs are now excluded from output and
+	numbering. Added --git-extended-diffs option to control this behavior:
+	use --git-extended-diffs=include to get the 0.4.4 behavior if needed.
+	The default will change to 'include' in version 0.5.0 for modern Git
+	workflow support. Addresses GitHub issue #157.
+
 	Fixed grepdiff -s/--status to display correct file status indicators.
 	Previously, grepdiff -s incorrectly showed '!' (modification) for all
 	matching files regardless of whether they were additions, deletions,

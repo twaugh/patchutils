@@ -150,6 +150,9 @@ static void syntax(int err)
 	fprintf(f, "  --addoldprefix=PREFIX        add PREFIX to old filenames\n");
 	fprintf(f, "  --addnewprefix=PREFIX        add PREFIX to new filenames\n");
 	fprintf(f, "  --git-prefixes=strip|keep    handle a/ and b/ prefixes in Git diffs (default: keep)\n");
+	fprintf(f, "  --git-extended-diffs=exclude|include\n");
+	fprintf(f, "            process Git diffs without hunks: renames, copies, mode-only\n");
+	fprintf(f, "            changes, binary files; default is include\n");
 	fprintf(f, "  --output-matching=file|hunk  output mode: full files or matching hunks only\n");
 	fprintf(f, "  --only-match=rem|add|mod|all show only removed, added, modified, or all matching lines\n");
 	fprintf(f, "  --as-numbered-lines=before|after  show matching lines with line numbers\n");
