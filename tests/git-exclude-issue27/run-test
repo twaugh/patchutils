@@ -24,7 +24,7 @@ index 1234567..abcdefg 100644
 EOF
 
 # Test that excluding README.vin removes the entire git diff block
-${FILTERDIFF} --git-prefixes=strip -x README.vin git-multi.patch 2>errors >result || exit 1
+${FILTERDIFF} --git-extended-diffs=include --git-prefixes=strip -x README.vin git-multi.patch 2>errors >result || exit 1
 [ -s errors ] && exit 1
 
 # The result should contain the complete autogen.sh diff, no orphaned headers
@@ -39,7 +39,7 @@ index 1234567..abcdefg 100644
 EOF
 
 # Test that excluding both files results in empty output
-${FILTERDIFF} --git-prefixes=strip -x README.vin -x autogen.sh git-multi.patch 2>errors2 >result2 || exit 1
+${FILTERDIFF} --git-extended-diffs=include --git-prefixes=strip -x README.vin -x autogen.sh git-multi.patch 2>errors2 >result2 || exit 1
 [ -s errors2 ] && exit 1
 
 # The result should be completely empty

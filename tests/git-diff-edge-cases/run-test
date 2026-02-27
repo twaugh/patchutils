@@ -67,7 +67,7 @@ index abc123..abc123 100644
 EOF
 
 echo "=== Test 1: Mode-only change ==="
-${LSDIFF} -s git-mode-only.patch 2>errors1 >result1 || exit 1
+${LSDIFF} --git-extended-diffs=include -s git-mode-only.patch 2>errors1 >result1 || exit 1
 [ -s errors1 ] && exit 1
 
 cat << EOF | cmp - result1 || exit 1
@@ -75,7 +75,7 @@ cat << EOF | cmp - result1 || exit 1
 EOF
 
 echo "=== Test 2: Binary file with no hunks ==="
-${LSDIFF} -s git-binary-no-hunks.patch 2>errors2 >result2 || exit 1
+${LSDIFF} --git-extended-diffs=include -s git-binary-no-hunks.patch 2>errors2 >result2 || exit 1
 [ -s errors2 ] && exit 1
 
 cat << EOF | cmp - result2 || exit 1
@@ -83,7 +83,7 @@ cat << EOF | cmp - result2 || exit 1
 EOF
 
 echo "=== Test 3: Copy operation ==="
-${LSDIFF} -s git-copy.patch 2>errors3 >result3 || exit 1
+${LSDIFF} --git-extended-diffs=include -s git-copy.patch 2>errors3 >result3 || exit 1
 [ -s errors3 ] && exit 1
 
 cat << EOF | cmp - result3 || exit 1
@@ -91,7 +91,7 @@ cat << EOF | cmp - result3 || exit 1
 EOF
 
 echo "=== Test 4: filterdiff with copy operation ==="
-${FILTERDIFF} -i "*/copy*" git-copy.patch 2>errors4 >result4 || exit 1
+${FILTERDIFF} --git-extended-diffs=include -i "*/copy*" git-copy.patch 2>errors4 >result4 || exit 1
 [ -s errors4 ] && exit 1
 
 cat << 'EOF' | cmp - result4 || exit 1
@@ -110,7 +110,7 @@ index abc123..def456 100644
 EOF
 
 echo "=== Test 5: filterdiff with copy by target name ==="
-${FILTERDIFF} -i "*/copy*" git-copy.patch 2>errors5 >result5 || exit 1
+${FILTERDIFF} --git-extended-diffs=include -i "*/copy*" git-copy.patch 2>errors5 >result5 || exit 1
 [ -s errors5 ] && exit 1
 
 # Should still match (uses best_name)
@@ -130,7 +130,7 @@ index abc123..def456 100644
 EOF
 
 echo "=== Test 6: Malformed git headers fallback ==="
-${LSDIFF} malformed-git.patch 2>errors6 >result6 || exit 1
+${LSDIFF} --git-extended-diffs=include --git-extended-diffs=include malformed-git.patch 2>errors6 >result6 || exit 1
 [ -s errors6 ] && exit 1
 
 cat << EOF | cmp - result6 || exit 1
@@ -138,7 +138,7 @@ a/file.txt
 EOF
 
 echo "=== Test 7: Mode and content change ==="
-${LSDIFF} -s git-mode-and-content.patch 2>errors7 >result7 || exit 1
+${LSDIFF} --git-extended-diffs=include -s git-mode-and-content.patch 2>errors7 >result7 || exit 1
 [ -s errors7 ] && exit 1
 
 cat << EOF | cmp - result7 || exit 1
@@ -146,14 +146,14 @@ cat << EOF | cmp - result7 || exit 1
 EOF
 
 echo "=== Test 8: Empty git diff ==="
-${LSDIFF} -s git-empty.patch 2>errors8 >result8 || exit 1
+${LSDIFF} --git-extended-diffs=include -s git-empty.patch 2>errors8 >result8 || exit 1
 [ -s errors8 ] && exit 1
 
 # Empty git diff should produce no output
 [ -s result8 ] && exit 1
 
 echo "=== Test 9: filterdiff with git-prefixes on various types ==="
-${FILTERDIFF} --git-prefixes=strip -i "*.sh" git-mode-only.patch 2>errors9 >result9 || exit 1
+${FILTERDIFF} --git-extended-diffs=include --git-prefixes=strip -i "*.sh" git-mode-only.patch 2>errors9 >result9 || exit 1
 [ -s errors9 ] && exit 1
 
 cat << 'EOF' | cmp - result9 || exit 1
@@ -164,7 +164,7 @@ index abc123..abc123 100644
 EOF
 
 echo "=== Test 10: Test include/exclude with no matches ==="
-${FILTERDIFF} -i "nonexistent*" git-mode-only.patch 2>errors10 >result10 || exit 1
+${FILTERDIFF} --git-extended-diffs=include -i "nonexistent*" git-mode-only.patch 2>errors10 >result10 || exit 1
 [ -s errors10 ] && exit 1
 
 # Should be empty
@@ -189,7 +189,7 @@ new mode 100755
 index def456..def456 100644
 EOF
 
-${LSDIFF} -s mixed-git-types.patch 2>errors11 >result11 || exit 1
+${LSDIFF} --git-extended-diffs=include -s mixed-git-types.patch 2>errors11 >result11 || exit 1
 [ -s errors11 ] && exit 1
 
 cat << EOF | cmp - result11 || exit 1
@@ -199,7 +199,7 @@ cat << EOF | cmp - result11 || exit 1
 EOF
 
 echo "=== Test 12: filterdiff with pattern matching mixed types ==="
-${FILTERDIFF} -i "a/*.txt" mixed-git-types.patch 2>errors12 >result12 || exit 1
+${FILTERDIFF} --git-extended-diffs=include -i "a/*.txt" mixed-git-types.patch 2>errors12 >result12 || exit 1
 [ -s errors12 ] && exit 1
 
 cat << 'EOF' | cmp - result12 || exit 1

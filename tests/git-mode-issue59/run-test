@@ -23,7 +23,7 @@ new mode 100644
 EOF
 
 # Test that filterdiff includes mode-only changes when they match
-${FILTERDIFF} --git-prefixes=strip -i mode-only.sh git-mode.patch 2>errors >result || exit 1
+${FILTERDIFF} --git-extended-diffs=include --git-prefixes=strip -i mode-only.sh git-mode.patch 2>errors >result || exit 1
 [ -s errors ] && exit 1
 
 cat << EOF | cmp - result || exit 1
@@ -33,7 +33,7 @@ new mode 100644
 EOF
 
 # Test that lsdiff shows both files (one with content, one mode-only)
-${LSDIFF} --git-prefixes=strip git-mode.patch 2>errors2 >result2 || exit 1
+${LSDIFF} --git-extended-diffs=include --git-extended-diffs=include --git-prefixes=strip git-mode.patch 2>errors2 >result2 || exit 1
 [ -s errors2 ] && exit 1
 
 cat << EOF | cmp - result2 || exit 1
@@ -42,7 +42,7 @@ mode-only.sh
 EOF
 
 # Test including files with content changes
-${FILTERDIFF} --git-prefixes=strip -i script.sh git-mode.patch 2>errors3 >result3 || exit 1
+${FILTERDIFF} --git-extended-diffs=include --git-prefixes=strip -i script.sh git-mode.patch 2>errors3 >result3 || exit 1
 [ -s errors3 ] && exit 1
 
 cat << EOF | cmp - result3 || exit 1

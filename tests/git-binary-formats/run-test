@@ -62,7 +62,7 @@ EOF
 
 # Test filtering binary files with GIT binary patch format - should include binary content
 echo "Testing GIT binary patch format (include)..."
-${FILTERDIFF} --git-prefixes=strip -i "file1.bin" git-binary-patch.patch 2>errors1 >result1 || exit 1
+${FILTERDIFF} --git-extended-diffs=include --git-prefixes=strip -i "file1.bin" git-binary-patch.patch 2>errors1 >result1 || exit 1
 [ -s errors1 ] && { echo "Unexpected errors in test 1:"; cat errors1; exit 1; }
 
 cat << 'EOF' | cmp - result1 || { echo "Test 1 failed"; exit 1; }
@@ -78,7 +78,7 @@ EOF
 
 # Test filtering binary files with literal format - should include binary content
 echo "Testing literal format (include)..."
-${FILTERDIFF} --git-prefixes=strip -i "file3.bin" literal-patch.patch 2>errors2 >result2 || exit 1
+${FILTERDIFF} --git-extended-diffs=include --git-prefixes=strip -i "file3.bin" literal-patch.patch 2>errors2 >result2 || exit 1
 [ -s errors2 ] && { echo "Unexpected errors in test 2:"; cat errors2; exit 1; }
 
 cat << 'EOF' | cmp - result2 || { echo "Test 2 failed"; exit 1; }
@@ -93,7 +93,7 @@ EOF
 
 # Test filtering binary files with delta format - should include binary content
 echo "Testing delta format (include)..."
-${FILTERDIFF} --git-prefixes=strip -i "file5.bin" delta-patch.patch 2>errors3 >result3 || exit 1
+${FILTERDIFF} --git-extended-diffs=include --git-prefixes=strip -i "file5.bin" delta-patch.patch 2>errors3 >result3 || exit 1
 [ -s errors3 ] && { echo "Unexpected errors in test 3:"; cat errors3; exit 1; }
 
 cat << 'EOF' | cmp - result3 || { echo "Test 3 failed"; exit 1; }
@@ -108,7 +108,7 @@ EOF
 
 # Test excluding binary files - should skip binary content
 echo "Testing binary patch exclusion..."
-${FILTERDIFF} --git-prefixes=strip -x "file1.bin" git-binary-patch.patch 2>errors4 >result4 || exit 1
+${FILTERDIFF} --git-extended-diffs=include --git-prefixes=strip -x "file1.bin" git-binary-patch.patch 2>errors4 >result4 || exit 1
 [ -s errors4 ] && { echo "Unexpected errors in test 4:"; cat errors4; exit 1; }
 
 cat << 'EOF' | cmp - result4 || { echo "Test 4 failed"; exit 1; }
