@@ -805,10 +805,11 @@
             <listitem>
               <para>Controls whether to process Git diffs without traditional content hunks.
 	        This includes renames, copies, mode-only changes, and binary files.
-	        With <literal>exclude</literal> (default in 0.4.x), these diffs are
-	        skipped. With <literal>include</literal> (default in 0.5.0+), these
-	        diffs are processed normally. This option affects file numbering with
-	        <option>-N</option> and file filtering with <option>-F</option>.</para>
+	        With <literal>exclude</literal>, these diffs are skipped (this was
+	        the default in versions prior to 0.5.0). With <literal>include</literal>
+	        (the default), these diffs are processed normally. This option affects
+	        file numbering with <option>-N</option> and file filtering with
+	        <option>-F</option>.</para>
             </listitem>
           </varlistentry>
           <varlistentry>
@@ -1282,10 +1283,11 @@ patch.file]]></screen></para>
             <listitem>
               <para>Controls whether to process Git diffs without traditional content hunks.
 	        This includes renames, copies, mode-only changes, and binary files.
-	        With <literal>exclude</literal> (default in 0.4.x), these diffs are
-	        skipped. With <literal>include</literal> (default in 0.5.0+), these
-	        diffs are processed normally. This option affects file numbering with
-	        <option>-N</option> and file filtering with <option>-F</option>.</para>
+	        With <literal>exclude</literal>, these diffs are skipped (this was
+	        the default in versions prior to 0.5.0). With <literal>include</literal>
+	        (the default), these diffs are processed normally. This option affects
+	        file numbering with <option>-N</option> and file filtering with
+	        <option>-F</option>.</para>
             </listitem>
           </varlistentry>
           <varlistentry>
@@ -1696,10 +1698,11 @@ This is the same as gitdiff but uses git show instead of git diff.
             <listitem>
               <para>Controls whether to process Git diffs without traditional content hunks.
 	        This includes renames, copies, mode-only changes, and binary files.
-	        With <literal>exclude</literal> (default in 0.4.x), these diffs are
-	        skipped. With <literal>include</literal> (default in 0.5.0+), these
-	        diffs are processed normally. This option affects file numbering with
-	        <option>-N</option> and file filtering with <option>-F</option>.</para>
+	        With <literal>exclude</literal>, these diffs are skipped (this was
+	        the default in versions prior to 0.5.0). With <literal>include</literal>
+	        (the default), these diffs are processed normally. This option affects
+	        file numbering with <option>-N</option> and file filtering with
+	        <option>-F</option>.</para>
             </listitem>
           </varlistentry>
           <varlistentry>
@@ -2241,10 +2244,11 @@ This is the same as gitdiff but uses git show instead of git diff.
             <listitem>
               <para>Controls whether to process Git diffs without traditional content hunks.
 	        This includes renames, copies, mode-only changes, and binary files.
-	        With <literal>exclude</literal> (default in 0.4.x), these diffs are
-	        skipped. With <literal>include</literal> (default in 0.5.0+), these
-	        diffs are processed normally. This option affects file numbering with
-	        <option>-N</option> and file filtering with <option>-F</option>.</para>
+	        With <literal>exclude</literal>, these diffs are skipped (this was
+	        the default in versions prior to 0.5.0). With <literal>include</literal>
+	        (the default), these diffs are processed normally. This option affects
+	        file numbering with <option>-N</option> and file filtering with
+	        <option>-F</option>.</para>
             </listitem>
           </varlistentry>
           <varlistentry>

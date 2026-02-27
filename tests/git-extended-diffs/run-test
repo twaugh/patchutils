@@ -36,11 +36,15 @@ diff --git a/6-another.txt b/6-another.txt
 +new
 EOF
 
-# Test 1: Default should be exclude in 0.4.x (only show files with hunks)
+# Test 1: Default should be include (show all files including extended diffs)
 ${LSDIFF} mixed-git.patch 2>errors1 >result1 || exit 1
 [ -s errors1 ] && exit 1
 
 cat << EOF | cmp - result1 || exit 1
+a/1-rename.txt
+a/2-copy.c
+a/3-mode-only.sh
+a/4-binary.bin
 a/5-normal.txt
 a/6-another.txt
 EOF

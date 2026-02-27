@@ -117,7 +117,7 @@ enum git_extended_diffs_mode {
 	GIT_EXTENDED_DIFFS_INCLUDE = 1   /* Process extended diffs (Git workflow) */
 };
 
-static enum git_extended_diffs_mode git_extended_diffs_mode = GIT_EXTENDED_DIFFS_EXCLUDE;
+static enum git_extended_diffs_mode git_extended_diffs_mode = GIT_EXTENDED_DIFFS_INCLUDE;
 
 /* Helper function to check if a git diff type should be excluded based on mode */
 static int
@@ -1670,7 +1670,7 @@ const char * syntax_str =
 "            matching (-i/-x) and output (default: keep)\n"
 "  --git-extended-diffs=exclude|include\n"
 "            process Git diffs without hunks: renames, copies, mode-only\n"
-"            changes, binary files; default is exclude\n"
+"            changes, binary files; default is include\n"
 "  --addprefix=PREFIX\n"
 "            prefix pathnames with PREFIX\n"
 "  --addoldprefix=PREFIX\n"
