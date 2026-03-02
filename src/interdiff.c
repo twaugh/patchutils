@@ -1663,6 +1663,14 @@ split_patch_hunks (FILE *patch, size_t len, char *file,
 			/* Go to the character _after_ the newline character */
 			line++;
 
+			/* Skip "\ No newline at end of file" markers for
+			 * counting purposes but include them in the output by
+			 * extending the previous line to cover the marker. This
+			 * is naturally achieved by skipping the previous line's
+			 * length calculation for this iteration. */
+			if (*line == '\\')
+				continue;
+
 			/* Set the length of the previous line (if any). Only do
 			 * this once because when doing unline splitting, the
 			 * unlines aren't recorded into the lines array. */
