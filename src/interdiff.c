@@ -2351,8 +2351,7 @@ main (int argc, char *argv[])
 		case 'b':
 		case 'i':
 		case 'w':
-			if (asprintf (diff_opts + num_diff_opts++, "-%c", c) < 0)
-				error (EXIT_FAILURE, errno, "Memory allocation failed");
+			xasprintf (diff_opts + num_diff_opts++, "-%c", c);
 			break;
 		case 1000 + 'c': {
 			/* Determine the color mode: default to "auto" if no argument given */
