@@ -15,10 +15,13 @@
 <!-- Describe your changes here -->
 
 ## Type of Change
-- [ ] Bug fix (targets 0.4.x)
-- [ ] New feature (targets master)
-- [ ] Documentation update
-- [ ] Other (please describe)
+<!--
+Please indicate the type of change:
+- Bug fix (targets 0.4.x)
+- New feature (targets master)
+- Documentation update
+- Other (please describe)
+-->
 
 ## Testing
 <!-- Describe how you tested your changes -->
