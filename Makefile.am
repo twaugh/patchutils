@@ -15,7 +15,7 @@ bin_SCRIPTS = \
 	scripts/espdiff
 
 dist_bin_SCRIPTS = \
-	patchview/patchview-wrapper$(EXEEXT)
+	patchview/patchview-wrapper #$(EXEEXT)
 
 # Bash completion files
 bashcompletiondir = $(datadir)/bash-completion/completions
@@ -76,7 +76,7 @@ $(interdiff_links): src/interdiff$(EXEEXT)
 $(filterdiff_links): src/filterdiff$(EXEEXT)
 	ln -sf $(notdir $<) $@
 
-$(patchview_links): patchview/patchview-wrapper$(EXEEXT)
+$(patchview_links): patchview/patchview-wrapper #$(EXEEXT)
 	ln -sf $(notdir $<) $@
 
 install-exec-hook:
@@ -89,7 +89,7 @@ install-exec-hook:
 	             "$(DESTDIR)$(bindir)/`basename $$f | sed '$(transform)'`"; \
 	done
 	@for f in $(patchview_links); do \
-	    ln -sf "`echo patchview-wrapper$(EXEEXT) | sed '$(transform)'`" \
+	    ln -sf "`echo patchview-wrapper	     | sed '$(transform)'`" \
 	             "$(DESTDIR)$(bindir)/`basename $$f | sed '$(transform)'`"; \
 	done
 
