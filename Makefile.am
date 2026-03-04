@@ -28,7 +28,7 @@ bin_SCRIPTS = \
 	scripts/espdiff
 
 dist_bin_SCRIPTS = \
-	patchview/patchview-wrapper$(EXEEXT)
+	patchview/patchview-wrapper #$(EXEEXT)
 
 # Bash completion files
 bashcompletiondir = $(datadir)/bash-completion/completions
@@ -147,7 +147,7 @@ $(interdiff_links): src/interdiff$(EXEEXT)
 $(filterdiff_links): src/filterdiff$(EXEEXT)
 	ln -sf $(notdir $<) $@
 
-$(patchview_links): patchview/patchview-wrapper$(EXEEXT)
+$(patchview_links): patchview/patchview-wrapper #$(EXEEXT)
 	ln -sf $(notdir $<) $@
 
 # Ensure all symlinks are created during build
@@ -169,7 +169,7 @@ if USE_SCANNER_PATCHFILTER
 	ln -sf "`echo patchfilter|sed '$(transform)'`" $(DESTDIR)$(bindir)/"`echo grepdiff|sed '$(transform)'`"
 endif
 	@for f in $(patchview_links); do \
-	    ln -sf "`echo patchview-wrapper$(EXEEXT) | sed '$(transform)'`" \
+	    ln -sf "`echo patchview-wrapper	     | sed '$(transform)'`" \
 	             "$(DESTDIR)$(bindir)/`basename $$f | sed '$(transform)'`"; \
 	done
 
