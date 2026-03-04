@@ -90,6 +90,16 @@
 	"*    ONLY IN PATCH2 - files not modified by patch1                             *\n" \
 	"================================================================================\n\n"
 
+#define ADDED_FILE_DIFF_HEADER \
+	"================================================================================\n" \
+	"*    ADDED FILE DIFFERENCES - differences in files added by both patches       *\n" \
+	"================================================================================\n\n"
+
+#define DELETED_FILE_DIFF_HEADER \
+	"================================================================================\n" \
+	"*    DELETED FILE DIFFERENCES - differences in files deleted by both patches   *\n" \
+	"================================================================================\n\n"
+
 /* Line type for coloring */
 enum line_type {
 	LINE_FILE,
@@ -218,6 +228,8 @@ static struct fuzzy_file_list fuzzy_ctx_files = {};
 static struct fuzzy_file_list fuzzy_delta_rej_files = {};
 static FILE *fuzzy_only_in_patch1 = NULL;
 static FILE *fuzzy_only_in_patch2 = NULL;
+static FILE *fuzzy_added_files = NULL;
+static FILE *fuzzy_deleted_files = NULL;
 
 static struct patlist *pat_drop_context = NULL;
 
@@ -2766,6 +2778,7 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 	struct rej_file rej;
 	int patch_ret = 0, ctx_ret = 0;
 	char *oldname = NULL, *newname = NULL;
+	char *p1_minus = NULL, *p2_minus = NULL;
 	pid_t child;
 	FILE *in;
 	size_t namelen;
@@ -2773,9 +2786,57 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 	long pristine1, pristine2;
 	long start1, start2;
 	char options[100];
+	ssize_t got;
 
 	pristine1 = ftell (p1);
 	pristine2 = ftell (p2);
+
+	if (mode == mode_combine) {
+		/* For combinediff, we want the --- line from patch1 (original file) */
+		do {
+			if (oldname) {
+				free (oldname);
+				oldname = NULL;
+			}
+			if ((got = getline (&oldname, &namelen, p1)) <= 0)
+				error (EXIT_FAILURE, errno, "Bad patch #1");
+		} while (strncmp (oldname, "--- ", 4));
+		oldname[got - 1] = '\0';
+	} else {
+		/* For interdiff, use +++ line from patch1.
+		 * Also capture the --- line to detect creations. */
+		do {
+			if (oldname) {
+				free (oldname);
+				oldname = NULL;
+			}
+			if ((got = getline (&oldname, &namelen, p1)) <= 0)
+				error (EXIT_FAILURE, errno, "Bad patch #1");
+			if (!strncmp (oldname, "--- ", 4)) {
+				free (p1_minus);
+				p1_minus = oldname;
+				p1_minus[got - 1] = '\0';
+				oldname = NULL;
+			}
+		} while (!oldname || strncmp (oldname, "+++ ", 4));
+		oldname[got - 1] = '\0';
+	}
+
+	do {
+		if (newname) {
+			free (newname);
+			newname = NULL;
+		}
+		if ((got = getline (&newname, &namelen, p2)) <= 0)
+			error (EXIT_FAILURE, errno, "Bad patch #2");
+		if (!strncmp (newname, "--- ", 4)) {
+			free (p2_minus);
+			p2_minus = newname;
+			p2_minus[got - 1] = '\0';
+			newname = NULL;
+		}
+	} while (!newname || strncmp (newname, "+++ ", 4));
+	newname[got - 1] = '\0';
 
 	if (!tmpdir)
 		tmpdir = P_tmpdir;
@@ -2796,42 +2857,65 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 	tmpp1fd = xmkstemp (tmpp1);
 	tmpp2fd = xmkstemp (tmpp2);
 
-	if (mode == mode_combine) {
-		/* For combinediff, we want the --- line from patch1 (original file) */
-		do {
-			if (oldname) {
-				free (oldname);
-				oldname = NULL;
+	/* File creations (--- /dev/null) and deletions (+++ /dev/null)
+	 * contain the complete file content in the patch itself, so we
+	 * can extract and diff directly without apply_patch. */
+	if (mode != mode_combine &&
+	    ((p1_minus && !strcmp (p1_minus + 4, "/dev/null")) ||
+	     (p2_minus && !strcmp (p2_minus + 4, "/dev/null")) ||
+	     !strcmp (oldname + 4, "/dev/null") ||
+	     !strcmp (newname + 4, "/dev/null"))) {
+		int is_deletion = !strcmp (oldname + 4, "/dev/null") ||
+				  !strcmp (newname + 4, "/dev/null");
+		const char *hdr_old = (is_deletion ? p1_minus : oldname) + 4;
+		const char *hdr_new = (is_deletion ? p2_minus : newname) + 4;
+		struct lines_info f1 = {}, f2 = {};
+
+		fseek (p1, pos1, SEEK_SET);
+		create_orig (p1, &f1, !is_deletion, NULL);
+		pos1 = ftell (p1);
+
+		fseek (p2, pos2, SEEK_SET);
+		create_orig (p2, &f2, !is_deletion, NULL);
+		pos2 = ftell (p2);
+
+		write_file (&f1, tmpp1fd);
+		write_file (&f2, tmpp2fd);
+		free_lines (f1.head);
+		free_lines (f2.head);
+
+		if ((in = run_diff (options, tmpp1, tmpp2, &child))) {
+			FILE **dest = &out;
+			char *line = NULL;
+			size_t linelen;
+			ssize_t got;
+
+			if (fuzzy) {
+				dest = is_deletion ? &fuzzy_deleted_files :
+						     &fuzzy_added_files;
+				if (!*dest)
+					*dest = xtmpfile ();
 			}
-			if (getline (&oldname, &namelen, p1) < 0)
-				error (EXIT_FAILURE, errno, "Bad patch #1");
 
-		} while (strncmp (oldname, "--- ", 4));
-		oldname[strlen (oldname) - 1] = '\0';
-	} else {
-		/* For interdiff, use +++ line from patch1 */
-		do {
-			if (oldname) {
-				free (oldname);
-				oldname = NULL;
-			}
-			if (getline (&oldname, &namelen, p1) < 0)
-				error (EXIT_FAILURE, errno, "Bad patch #1");
-
-		} while (strncmp (oldname, "+++ ", 4));
-		oldname[strlen (oldname) - 1] = '\0';
-	}
-
-	do {
-		if (newname) {
-			free (newname);
-			newname = NULL;
+			if (human_readable)
+				print_color (*dest, LINE_HEADER,
+					     DIFF " %s %s %s\n", options,
+					     hdr_old, hdr_new);
+			print_color (*dest, LINE_FILE, "--- %s\n", hdr_old);
+			print_color (*dest, LINE_FILE, "+++ %s\n", hdr_new);
+			while ((got = getline (&line, &linelen, in)) >= 0)
+				fwrite (line, (size_t) got, 1, *dest);
+			free (line);
+			fclose (in);
+			waitpid (child, NULL, 0);
 		}
-		if (getline (&newname, &namelen, p2) < 0)
-			error (EXIT_FAILURE, errno, "Bad patch #2");
 
-	} while (strncmp (newname, "+++ ", 4));
-	newname[strlen (newname) - 1] = '\0';
+		unlink (tmpp1);
+		unlink (tmpp2);
+		fseek (p1, pos1, SEEK_SET);
+		fseek (p2, pos2, SEEK_SET);
+		goto skip_file;
+	}
 
 	start1 = ftell (p1);
 	start2 = ftell (p2);
@@ -3057,8 +3141,6 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 			unlink_orig (tmpp2);
 		}
 	}
-	free (oldname);
-	free (newname);
 	if (fuzzy) {
 		free_lines (file.head);
 		free_lines (file2.head);
@@ -3068,6 +3150,11 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 		/* In non-fuzzy mode, merge_lines() transfers file2's nodes
 		 * into file, so they're already freed above. */
 	}
+ skip_file:
+	free (oldname);
+	free (newname);
+	free (p1_minus);
+	free (p2_minus);
 	return 0;
 
  evasive_action:
@@ -3091,6 +3178,10 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 	fseek (p2, pristine2, SEEK_SET);
 	output_patch1_only (p1, out, mode == mode_combine);
 	output_patch1_only (p2, out, 1);
+	free (oldname);
+	free (newname);
+	free (p1_minus);
+	free (p2_minus);
 	return 0;
 }
 
@@ -3908,7 +3999,8 @@ interdiff (FILE *p1, FILE *p2, const char *patch1, const char *patch2)
 	/* Output the fuzzy sections after all files have been processed */
 	if (fuzzy && (fuzzy_delta_files.head || fuzzy_ctx_files.head ||
 		      fuzzy_delta_rej_files.head || fuzzy_only_in_patch1 ||
-		      fuzzy_only_in_patch2)) {
+		      fuzzy_only_in_patch2 || fuzzy_added_files ||
+		      fuzzy_deleted_files)) {
 		int printed = 0;
 
 		if (fuzzy_delta_files.head) {
@@ -3948,6 +4040,24 @@ interdiff (FILE *p1, FILE *p2, const char *patch1, const char *patch2)
 			fputs (ONLY_IN_PATCH2_HEADER, stdout);
 			colorize_diff (fuzzy_only_in_patch2, stdout);
 			fclose (fuzzy_only_in_patch2);
+			printed = 1;
+		}
+
+		if (fuzzy_added_files) {
+			if (printed)
+				fputc ('\n', stdout);
+			fputs (ADDED_FILE_DIFF_HEADER, stdout);
+			colorize_diff (fuzzy_added_files, stdout);
+			fclose (fuzzy_added_files);
+			printed = 1;
+		}
+
+		if (fuzzy_deleted_files) {
+			if (printed)
+				fputc ('\n', stdout);
+			fputs (DELETED_FILE_DIFF_HEADER, stdout);
+			colorize_diff (fuzzy_deleted_files, stdout);
+			fclose (fuzzy_deleted_files);
 		}
 
 		fuzzy_free_list (&fuzzy_delta_files);
