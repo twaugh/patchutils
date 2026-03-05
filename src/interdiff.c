@@ -3314,7 +3314,6 @@ index_patch_generic (FILE *patch_file, struct file_list **file_list, int need_sk
 	char *line = NULL, *git_name = NULL;
 	size_t linelen = 0;
 	int is_context = 0;
-	int file_is_empty = 1;
 	long mode_pos = -1;
 
 	/* Index patch */
@@ -3326,8 +3325,6 @@ index_patch_generic (FILE *patch_file, struct file_list **file_list, int need_sk
 
 		if (getline (&line, &linelen, patch_file) == -1)
 			break;
-
-		file_is_empty = 0;
 
 		/* Track diff --git lines for mode-only file detection */
 		if (!strncmp (line, "diff --git ", 11)) {
@@ -3437,10 +3434,7 @@ index_patch_generic (FILE *patch_file, struct file_list **file_list, int need_sk
 	free (git_name);
 	free (line);
 
-	if (file_is_empty || *file_list)
-		return 0;
-	else
-		return 1;
+	return !*file_list;
 }
 
 static int
@@ -4013,7 +4007,6 @@ interdiff (FILE *p1, FILE *p2, const char *patch1, const char *patch2)
 	long mode_pos = -1;
 	int is_context = 0;
 	int patch_found = 0;
-	int file_is_empty = 1;
 	FILE *flip1 = NULL, *flip2 = NULL;
 
 	if (mode == mode_flip) {
@@ -4052,8 +4045,6 @@ interdiff (FILE *p1, FILE *p2, const char *patch1, const char *patch2)
 
 		if (getline (&line, &linelen, p1) == -1)
 			break;
-
-		file_is_empty = 0;
 
 		/* Track diff --git lines for mode-only file detection */
 		if (!strncmp (line, "diff --git ", 11)) {
@@ -4196,7 +4187,7 @@ interdiff (FILE *p1, FILE *p2, const char *patch1, const char *patch2)
 	}
 	free (p1_git_name);
 
-	if (!file_is_empty && !patch_found)
+	if (!patch_found)
 		no_patch (patch1);
 
 	copy_residue (p2, mode == mode_flip ? flip1 : stdout);
