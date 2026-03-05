@@ -198,11 +198,17 @@ static int debug = 0;
 static int fuzzy = 0;
 static int max_fuzz_user = -1;
 
+struct file_mode {
+	char old_mode[8];
+	char new_mode[8];
+};
+
 /* Per-file record for fuzzy mode output accumulation */
 struct fuzzy_file_record {
 	char *oldname;
 	char *newname;
 	FILE *hunks;  /* Raw hunk data (before trim_context) */
+	char *mode_info;
 	struct fuzzy_file_record *next;
 };
 
@@ -230,6 +236,8 @@ static FILE *fuzzy_only_in_patch1 = NULL;
 static FILE *fuzzy_only_in_patch2 = NULL;
 static FILE *fuzzy_added_files = NULL;
 static FILE *fuzzy_deleted_files = NULL;
+static struct file_mode cur_p1_mode = {};
+static struct file_mode cur_p2_mode = {};
 
 static struct patlist *pat_drop_context = NULL;
 
@@ -1381,6 +1389,7 @@ fuzzy_add_file (struct fuzzy_file_list *list, const char *oldname,
 	rec->oldname = xstrdup (oldname);
 	rec->newname = xstrdup (newname);
 	rec->hunks = hunks;
+	rec->mode_info = NULL;
 	rec->next = NULL;
 
 	if (list->tail)
@@ -1401,6 +1410,7 @@ fuzzy_free_list (struct fuzzy_file_list *list)
 
 		free (rec->oldname);
 		free (rec->newname);
+		free (rec->mode_info);
 		if (rec->hunks)
 			fclose (rec->hunks);
 		free (rec);
@@ -1417,18 +1427,21 @@ fuzzy_output_list (struct fuzzy_file_list *list, int skip_headers, FILE *out)
 	struct fuzzy_file_record *rec;
 
 	for (rec = list->head; rec; rec = rec->next) {
-		if (!rec->hunks)
+		if (!rec->hunks && !rec->mode_info)
 			continue;
-
-		rewind (rec->hunks);
-
-		/* Skip past --- / +++ headers */
-		if (skip_headers && skip_two_lines (rec->hunks))
-			error (EXIT_FAILURE, 0, "truncated hunk file");
 
 		print_color (out, LINE_FILE, "--- %s\n", rec->oldname);
 		print_color (out, LINE_FILE, "+++ %s\n", rec->newname);
-		trim_context (rec->hunks, NULL, out);
+		if (rec->mode_info)
+			fputs (rec->mode_info, out);
+		if (rec->hunks) {
+			rewind (rec->hunks);
+
+			/* Skip past --- / +++ headers */
+			if (skip_headers && skip_two_lines (rec->hunks))
+				error (EXIT_FAILURE, 0, "truncated hunk file");
+			trim_context (rec->hunks, NULL, out);
+		}
 	}
 }
 
@@ -2763,6 +2776,68 @@ write_to_tmpfile (const char *tmpl, struct lines_info *info)
 	return file;
 }
 
+/* Try to parse a mode line into a file_mode struct.  Returns 1 if the
+ * line was a mode line (old mode, new mode, new file mode, or deleted
+ * file mode), 0 otherwise. */
+static int
+scan_mode_line (const char *line, struct file_mode *m)
+{
+	return sscanf (line, "old mode %7s", m->old_mode) == 1 ||
+	       sscanf (line, "new mode %7s", m->new_mode) == 1 ||
+	       sscanf (line, "new file mode %7s", m->new_mode) == 1 ||
+	       sscanf (line, "deleted file mode %7s", m->old_mode) == 1;
+}
+
+static void
+read_modes (FILE *f, struct file_mode *m)
+{
+	char *line = NULL;
+	size_t linelen;
+
+	*m = (typeof (*m)){};
+	while (getline (&line, &linelen, f) >= 0 && scan_mode_line (line, m));
+	free (line);
+}
+
+/* Compare mode changes between two patches for the same file */
+static void
+compare_modes (const struct file_mode *m1, const struct file_mode *m2,
+	       const char *filename, FILE *out)
+{
+	char *mi = NULL;
+	size_t mi_len;
+	FILE *ms;
+
+	if (!strcmp (m1->new_mode, m2->new_mode))
+		return;
+
+	ms = open_memstream (&mi, &mi_len);
+	if (m1->old_mode[0] && m1->new_mode[0])
+		fprintf (ms, "patch1: old mode %s -> new mode %s\n",
+			 m1->old_mode, m1->new_mode);
+	else if (m1->new_mode[0])
+		fprintf (ms, "patch1: new file mode %s\n", m1->new_mode);
+	else if (m1->old_mode[0])
+		fprintf (ms, "patch1: deleted file mode %s\n", m1->old_mode);
+
+	if (m2->old_mode[0] && m2->new_mode[0])
+		fprintf (ms, "patch2: old mode %s -> new mode %s\n",
+			 m2->old_mode, m2->new_mode);
+	else if (m2->new_mode[0])
+		fprintf (ms, "patch2: new file mode %s\n", m2->new_mode);
+	else if (m2->old_mode[0])
+		fprintf (ms, "patch2: deleted file mode %s\n", m2->old_mode);
+	fclose (ms);
+
+	if (fuzzy) {
+		fuzzy_add_file (&fuzzy_delta_files, filename, filename, NULL);
+		fuzzy_delta_files.tail->mode_info = mi;
+	} else {
+		fputs (mi, out);
+		free (mi);
+	}
+}
+
 static int
 output_delta (FILE *p1, FILE *p2, FILE *out)
 {
@@ -2779,6 +2854,7 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 	int patch_ret = 0, ctx_ret = 0;
 	char *oldname = NULL, *newname = NULL;
 	char *p1_minus = NULL, *p2_minus = NULL;
+	int p1_has_mode = 0, p2_has_mode = 0;
 	pid_t child;
 	FILE *in;
 	size_t namelen;
@@ -2817,6 +2893,10 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 				p1_minus = oldname;
 				p1_minus[got - 1] = '\0';
 				oldname = NULL;
+			} else if (scan_mode_line (oldname, &cur_p1_mode)) {
+				p1_has_mode = 1;
+				free (oldname);
+				oldname = NULL;
 			}
 		} while (!oldname || strncmp (oldname, "+++ ", 4));
 		oldname[got - 1] = '\0';
@@ -2833,6 +2913,10 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 			free (p2_minus);
 			p2_minus = newname;
 			p2_minus[got - 1] = '\0';
+			newname = NULL;
+		} else if (scan_mode_line (newname, &cur_p2_mode)) {
+			p2_has_mode = 1;
+			free (newname);
 			newname = NULL;
 		}
 	} while (!newname || strncmp (newname, "+++ ", 4));
@@ -3039,6 +3123,11 @@ output_delta (FILE *p1, FILE *p2, FILE *out)
 			fuzzy_add_file (&fuzzy_delta_files, oldname + 4,
 					newname + 4, delta_diff);
 
+		if (p1_has_mode || p2_has_mode)
+			compare_modes (&cur_p1_mode, &cur_p2_mode,
+				       stripped (oldname + 4,
+						 ignore_components), out);
+
 		if (!ctx_empty)
 			fuzzy_add_file (&fuzzy_ctx_files, oldname + 4,
 					newname + 4, ctx_diff);
@@ -3222,10 +3311,11 @@ copy_residue (FILE *p2, FILE *out)
 static int
 index_patch_generic (FILE *patch_file, struct file_list **file_list, int need_skip_content)
 {
-	char *line = NULL;
+	char *line = NULL, *git_name = NULL;
 	size_t linelen = 0;
 	int is_context = 0;
 	int file_is_empty = 1;
+	long mode_pos = -1;
 
 	/* Index patch */
 	while (!feof (patch_file)) {
@@ -3239,9 +3329,37 @@ index_patch_generic (FILE *patch_file, struct file_list **file_list, int need_sk
 
 		file_is_empty = 0;
 
+		/* Track diff --git lines for mode-only file detection */
+		if (!strncmp (line, "diff --git ", 11)) {
+			/* If we had a pending mode-only file from the
+			 * previous diff --git block, add it now. */
+			if (git_name && mode_pos >= 0) {
+				add_to_list (file_list, git_name, mode_pos);
+				mode_pos = -1;
+			}
+			free (git_name);
+			p = strstr (line + 11, " b/");
+			git_name = p ? filename_from_header (p + 1) : NULL;
+			continue;
+		}
+
 		if (strncmp (line, "--- ", 4)) {
 			is_context = !strncmp (line, "*** ", 4);
+			if (mode_pos < 0 &&
+			    (!strncmp (line, "old mode ", 9) ||
+			     !strncmp (line, "new file mode ", 14) ||
+			     !strncmp (line, "deleted file mode ", 18)))
+				mode_pos = pos;
 			continue;
+		}
+
+		/* Found --- line; this file has content, not mode-only */
+		free (git_name);
+		git_name = NULL;
+
+		if (mode_pos >= 0) {
+			pos = mode_pos;
+			mode_pos = -1;
 		}
 
 		if (is_context)
@@ -3313,8 +3431,11 @@ index_patch_generic (FILE *patch_file, struct file_list **file_list, int need_sk
 		free (names[1]);
 	}
 
-	if (line)
-		free (line);
+	/* Trailing mode-only file at end of patch */
+	if (git_name && mode_pos >= 0)
+		add_to_list (file_list, git_name, mode_pos);
+	free (git_name);
+	free (line);
 
 	if (file_is_empty || *file_list)
 		return 0;
@@ -3886,8 +4007,10 @@ index_patch1 (FILE *p1)
 static int
 interdiff (FILE *p1, FILE *p2, const char *patch1, const char *patch2)
 {
-	char *line = NULL;
+	char *line = NULL, *p1_git_name = NULL;
+	struct file_mode p1_mode = {}, p2_mode = {};
 	size_t linelen = 0;
+	long mode_pos = -1;
 	int is_context = 0;
 	int patch_found = 0;
 	int file_is_empty = 1;
@@ -3919,7 +4042,7 @@ interdiff (FILE *p1, FILE *p2, const char *patch1, const char *patch2)
 	while (!feof (p1)) {
 		char *names[2];
 		char *p;
-		long pos, start_pos = ftell (p1);
+		long pos, start_pos = ftell (p1), dash_pos;
 
 		if (line) {
 			free (line);
@@ -3932,9 +4055,45 @@ interdiff (FILE *p1, FILE *p2, const char *patch1, const char *patch2)
 
 		file_is_empty = 0;
 
+		/* Track diff --git lines for mode-only file detection */
+		if (!strncmp (line, "diff --git ", 11)) {
+			if (p1_git_name && mode_pos >= 0) {
+				/* Previous block was mode-only */
+				pos = file_in_list (files_in_patch2,
+						    p1_git_name);
+				if (pos >= 0) {
+					fseek (p2, pos, SEEK_SET);
+					read_modes (p2, &p2_mode);
+					compare_modes (&p1_mode, &p2_mode,
+						       p1_git_name, stdout);
+				}
+				add_to_list (&files_done, p1_git_name, 0);
+				patch_found = 1;
+				fseek (p1, start_pos, SEEK_SET);
+				mode_pos = -1;
+			}
+			free (p1_git_name);
+			p = strstr (line + 11, " b/");
+			p1_git_name = p ? filename_from_header (p + 1) : NULL;
+			p1_mode = (typeof (p1_mode)){};
+			continue;
+		}
+
 		if (strncmp (line, "--- ", 4)) {
 			is_context = !strncmp (line, "*** ", 4);
+			if (scan_mode_line (line, &p1_mode) && mode_pos < 0)
+				mode_pos = start_pos;
 			continue;
+		}
+
+		/* Found --- line; this file has content, not mode-only */
+		free (p1_git_name);
+		p1_git_name = NULL;
+
+		dash_pos = start_pos;
+		if (mode_pos >= 0) {
+			start_pos = mode_pos;
+			mode_pos = -1;
 		}
 
 		if (is_context)
@@ -3966,8 +4125,39 @@ interdiff (FILE *p1, FILE *p2, const char *patch1, const char *patch2)
 			continue;
 		}
 
+		if (file_in_list (files_done, p) != -1) {
+			free (p);
+			continue;
+		}
+
 		fseek (p1, start_pos, SEEK_SET);
 		pos = file_in_list (files_in_patch2, p);
+
+		/* Check if p2's entry is mode-only; i.e., if it has mode lines
+		 * but no --- line after them. */
+		if (pos >= 0) {
+			int p2_mode_only = 0;
+
+			fseek (p2, pos, SEEK_SET);
+			while (getline (&line, &linelen, p2) >= 0) {
+				if (!strncmp (line, "--- ", 4)) {
+					p2_mode_only = 0;
+					break;
+				}
+				if (scan_mode_line (line, &p2_mode))
+					p2_mode_only = 1;
+			}
+			fseek (p2, pos, SEEK_SET);
+
+			if (p2_mode_only) {
+				read_modes (p2, &p2_mode);
+				compare_modes (&p1_mode, &p2_mode,
+					       stripped (p, ignore_components),
+					       stdout);
+				pos = -1; /* fall through to patch1-only */
+			}
+		}
+
 		if (pos == -1) {
 			FILE *p1out;
 
@@ -3978,18 +4168,33 @@ interdiff (FILE *p1, FILE *p2, const char *patch1, const char *patch2)
 			} else {
 				p1out = mode == mode_flip ? flip2 : stdout;
 			}
+			fseek (p1, dash_pos, SEEK_SET);
 			output_patch1_only (p1, p1out, mode != mode_inter);
+		} else if (mode == mode_flip) {
+			flipdiff (p1, p2, flip1, flip2);
 		} else {
-			fseek (p2, pos, SEEK_SET);
-			if (mode == mode_flip)
-				flipdiff (p1, p2, flip1, flip2);
-			else
-				output_delta (p1, p2, stdout);
+			cur_p1_mode = p1_mode;
+			cur_p2_mode = (typeof (cur_p2_mode)){};
+			output_delta (p1, p2, stdout);
 		}
 
 		add_to_list (&files_done, p, 0);
                 free (p);
 	}
+
+	/* Trailing mode-only file at end of patch1 */
+	if (p1_git_name && mode_pos >= 0) {
+		long pos = file_in_list (files_in_patch2, p1_git_name);
+
+		if (pos >= 0) {
+			fseek (p2, pos, SEEK_SET);
+			read_modes (p2, &p2_mode);
+			compare_modes (&p1_mode, &p2_mode, p1_git_name, stdout);
+		}
+		add_to_list (&files_done, p1_git_name, 0);
+		patch_found = 1;
+	}
+	free (p1_git_name);
 
 	if (!file_is_empty && !patch_found)
 		no_patch (patch1);
