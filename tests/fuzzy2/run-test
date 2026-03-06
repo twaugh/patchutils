@@ -1,0 +1,42 @@
+#!/bin/sh
+
+# This is an interdiff(1) testcase.
+# Test: Fuzzy diffing with line offsets successfully fuzzed.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << 'EOF' > patch1
+--- file
++++ file
+@@ -5,9 +5,6 @@
+ line 5
+ if
+ 1
+-fi
+-if
+-2
+ fi
+ A
+ B
+EOF
+
+cat << 'EOF' > patch2
+--- file
++++ file
+@@ -50,9 +50,6 @@
+ line 5
+ if
+ 1
+-fi
+-if
+-2
+ fi
+ A
+ B
+EOF
+
+${INTERDIFF} --fuzzy patch1 patch2 2>errors >output
+[ -s errors ] && exit 1
+[ -s output ] && exit 1
+exit 0
