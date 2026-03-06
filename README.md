@@ -72,6 +72,16 @@ make install
 After cloning the source from GitHub, run `./bootstrap` to generate the `configure` script.
 This step requires **automake**, **autoconf**, and **gnulib-devel** to be installed on your system.
 
+### Stress-testing fuzzy mode
+
+The `tests/stress-test-fuzzy.sh` script mass-tests `interdiff --fuzzy` by comparing every commit in a git range against itself. Since both inputs are identical, any output from interdiff indicates a bug. This is effective against any git repository, but large repositories like the Linux kernel are particularly useful because they exercise a wide variety of patch shapes: hunks at line 1 with no pre-context, files ending without a newline, file creations and deletions, mode-only changes, multi-thousand-line diffs, whitespace-damaged patches, hunks with duplicate context lines, and so on.
+
+```bash
+INTERDIFF=./src/interdiff ./tests/stress-test-fuzzy.sh /path/to/linux v2.6.12-rc2..v6.19
+```
+
+Only commits that produce non-empty output or a non-zero exit code are printed. The `JOBS` and `INTERDIFF` environment variables can be used to tune parallelism and the interdiff binary path respectively.
+
 ## Requirements
 
 - A C compiler (GCC recommended)
