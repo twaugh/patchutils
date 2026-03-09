@@ -87,6 +87,19 @@ char *xstrndup (const char *s, const size_t n)
 	return result;
 }
 
+int xasprintf (char **strp, const char *fmt, ...)
+{
+	va_list ap;
+	int ret;
+
+	va_start (ap, fmt);
+	ret = vasprintf (strp, fmt, ap);
+	va_end (ap);
+	if (ret < 0)
+		error (EXIT_FAILURE, errno, "asprintf failed");
+	return ret;
+}
+
 int xmkstemp (char *pattern)
 {
 	int fd = mkstemp (pattern);

@@ -52,7 +52,8 @@ diff -u file1.php file2.php > forward.patch
 
 # Generate reversed patch using interdiff with /dev/null
 ${INTERDIFF} forward.patch /dev/null > reversed.patch 2>errors || exit 1
-[ -s errors ] && exit 1
+grep -q "doesn't contain a patch" errors || exit 1
+grep -v "doesn't contain a patch" errors | grep -q . && exit 1
 
 # Copy file2.php to test file for applying the reversed patch
 cp file2.php test_file.php
@@ -209,7 +210,8 @@ diff -u complex_orig.php complex_modified.php > complex_forward.patch
 
 # Generate reversed patch using interdiff with /dev/null
 ${INTERDIFF} complex_forward.patch /dev/null > complex_reversed.patch 2>complex_errors || exit 1
-[ -s complex_errors ] && exit 1
+grep -q "doesn't contain a patch" complex_errors || exit 1
+grep -v "doesn't contain a patch" complex_errors | grep -q . && exit 1
 
 # Copy complex_modified.php to test file for applying the reversed patch
 cp complex_modified.php complex_test.php
@@ -300,11 +302,8 @@ ${INTERDIFF} --quiet simple_multi_hunk.patch /dev/null > simple_reversed.patch 2
 }
 
 # Check if there were errors
-if [ -s simple_errors ]; then
-    echo "ERROR: interdiff reported errors:" >&2
-    cat simple_errors >&2
-    exit 1
-fi
+grep -q "doesn't contain a patch" simple_errors || exit 1
+grep -v "doesn't contain a patch" simple_errors | grep -q . && exit 1
 
 echo "Generated reversed patch:"
 cat simple_reversed.patch

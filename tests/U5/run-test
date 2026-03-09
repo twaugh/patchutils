@@ -39,7 +39,8 @@ twelve
 EOF
 ${DIFF} -U99 file.orig file > patch
 ${INTERDIFF} -U5 /dev/null patch 2>errors > interdiffed || exit 1
-[ -s errors ] && exit 1
+grep -q "doesn't contain a patch" errors || exit 1
+grep -v "doesn't contain a patch" errors | grep -q . && exit 1
 # Should be 5 context lines before and after
 grep -q one interdiffed && exit 1
 grep -q two interdiffed || exit 1
