@@ -179,7 +179,8 @@ install-data-hook:
 		mv bash-completion-patchutils interdiff && \
 		for cmd in filterdiff lsdiff grepdiff combinediff flipdiff rediff \
 		           splitdiff recountdiff unwrapdiff dehtmldiff editdiff espdiff \
-		           fixcvsdiff patchview gitdiff svndiff gitdiffview svndiffview; do \
+		           fixcvsdiff patchview gitdiff svndiff gitdiffview svndiffview \
+		           gitshow gitshowview; do \
 			ln -sf interdiff "$$cmd" || true; \
 		done; \
 	fi
@@ -202,7 +203,8 @@ endif
 		cd "$(DESTDIR)$(bashcompletiondir)" && \
 		for cmd in filterdiff lsdiff grepdiff interdiff combinediff flipdiff rediff \
 		           splitdiff recountdiff unwrapdiff dehtmldiff editdiff espdiff \
-		           fixcvsdiff patchview gitdiff svndiff gitdiffview svndiffview; do \
+		           fixcvsdiff patchview gitdiff svndiff gitdiffview svndiffview \
+		           gitshow gitshowview; do \
 			rm -f "$$cmd"; \
 		done; \
 		rm -f patchutils; \
