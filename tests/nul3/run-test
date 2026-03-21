@@ -11,7 +11,8 @@ echo abc > file2
 
 ${DIFF} -ac file1 file2 > cdiff
 ${INTERDIFF} -q /dev/null cdiff 2>errors >newdiff || exit 1
-[ -s errors ] && exit 1
+grep -q "doesn't contain a patch" errors || exit 1
+grep -v "doesn't contain a patch" errors | grep -q . && exit 1
 
 ${FILTERDIFF} --format=unified cdiff 2>errors > diff || exit 1
 [ -s errors ] && exit 1

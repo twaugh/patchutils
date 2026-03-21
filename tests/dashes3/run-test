@@ -21,7 +21,8 @@ cp new2 dir.modified/file
 cp new1 dir.modified/xxx
 ${DIFF} -urN dir dir.modified > patch2
 ${INTERDIFF} patch1 patch2 2>errors > patch1-2 || exit 1
-[ -s errors ] && exit 1
+grep -q "doesn't contain a patch" errors || exit 1
+grep -v "doesn't contain a patch" errors | grep -q . && exit 1
 cd dir
 ${PATCH} < ../patch1-2 || exit 1
 cd ..

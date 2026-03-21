@@ -1,0 +1,46 @@
+#!/bin/sh
+# Test deleted file differences: both patches delete the same file differently
+. ${top_srcdir-.}/tests/common.sh
+
+cat << 'EOF' > patch1
+diff --git a/oldfile.c b/oldfile.c
+deleted file mode 100644
+--- a/oldfile.c
++++ /dev/null
+@@ -1,3 +0,0 @@
+-#include <stdio.h>
+-int main() { return 0; }
+-/* version 1 */
+EOF
+
+cat << 'EOF' > patch2
+diff --git a/oldfile.c b/oldfile.c
+deleted file mode 100644
+--- a/oldfile.c
++++ /dev/null
+@@ -1,3 +0,0 @@
+-#include <stdio.h>
+-int main() { return 42; }
+-/* version 2 */
+EOF
+
+cat << 'EOF' > expected
+================================================================================
+*    DELETED FILE DIFFERENCES - differences in files deleted by both patches   *
+================================================================================
+
+diff -u a/oldfile.c a/oldfile.c
+--- a/oldfile.c
++++ a/oldfile.c
+@@ -1,3 +1,3 @@
+ #include <stdio.h>
+-int main() { return 0; }
+-/* version 1 */
++int main() { return 42; }
++/* version 2 */
+EOF
+
+${INTERDIFF} --fuzzy patch1 patch2 2>errors >output
+[ -s errors ] && exit 1
+diff -u expected output || exit 1
+exit 0

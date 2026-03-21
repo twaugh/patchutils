@@ -21,7 +21,8 @@ which had 3 lines
 EOF
 ${DIFF} -U0 file.orig file > patch
 ${INTERDIFF} -U3 /dev/null patch 2>errors > interdiffed || exit 1
-[ -s errors ] && exit 1
+grep -q "doesn't contain a patch" errors || exit 1
+grep -v "doesn't contain a patch" errors | grep -q . && exit 1
 # Should be four lines beginning '+' (one in the header)
 count=$(grep '^+' interdiffed | wc -l)
 [ "$count" -eq 4 ] || exit 1
