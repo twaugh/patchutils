@@ -1,0 +1,36 @@
+#!/bin/sh
+
+# This is a flipdiff(1) testcase.
+# Like flip1, but with --err-no-commute.
+# Test that we error because the patches don't commute.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > file.orig
+a
+b
+c
+EOF
+
+cat << EOF > file
+a
+d
+c
+EOF
+
+${DIFF} -u file.orig file > patch1
+
+mv -f file file.orig
+cat << EOF > file
+a
+c
+EOF
+
+${DIFF} -u file.orig file > patch2
+
+! ${FLIPDIFF} --err-no-commute patch1 patch2 > patch-flipped 2>errors || exit 1
+[ -s errors ] || exit 1
+! [ -s patch-flipped ] || exit 1
+
+exit 0

@@ -1,0 +1,36 @@
+#!/bin/sh
+
+# This is a flipdiff(1) testcase.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+# Like flip15, but with --err-no-commute.
+# When a line is touched by both patches and --err-no-commute is passed,
+# we must quit with an error, and not make any changes.
+
+cat << EOF > file.orig
+int a;
+EOF
+
+cat << EOF > file
+int a, b;
+EOF
+
+${DIFF} -u file.orig file > patch1
+
+mv -f file file.orig
+cat << EOF > file
+ssize_t a, b;
+EOF
+
+${DIFF} -u file.orig file > patch2
+
+cp patch1 patch1.orig
+cp patch2 patch2.orig
+
+! ${FLIPDIFF} --err-no-commute patch1 patch2 > patch-flipped 2>errors || exit 1
+[ -s errors ] || exit 1
+! [ -s patch-flipped ] || exit 1
+
+exit 0
