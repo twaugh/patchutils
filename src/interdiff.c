@@ -2019,6 +2019,8 @@ flipdiff (FILE *p1, FILE *p2, FILE *flip1, FILE *flip2)
 				at += this_offset;
 				remove_line (&intermediate, line + 1, at);
 				this_offset--;
+			} else if (err_no_commute) {
+				error (EXIT_FAILURE, 0, "patches don't commute!");
 			}
 		} else if (line[0] == '-') {
 			if (!patch2_removes_line (linenum, offsets,
@@ -2029,6 +2031,8 @@ flipdiff (FILE *p1, FILE *p2, FILE *flip1, FILE *flip2)
 				at += this_offset;
 				insert_line (&intermediate, line + 1,
 					     (size_t) got - 1, at);
+			} else if (err_no_commute) {
+				error (EXIT_FAILURE, 0, "patches don't commute!");
 			}
 			this_offset++;
 		}
