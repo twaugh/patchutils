@@ -68,3 +68,6 @@
 /fseterr.h
 /stdio-consolesafe.c
 /stdio-impl.h
+/memeq.c
+/stdcountof.in.h
+/streq.c

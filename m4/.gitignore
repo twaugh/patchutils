@@ -71,3 +71,6 @@
 /eealloc.m4
 /locale-fr.m4
 /wchar_t.m4
+/memeq.m4
+/stdcountof_h.m4
+/streq.m4
