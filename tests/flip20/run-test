@@ -1,0 +1,30 @@
+#!/bin/sh
+
+# This is a flipdiff(1) testcase.
+# Test: non-commuting patches where the second patch removes a line that
+# the first patch had added.  flipdiff used to crash on this input.
+
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > file.orig
+a
+b
+EOF
+
+cat << EOF > file
+a-m
+b-y
+EOF
+
+${DIFF} -u file.orig file > patch1
+
+mv -f file file.orig
+cat << EOF > file
+a
+b-y
+EOF
+
+${DIFF} -u file.orig file > patch2
+
+${FLIPDIFF} patch1 patch2 > patch-flipped || exit 1
