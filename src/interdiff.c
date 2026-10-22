@@ -1661,6 +1661,15 @@ remove_line (struct lines_info *lines, const char *line,
 		}
 	}
 
+	if (!kill) {
+		/* The line we were asked to remove is not present (for
+		 * example when the two patches do not commute).  There is
+		 * nothing to do. */
+		if (debug)
+			printf ("Nothing to remove at %lu: %s", n, line);
+		return;
+	}
+
 	at = kill;
 	while (at) {
 		at->n--;

@@ -394,6 +394,7 @@ TESTS = tests/newline1/run-test \
 	tests/flip17/run-test \
 	tests/flip18/run-test \
 	tests/flip19/run-test \
+	tests/flip20/run-test \
 	tests/unline1/run-test \
 	tests/nul0/run-test \
 	tests/nul1/run-test \
