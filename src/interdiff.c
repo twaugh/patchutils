@@ -122,6 +122,7 @@ static int no_revert_omitted = 0;
 static int use_colors = 0;
 static int color_option_specified = 0;
 static int debug = 0;
+static int err_no_commute = 0;
 
 static struct patlist *pat_drop_context = NULL;
 
@@ -2018,6 +2019,8 @@ flipdiff (FILE *p1, FILE *p2, FILE *flip1, FILE *flip2)
 				at += this_offset;
 				remove_line (&intermediate, line + 1, at);
 				this_offset--;
+			} else if (err_no_commute) {
+				error (EXIT_FAILURE, 0, "patches don't commute!");
 			}
 		} else if (line[0] == '-') {
 			if (!patch2_removes_line (linenum, offsets,
@@ -2028,6 +2031,8 @@ flipdiff (FILE *p1, FILE *p2, FILE *flip1, FILE *flip2)
 				at += this_offset;
 				insert_line (&intermediate, line + 1,
 					     (size_t) got - 1, at);
+			} else if (err_no_commute) {
+				error (EXIT_FAILURE, 0, "patches don't commute!");
 			}
 			this_offset++;
 		}
@@ -2269,7 +2274,10 @@ syntax (int err)
 "                  (interdiff) When a patch from patch1 is not in patch2,\n"
 "                  don't revert it\n"
 "  --in-place      (flipdiff) Write the output to the original input\n"
-"                  files\n";
+"                  files\n"
+"  --fail-on-conflict\n"
+"                  (flipdiff) If the patches don't commute, exit with an\n"
+"                  error\n";
 
 	fprintf (err ? stderr : stdout, syntax_str, progname, progname);
 	exit (err);
@@ -2342,6 +2350,7 @@ main (int argc, char *argv[])
 			{"color", 2, 0, 1000 + 'c'},
 			{"decompress", 0, 0, 'z'},
 			{"quiet", 0, 0, 'q'},
+			{"fail-on-conflict", 0, 0, 1000 + 'E'},
 			{0, 0, 0, 0}
 		};
 		char *end;
@@ -2420,6 +2429,9 @@ main (int argc, char *argv[])
 			break;
 		case 1000 + 'D':
 			debug = 1;
+			break;
+		case 1000 + 'E':
+			err_no_commute = 1;
 			break;
 		default:
 			syntax(1);
