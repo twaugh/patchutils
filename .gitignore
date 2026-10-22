@@ -85,5 +85,8 @@ doc/svndiffview.1
 *~
 *.swp
 
+# gnulib-update.sh checkout
+/gnulib-tmp/
+
 # Tarballs
 patchutils-*.tar.?z*
