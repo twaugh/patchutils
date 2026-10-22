@@ -2275,7 +2275,7 @@ syntax (int err)
 "                  don't revert it\n"
 "  --in-place      (flipdiff) Write the output to the original input\n"
 "                  files\n"
-"  --err-no-commute\n"
+"  --fail-on-conflict\n"
 "                  (flipdiff) If the patches don't commute, exit with an\n"
 "                  error\n";
 
@@ -2350,7 +2350,7 @@ main (int argc, char *argv[])
 			{"color", 2, 0, 1000 + 'c'},
 			{"decompress", 0, 0, 'z'},
 			{"quiet", 0, 0, 'q'},
-			{"err-no-commute", 0, 0, 1000 + 'E'},
+			{"fail-on-conflict", 0, 0, 1000 + 'E'},
 			{0, 0, 0, 0}
 		};
 		char *end;
