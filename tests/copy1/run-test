@@ -15,7 +15,8 @@ EOF
 
 ${DIFF} -u dir/file.orig dir/file > patch1
 ${INTERDIFF} /dev/null patch1 2>errors > patch-1 || exit 1
-[ -s errors ] && exit 1
+grep -q "doesn't contain a patch" errors || exit 1
+grep -v "doesn't contain a patch" errors | grep -q . && exit 1
 tail -1 patch-1 > lastline
 cat << EOF | cmp - lastline || exit 1
 --- 

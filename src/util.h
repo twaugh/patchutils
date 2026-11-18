@@ -38,6 +38,8 @@ void *xrealloc (void *tr, size_t size);
 char *xstrdup (const char *s);
 /* safe strndup */
 char *xstrndup (const char *s, const size_t n);
+/* safe asprintf */
+int xasprintf (char **strp, const char *fmt, ...) FORMAT ((__printf__, 2, 3));
 /* safe mkstemp */
 int xmkstemp (char *pattern);
 /* safe tmpfile */

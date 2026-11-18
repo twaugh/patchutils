@@ -1,0 +1,46 @@
+#!/bin/sh
+# Test added file differences: both patches create the same file differently
+. ${top_srcdir-.}/tests/common.sh
+
+cat << 'EOF' > patch1
+diff --git a/newfile.c b/newfile.c
+new file mode 100644
+--- /dev/null
++++ b/newfile.c
+@@ -0,0 +1,3 @@
++#include <stdio.h>
++int main() { return 0; }
++/* version 1 */
+EOF
+
+cat << 'EOF' > patch2
+diff --git a/newfile.c b/newfile.c
+new file mode 100644
+--- /dev/null
++++ b/newfile.c
+@@ -0,0 +1,3 @@
++#include <stdio.h>
++int main() { return 42; }
++/* version 2 */
+EOF
+
+cat << 'EOF' > expected
+================================================================================
+*    ADDED FILE DIFFERENCES - differences in files added by both patches       *
+================================================================================
+
+diff -u b/newfile.c b/newfile.c
+--- b/newfile.c
++++ b/newfile.c
+@@ -1,3 +1,3 @@
+ #include <stdio.h>
+-int main() { return 0; }
+-/* version 1 */
++int main() { return 42; }
++/* version 2 */
+EOF
+
+${INTERDIFF} --fuzzy patch1 patch2 2>errors >output
+[ -s errors ] && exit 1
+diff -u expected output || exit 1
+exit 0

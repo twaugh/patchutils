@@ -1,0 +1,20 @@
+#!/bin/sh
+# Test addition at line 1 with zero pre-context in fuzzy mode
+. ${top_srcdir-.}/tests/common.sh
+
+cat << 'EOF' > patch1
+diff --git a/net/mac80211/mlme.c b/net/mac80211/mlme.c
+index 26f15d6bf71be..8d2514a9a6c46 100644
+--- a/net/mac80211/mlme.c
++++ b/net/mac80211/mlme.c
+@@ -1,3 +1,4 @@
++// SPDX-License-Identifier: GPL-2.0-only
+ /*
+  * BSS client mode implementation
+  * Copyright 2003-2008, Jouni Malinen <j@w1.fi>
+EOF
+
+${INTERDIFF} --fuzzy patch1 patch1 2>errors >output
+[ -s errors ] && exit 1
+[ -s output ] && exit 1
+exit 0

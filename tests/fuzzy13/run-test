@@ -1,0 +1,40 @@
+#!/bin/sh
+# Test file deletion (--- a/file, +++ /dev/null) handling in fuzzy mode
+. ${top_srcdir-.}/tests/common.sh
+
+cat << 'EOF' > patch1
+diff --git a/drivers/genpd/imx/Makefile b/drivers/genpd/imx/Makefile
+new file mode 100644
+index 0000000000000..5f012717a6663
+--- /dev/null
++++ b/drivers/genpd/imx/Makefile
+@@ -0,0 +1,7 @@
++# SPDX-License-Identifier: GPL-2.0-only
++obj-$(CONFIG_HAVE_IMX_GPC) += gpc.o
++obj-$(CONFIG_IMX_GPCV2_PM_DOMAINS) += gpcv2.o
++obj-$(CONFIG_IMX8M_BLK_CTRL) += imx8m-blk-ctrl.o
++obj-$(CONFIG_IMX8M_BLK_CTRL) += imx8mp-blk-ctrl.o
++obj-$(CONFIG_SOC_IMX9) += imx93-pd.o
++obj-$(CONFIG_IMX9_BLK_CTRL) += imx93-blk-ctrl.o
+diff --git a/drivers/soc/imx/Makefile b/drivers/soc/imx/Makefile
+index a28c44a1f16af..3ad321ca608a6 100644
+--- a/drivers/soc/imx/Makefile
++++ b/drivers/soc/imx/Makefile
+@@ -2,10 +2,5 @@
+ ifeq ($(CONFIG_ARM),y)
+ obj-$(CONFIG_ARCH_MXC) += soc-imx.o
+ endif
+-obj-$(CONFIG_HAVE_IMX_GPC) += gpc.o
+-obj-$(CONFIG_IMX_GPCV2_PM_DOMAINS) += gpcv2.o
+ obj-$(CONFIG_SOC_IMX8M) += soc-imx8m.o
+-obj-$(CONFIG_IMX8M_BLK_CTRL) += imx8m-blk-ctrl.o
+-obj-$(CONFIG_IMX8M_BLK_CTRL) += imx8mp-blk-ctrl.o
+-obj-$(CONFIG_SOC_IMX9) += imx93-src.o imx93-pd.o
+-obj-$(CONFIG_IMX9_BLK_CTRL) += imx93-blk-ctrl.o
++obj-$(CONFIG_SOC_IMX9) += imx93-src.o
+EOF
+
+${INTERDIFF} --fuzzy patch1 patch1 2>errors >output
+[ -s errors ] && exit 1
+[ -s output ] && exit 1
+exit 0
