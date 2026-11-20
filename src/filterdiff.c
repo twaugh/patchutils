@@ -250,16 +250,20 @@ static int output_header_line (const char *line)
 		int h = strcspn (line + 4, "\t\n");
 		fwrite (line, 1, 4, stdout);
 
-		if (prefix_to_add)
-			fputs (prefix_to_add, stdout);
-		else {
-			if (old_prefix_to_add && strncmp (line, "---", 3) == 0)
-				fputs (old_prefix_to_add, stdout);
-			if (new_prefix_to_add && strncmp (line, "+++", 3) == 0)
-				fputs (new_prefix_to_add, stdout);
+		fn = xstrndup (line + 4, h);
+		if (strcmp (fn, "/dev/null") != 0) {
+			if (prefix_to_add)
+				fputs (prefix_to_add, stdout);
+			else {
+				if (old_prefix_to_add &&
+				    strncmp (line, "---", 3) == 0)
+					fputs (old_prefix_to_add, stdout);
+				if (new_prefix_to_add &&
+				    strncmp (line, "+++", 3) == 0)
+					fputs (new_prefix_to_add, stdout);
+			}
 		}
 
-		fn = xstrndup (line + 4, h);
 		fputs (stripped (fn, strip_components), stdout);
 		if (removing_timestamp)
 			putchar ('\n');

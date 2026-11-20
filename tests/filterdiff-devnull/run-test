@@ -1,0 +1,46 @@
+#!/bin/sh
+
+# This is a filterdiff(1) testcase.
+# Test: --addprefix, --addoldprefix and --addnewprefix leave /dev/null alone.
+# Issue: https://github.com/twaugh/patchutils/issues/179
+
+. ${top_srcdir-.}/tests/common.sh
+
+cat << EOF > diff
+--- /dev/null
++++ b/new
+@@ -0,0 +1 @@
++a
+--- a/old
++++ /dev/null
+@@ -1 +0,0 @@
+-b
+EOF
+
+${FILTERDIFF} --strip=1 --addprefix=prefix/ diff 2>errors >filtered || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - filtered || exit 1
+--- /dev/null
++++ prefix/new
+@@ -0,0 +1 @@
++a
+--- prefix/old
++++ /dev/null
+@@ -1 +0,0 @@
+-b
+EOF
+
+${FILTERDIFF} --strip=1 --addoldprefix=old/ --addnewprefix=new/ diff 2>errors >filtered || exit 1
+[ -s errors ] && exit 1
+
+cat << EOF | cmp - filtered || exit 1
+--- /dev/null
++++ new/new
+@@ -0,0 +1 @@
++a
+--- old/old
++++ /dev/null
+@@ -1 +0,0 @@
+-b
+EOF

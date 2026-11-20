@@ -313,6 +313,7 @@ TESTS = tests/newline1/run-test \
 	tests/whitespace-w/run-test \
 	tests/filterdiff-inplace1/run-test \
 	tests/filterdiff-binary-filtering/run-test \
+	tests/filterdiff-devnull/run-test \
 	tests/rediff-inplace1/run-test \
 	tests/rediff-empty-hunk/run-test \
 	tests/git-rename-issue22/run-test \
