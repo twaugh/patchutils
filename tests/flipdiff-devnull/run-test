@@ -46,6 +46,6 @@ ${FLIPDIFF} patch1 patch2 2>errors >actual || exit 1
 [ -s errors ] && exit 1
 
 # Compare the actual output with expected
-diff -u expected actual || exit 1
+${DIFF} -u expected actual || exit 1
 
 exit 0

@@ -40,7 +40,7 @@ grep -q "only in patch2:" actual && exit 1
 
 # Verify the combined result is correct
 cat << EOF > expected
-diff -u /dev/null path1/file.txt
+${DIFF} -u /dev/null path1/file.txt
 --- /dev/null
 +++ path1/file.txt
 @@ -0,0 +1,2 @@
@@ -48,6 +48,6 @@ diff -u /dev/null path1/file.txt
 +b
 EOF
 
-diff -u expected actual || exit 1
+${DIFF} -u expected actual || exit 1
 
 exit 0

@@ -48,7 +48,7 @@ class TestClass {
 EOF
 
 # Create forward patch (file1.php -> file2.php)
-diff -u file1.php file2.php > forward.patch
+${DIFF} -u file1.php file2.php > forward.patch
 
 # Generate reversed patch using interdiff with /dev/null
 ${INTERDIFF} forward.patch /dev/null > reversed.patch 2>errors || exit 1
@@ -71,14 +71,14 @@ if [ $? -ne 0 ]; then
 fi
 
 # Check if the result matches the original file1.php
-if ! diff -q file1.php test_file.php > /dev/null; then
+if ! ${DIFF} -q file1.php test_file.php > /dev/null; then
     echo "ERROR: Simple reversed patch did not produce the original file" >&2
     echo "Expected (file1.php):" >&2
     cat file1.php >&2
     echo "Got (test_file.php after applying reversed patch):" >&2
     cat test_file.php >&2
     echo "Differences:" >&2
-    diff -u file1.php test_file.php >&2
+    ${DIFF} -u file1.php test_file.php >&2
     exit 1
 fi
 
@@ -205,7 +205,7 @@ function new_helper($input) {
 EOF
 
 # Create forward patch for complex files
-diff -u complex_orig.php complex_modified.php > complex_forward.patch
+${DIFF} -u complex_orig.php complex_modified.php > complex_forward.patch
 
 # Generate reversed patch using interdiff with /dev/null
 ${INTERDIFF} complex_forward.patch /dev/null > complex_reversed.patch 2>complex_errors || exit 1
@@ -228,14 +228,14 @@ if [ $? -ne 0 ]; then
 fi
 
 # Check if the result matches the original complex_orig.php
-if ! diff -q complex_orig.php complex_test.php > /dev/null; then
+if ! ${DIFF} -q complex_orig.php complex_test.php > /dev/null; then
     echo "ERROR: Complex reversed patch did not produce the original file" >&2
     echo "Expected (complex_orig.php):" >&2
     cat complex_orig.php >&2
     echo "Got (complex_test.php after applying reversed patch):" >&2
     cat complex_test.php >&2
     echo "Differences:" >&2
-    diff -u complex_orig.php complex_test.php >&2
+    ${DIFF} -u complex_orig.php complex_test.php >&2
     exit 1
 fi
 
@@ -252,7 +252,7 @@ ${PATCH} -p0 forward_test.php < forward.patch 2>/dev/null
 ${PATCH} -p0 forward_test.php < reversed.patch 2>/dev/null
 
 # This should match the original
-if ! diff -q file1.php forward_test.php > /dev/null; then
+if ! ${DIFF} -q file1.php forward_test.php > /dev/null; then
     echo "ERROR: Forward + reversed patch sequence did not return to original" >&2
     echo "Expected (file1.php):" >&2
     cat file1.php >&2
@@ -290,7 +290,7 @@ section2_line3
 EOF
 
 # Create the forward patch
-diff -u simple_orig.txt simple_modified.txt > simple_multi_hunk.patch
+${DIFF} -u simple_orig.txt simple_modified.txt > simple_multi_hunk.patch
 
 # Generate reversed patch using interdiff with /dev/null
 ${INTERDIFF} --quiet simple_multi_hunk.patch /dev/null > simple_reversed.patch 2>simple_errors || {
@@ -318,14 +318,14 @@ ${PATCH} -p0 test_simple_reversed.txt < simple_reversed.patch 2>simple_patch_err
 }
 
 # Check if the result matches the original
-if ! diff -q simple_orig.txt test_simple_reversed.txt > /dev/null; then
+if ! ${DIFF} -q simple_orig.txt test_simple_reversed.txt > /dev/null; then
     echo "ERROR: Multi-hunk reversed patch did not correctly restore original file" >&2
     echo "Expected:" >&2
     cat simple_orig.txt >&2
     echo "Got:" >&2
     cat test_simple_reversed.txt >&2
     echo "Differences:" >&2
-    diff -u simple_orig.txt test_simple_reversed.txt >&2
+    ${DIFF} -u simple_orig.txt test_simple_reversed.txt >&2
     exit 1
 fi
 

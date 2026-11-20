@@ -39,7 +39,7 @@ ${COMBINEDIFF} -p1 first.patch second.patch 2>errors >combined.patch || exit 1
 # Check that the combined patch has the correct header format
 head -3 combined.patch > header
 cat << EOF > expected
-diff -u a/file.c b/file.c
+${DIFF} -u a/file.c b/file.c
 --- a/file.c
 +++ b/file.c
 EOF

@@ -29,7 +29,7 @@ EOF
 # Expected interdiff output (should auto-detect -p1)
 # This shows what needs to change to go from patch1's result to patch2's result
 cat << EOF > expected
-diff -u b/newfile.txt a/newfile.txt
+${DIFF} -u b/newfile.txt a/newfile.txt
 --- b/newfile.txt
 +++ a/newfile.txt
 @@ -1,3 +1,4 @@
@@ -44,6 +44,6 @@ ${INTERDIFF} patch1 patch2 2>errors >actual || exit 1
 [ -s errors ] && exit 1
 
 # Compare the actual output with expected
-diff -u expected actual || exit 1
+${DIFF} -u expected actual || exit 1
 
 exit 0

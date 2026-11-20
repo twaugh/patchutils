@@ -27,7 +27,7 @@ EOF
 
 # Expected combined output should be:
 cat << EOF > expected
-diff -u /dev/null b/txt
+${DIFF} -u /dev/null b/txt
 --- /dev/null
 +++ b/txt
 @@ -0,0 +1,2 @@
@@ -40,7 +40,7 @@ ${COMBINEDIFF} patch1 patch2 2>errors >actual || exit 1
 [ -s errors ] && exit 1
 
 # Compare the actual output with expected
-diff -u expected actual || exit 1
+${DIFF} -u expected actual || exit 1
 
 # Test that the combined patch actually works
 rm -f txt
@@ -49,6 +49,6 @@ cat << EOF > expected_result
 a
 b
 EOF
-diff -u expected_result txt || exit 1
+${DIFF} -u expected_result txt || exit 1
 
 exit 0

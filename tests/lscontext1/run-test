@@ -11,9 +11,9 @@ cp file1.orig file2.orig
 cp file1 file2
 cp file1.orig file3.orig
 cp file1 file3
-diff -c file1.orig file1 > diff
-diff -c file2.orig file2 >> diff
-diff -c file3.orig file3 >> diff
+${DIFF} -c file1.orig file1 > diff
+${DIFF} -c file2.orig file2 >> diff
+${DIFF} -c file3.orig file3 >> diff
 
 ${LSDIFF} diff 2>errors >index || exit 1
 [ -s errors ] && exit 1
