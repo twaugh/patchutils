@@ -53,7 +53,7 @@ ${INTERDIFF} -w patch1 patch2-ws > result-tolerant 2>errors-tolerant || exit 1
 [ $? -eq 0 ] || exit 1
 
 # The result should show the change from y=3 to y=4
-grep -E "(var y = 4|y = 4)" result-tolerant > /dev/null || exit 1
+${GREP} -E "(var y = 4|y = 4)" result-tolerant > /dev/null || exit 1
 
 # Test a more direct scenario: patches that only differ in whitespace
 cat << EOF > file-tabs.txt

@@ -103,7 +103,7 @@ fi
 
 # Key test 3: The color output should not contain malformed content
 # Look for signs that trim_context() failed due to color codes
-if grep -E '^\x1b\[[0-9;]*m[!]+' color.out >/dev/null 2>&1; then
+if ${GREP} -E '^\x1b\[[0-9;]*m[!]+' color.out >/dev/null 2>&1; then
     echo "ERROR: Found colored unline artifacts in output"
     echo "This suggests trim_context() failed to strip artificial content"
     echo "Raw output:"

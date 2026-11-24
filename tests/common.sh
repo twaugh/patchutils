@@ -19,6 +19,7 @@ UNWRAPDIFF=${top_builddir}/scripts/unwrapdiff
 SPLITDIFF=${top_builddir}/scripts/splitdiff
 export LSDIFF
 : ${DIFF:=diff}
+: ${GREP:=grep}
 : ${PATCH:=patch -s}
 cd $ARENA
 if [ -n "$LxINENO" ]; then
