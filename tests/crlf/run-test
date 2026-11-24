@@ -50,23 +50,23 @@ mv remove.patch.crlf remove.patch
 # Verify test.txt is in the lsdiff output
 ${LSDIFF} create.patch > created_file 2>errors || exit 1
 [ -s errors ] && exit 1
-grep -F "test.txt" created_file || exit 1
-grep -F "test_indir.txt" created_file || exit 1
+${GREP} -F "test.txt" created_file || exit 1
+${GREP} -F "test_indir.txt" created_file || exit 1
 
 ${LSDIFF} remove.patch > removed_file 2>errors || exit 1
 [ -s errors ] && exit 1
-grep -F "test.txt" removed_file || exit 1
-grep -F "test_indir.txt" removed_file || exit 1
+${GREP} -F "test.txt" removed_file || exit 1
+${GREP} -F "test_indir.txt" removed_file || exit 1
 
 # Verify the diff remains after filtering
 ${FILTERDIFF} --include="*test*" create.patch > create_filter.patch 2>errors || exit 1
 [ -s errors ] && exit 1
-grep -F "test.txt" create_filter.patch || exit 1
-grep -F "test_indir.txt" create_filter.patch || exit 1
+${GREP} -F "test.txt" create_filter.patch || exit 1
+${GREP} -F "test_indir.txt" create_filter.patch || exit 1
 
 ${FILTERDIFF} --include="*test*" remove.patch > remove_filter.patch 2>errors || exit 1
 [ -s errors ] && exit 1
-grep -F "test.txt" remove_filter.patch || exit 1
-grep -F "test_indir.txt" remove_filter.patch || exit 1
+${GREP} -F "test.txt" remove_filter.patch || exit 1
+${GREP} -F "test_indir.txt" remove_filter.patch || exit 1
 
 exit 0
