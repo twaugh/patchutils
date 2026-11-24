@@ -96,6 +96,5 @@ ${COMBINEDIFF} patch1 patch2 2>errors >patches || exit 1
 [ -s errors ] && exit 1
 
 # There should be no fuzz.
-patch file.a-z < patches >fuzz || exit 1
-[ -s errors ] && exit 1
+${PATCH} --fuzz=0 file.a-z < patches >fuzz || exit 1
 exit 0
