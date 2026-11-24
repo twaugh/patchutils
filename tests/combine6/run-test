@@ -30,6 +30,6 @@ ${COMBINEDIFF} patch1 patch2 2>errors >actual || exit 1
 [ -s errors ] && exit 1
 
 # Expected combined output should be empty (create then delete = no change)
-diff -u /dev/null actual || exit 1
+${DIFF} -u /dev/null actual || exit 1
 
 exit 0

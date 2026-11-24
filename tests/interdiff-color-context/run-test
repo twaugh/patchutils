@@ -85,7 +85,7 @@ if [ $baseline_exit -eq 0 ]; then
     sed 's/\x1b\[[0-9;]*m//g' color.out > color_stripped.out
 
     # The semantic content should be equivalent
-    if ! diff baseline.out color_stripped.out >/dev/null 2>&1; then
+    if ! ${DIFF} baseline.out color_stripped.out >/dev/null 2>&1; then
         echo "ERROR: --color option changes interdiff semantic output"
         echo "This indicates the color implementation interferes with diff processing"
         echo
@@ -96,7 +96,7 @@ if [ $baseline_exit -eq 0 ]; then
         cat color_stripped.out
         echo
         echo "=== Difference ==="
-        diff baseline.out color_stripped.out || true
+        ${DIFF} baseline.out color_stripped.out || true
         exit 1
     fi
 fi

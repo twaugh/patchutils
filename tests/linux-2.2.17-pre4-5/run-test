@@ -104,4 +104,4 @@ ${INTERDIFF} patch1 patch2 2>errors > patch1-2 || exit 1
 cd new1
 ${PATCH} < ../patch1-2 || exit 1
 cd ..
-diff -ur new1 new2 || exit 1
+${DIFF} -ur new1 new2 || exit 1

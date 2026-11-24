@@ -20,7 +20,7 @@ EOF
 ${INTERDIFF} -U0 patch1 patch2 2>errors > patch1-2 || exit 1
 [ -s errors ] && exit 1
 cat << EOF | cmp - patch1-2 || exit 1
-diff -U0 file file
+${DIFF} -U0 file file
 --- file
 +++ file	Nov 27 2001
 @@ -36 +36 @@

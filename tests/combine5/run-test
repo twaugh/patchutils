@@ -26,7 +26,7 @@ EOF
 
 # Expected combined output (should auto-detect -p1)
 cat << EOF > expected
-diff -u /dev/null b/src/deep/nested/file.c
+${DIFF} -u /dev/null b/src/deep/nested/file.c
 --- /dev/null
 +++ b/src/deep/nested/file.c
 @@ -0,0 +1,3 @@
@@ -40,6 +40,6 @@ ${COMBINEDIFF} patch1 patch2 2>errors >actual || exit 1
 [ -s errors ] && exit 1
 
 # Compare the actual output with expected
-diff -u expected actual || exit 1
+${DIFF} -u expected actual || exit 1
 
 exit 0

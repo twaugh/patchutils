@@ -25,7 +25,7 @@ EOF
 ( for f in file xyzzy
   do
     printf "diff -up dir/$f.orig dir/$f\n"
-    diff -up dir/$f.orig dir/$f
+    ${DIFF} -up dir/$f.orig dir/$f
   done) > patch1
 
 ${INTERDIFF} patch1 patch1 2>errors > patch1-2 || exit 1
