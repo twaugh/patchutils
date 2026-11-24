@@ -41,10 +41,10 @@ index 257cc56..0000000
 EOF
 
 # Convert these patches to use CRLF line endings
-sed 's/$/\r/' create.patch > create.patch.crlf
+sed "s/$/$(printf '\r')/" create.patch > create.patch.crlf
 mv create.patch.crlf create.patch
 
-sed 's/$/\r/' remove.patch > remove.patch.crlf
+sed "s/$/$(printf '\r')/" remove.patch > remove.patch.crlf
 mv remove.patch.crlf remove.patch
 
 # Verify test.txt is in the lsdiff output
